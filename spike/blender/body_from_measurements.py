@@ -17,6 +17,7 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 meas_path, out_dir, name = argv[0], argv[1], argv[2]
 M = json.load(open(meas_path))
 real = set(M.get("real", []))
+TOL = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tolerances.json")))
 
 TORSO = {  # measurement key -> (target stem, landmark scan range as fraction of height, 'min'|'max')
     "waist_cm": ("measure-waist-circ", (0.58, 0.68), "min"),
@@ -139,7 +140,34 @@ hgt_m = height_cm(bm) / 100.0
 zmin = min(v.co.z for v in bm.verts)
 marks = {k: find_landmark(bm, hgt_m, zmin, rng, mode) for k, (_, rng, mode) in TORSO.items() if k in M}
 bm.free()
-for _pass in range(2):
+# 3. body-weight macro: pick the weight whose mean circumference over the given landmarks matches the mean target,
+#    so the fine measure controls only have to correct small residuals (they saturate at about +/-1)
+def set_macro(h, key, v):
+    HumanObjectProperties.set_value(key, v, entity_reference=h)
+    TargetService.reapply_macro_details(h)
+
+
+def mean_circ(h):
+    b = eval_bm(h)
+    zmin_ = min(v_.co.z for v_ in b.verts)
+    hh = height_cm(b) / 100.0
+    vals = [circ_cm(b, zmin_ + marks[k] * hh) for k in marks]
+    b.free()
+    return sum(vals) / len(vals)
+
+
+circ_keys = [k for k in TORSO if k in M]
+target_mean = sum(M[k] for k in circ_keys) / len(circ_keys)
+if circ_keys:
+    wv = bisect(lambda v: (set_macro(h, "weight", v), mean_circ(h))[1], target_mean, 0.0, 1.0, 0.2, 14)
+    set_macro(h, "weight", wv)
+    # weight changes height slightly: re-solve height
+    hv = bisect(lambda v: (set_height_macro(h, v), height_cm(eval_bm(h)))[1], M["height_cm"], 0.0, 1.0, 0.05, 16)
+    set_height_macro(h, hv)
+else:
+    wv = 0.5
+
+for _pass in range(3):
     for key, (stem, _, _) in TORSO.items():
         if key not in M:
             continue
@@ -152,18 +180,31 @@ for _pass in range(2):
             b.free()
             return c
         set_signed(h, stem, bisect(f, M[key], -1.0, 1.0, 0.1, 12))
+    # fallback: hips measure control saturates at +/-1 for extreme targets, so add hip width scale
+    if "hips_cm" in M:
+        for sfx in ("-decr", "-incr"):
+            TargetService.load_target(h, TargetService.target_full_path("hip-scale-horiz" + sfx), weight=0.0, name="hip-scale-horiz" + sfx)
+        zh = marks["hips_cm"]
+
+        def fh(v):
+            set_signed(h, "hip-scale-horiz", v)
+            b = eval_bm(h)
+            c = circ_cm(b, min(v_.co.z for v_ in b.verts) + zh * (height_cm(b) / 100.0))
+            b.free()
+            return c
+        set_signed(h, "hip-scale-horiz", bisect(fh, M["hips_cm"], -1.0, 1.0, 0.1, 12))
     # height may drift slightly after torso edits; leave as measured and report it
 
 bm = eval_bm(h)
 hgt = height_cm(bm)
 zmin = min(v.co.z for v in bm.verts)
 results = [{"measure": "height_cm", "target": M["height_cm"], "achieved": round(hgt, 2),
-            "error": round(hgt - M["height_cm"], 2), "tolerance": 1.5, "real_measurement": "height_cm" in real}]
+            "error": round(hgt - M["height_cm"], 2), "tolerance": TOL["length_cm"], "real_measurement": "height_cm" in real}]
 for key in TORSO:
     if key in M:
         c = circ_cm(bm, zmin + marks[key] * hgt / 100.0)
         results.append({"measure": key, "target": M[key], "achieved": round(c, 2), "error": round(c - M[key], 2),
-                        "tolerance": 2.0, "real_measurement": key in real, "landmark_fraction_of_height": round(marks[key], 3)})
+                        "tolerance": TOL["circumference_cm"], "real_measurement": key in real, "landmark_fraction_of_height": round(marks[key], 3)})
 for r in results:
     r["pass"] = abs(r["error"]) <= r["tolerance"]
 
@@ -197,7 +238,7 @@ bpy.data.objects.remove(ref)
 results_extra = {"tee": tee_report, "trousers": tr_report}
 
 os.makedirs(out_dir, exist_ok=True)
-json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "results": results, **results_extra},
+json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra},
           open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 
 # export baked body only (no helpers, no shape keys)

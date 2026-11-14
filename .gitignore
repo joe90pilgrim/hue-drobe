@@ -6,3 +6,4 @@ __pycache__/
 private/
 spike/viewer/public/models/personal/
 spike/vite.log
+spike/out/

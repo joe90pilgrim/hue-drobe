@@ -1,0 +1,10 @@
+{
+  "_note": "Single source of truth for spike pass criteria. Changing a value is a reviewed edit. Colour tolerances not set yet.",
+  "circumference_cm": 2.0,
+  "length_cm": 1.5,
+  "garment_clipping_max_fraction": 0.005,
+  "garment_clipping_max_depth_cm": 1.0,
+  "garment_landmark_cm": 2.0,
+  "phone_min_fps": 30,
+  "phone_max_load_mb": 15
+}

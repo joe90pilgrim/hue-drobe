@@ -195,12 +195,19 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     return me, vids
 
 
-def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None):
+def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None, edge_margin=0.012):
     """Fraction of covered body vertices that lie outside (or on) the garment surface => body showing through."""
     gb = bmesh.new()
     gb.from_mesh(garment_obj_mesh)
     gb.normal_update()
     bvh = BVHTree.FromBMesh(gb)
+    from mathutils.kdtree import KDTree
+    bverts = [v for v in gb.verts if v.is_boundary]
+    kd = KDTree(max(1, len(bverts)))
+    for k, v in enumerate(bverts):
+        kd.insert(v.co, k)
+    kd.balance()
+    skipped = 0
     bad = 0
     worst = 0.0
     where = []
@@ -211,6 +218,9 @@ def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=
         loc, nor, fi, dist = bvh.find_nearest(p)
         if loc is None:
             continue
+        if bverts and kd.find(loc)[2] < edge_margin:
+            skipped += 1  # next to an open fabric edge the inside/outside test is not meaningful
+            continue
         s = (p - loc).dot(nor)
         if s > tol:
             bad += 1
@@ -218,7 +228,7 @@ def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=
             where.append((round(p.z * 100), round(abs(p.x) * 100), round(s * 100, 1)))
     gb.free()
     return {"covered_body_verts": len(body_vertex_ids), "showing_through": bad,
-            "fraction": round(bad / max(1, len(body_vertex_ids)), 4), "worst_penetration_cm": round(worst * 100, 2),
+            "fraction": round(bad / max(1, len(body_vertex_ids)), 4), "worst_penetration_cm": round(worst * 100, 2), "skipped_near_edge": skipped,
             "worst_at_z_x_depth_cm": sorted(where, key=lambda w: -w[2])[:6]}
 
 
