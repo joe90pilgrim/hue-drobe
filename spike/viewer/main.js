@@ -23,13 +23,15 @@ const gl = renderer.getContext();
 const info = `WebGL2: ${gl instanceof WebGL2RenderingContext}\nGPU: ${(() => { const e = gl.getExtension('WEBGL_debug_renderer_info'); return e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'n/a'; })()}`;
 let modelBytes = 0;
 
-fetch('/models/' + (new URLSearchParams(location.search).get('m') ? 'personal/' + new URLSearchParams(location.search).get('m') : 'test_body') + '.glb').then(r => r.arrayBuffer()).then(buf => {
-  modelBytes = buf.byteLength;
-  new GLTFLoader().parse(buf, '', gltf => {
-    // Blender exports Z-up; glTF is Y-up and the exporter converts, so just add.
-    scene.add(gltf.scene);
-  });
+const q = new URLSearchParams(location.search).get('m');
+const loader = new GLTFLoader();
+const load = url => fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(buf => {
+  if (!buf || new Uint8Array(buf)[0] !== 0x67) return; // not a glb (dev server fallback)
+  modelBytes += buf.byteLength;
+  loader.parse(buf, '', g => scene.add(g.scene));
 });
+if (q) { load('/models/personal/' + q + '.glb'); load('/models/personal/' + q + '_tee.glb'); }
+else load('/models/test_body.glb');
 
 let frames = 0, last = performance.now(), fps = 0;
 renderer.setAnimationLoop(() => {

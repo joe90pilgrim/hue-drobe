@@ -167,8 +167,22 @@ for key in TORSO:
 for r in results:
     r["pass"] = abs(r["error"]) <= r["tolerance"]
 
+# garments: one tee template defined on a neutral reference body, re-fitted to this body
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import garment
+ref = HumanService.create_human(scale=0.1)
+faces = garment.define_tee(ref)
+body_final = garment.body_bm(h)
+joints_final = garment.joint_positions(h, garment.JOINTS)
+tee_mesh, vids = garment.build_garment_mesh(body_final, faces, ease=0.010)
+tee_report = {"template_faces": len(faces), "ease_cm": 1.0,
+              "clipping": garment.clipping_report(body_final, tee_mesh, vids),
+              **garment.landmarks(body_final, faces, vids, joints_final)}
+bpy.data.objects.remove(ref)
+results_extra = {"tee": tee_report}
+
 os.makedirs(out_dir, exist_ok=True)
-json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "results": results},
+json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "results": results, **results_extra},
           open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 
 # export baked body only (no helpers, no shape keys)
@@ -181,5 +195,15 @@ ob.select_set(True)
 bpy.context.view_layer.objects.active = ob
 glb = os.path.join(out_dir, name + ".glb")
 bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_apply=False)
+tee_ob = bpy.data.objects.new(name + "_tee", tee_mesh)
+mat = bpy.data.materials.new("tee"); mat.use_nodes = True
+mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.85, 0.2, 0.25, 1)
+tee_mesh.materials.append(mat)
+bpy.context.scene.collection.objects.link(tee_ob)
+bpy.ops.object.select_all(action="DESELECT")
+tee_ob.select_set(True)
+bpy.context.view_layer.objects.active = tee_ob
+bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tee.glb"), export_format="GLB", use_selection=True)
+print("TEE", json.dumps(tee_report))
 print("REPORT", json.dumps(results))
 print("GLB_BYTES", os.path.getsize(glb))
