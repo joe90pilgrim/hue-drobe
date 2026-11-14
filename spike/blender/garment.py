@@ -55,7 +55,7 @@ def body_bm(h):
     return bm
 
 
-def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.75):
+def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.95):
     """Choose body faces forming a short-sleeve tee on the reference body. Returns the set of face indices."""
     j = joint_positions(ref_h, JOINTS)
     bm = body_bm(ref_h)
@@ -77,7 +77,7 @@ def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.75):
         c = f.calc_center_median()
         best = min(((_seg_dist(c, *segs[k])[0] - radius[k], k) for k in segs))[1]
         d, t = _seg_dist(c, *segs[best])
-        if best in ("torso", "lleg", "rleg") and hem_z <= c.z <= collar_z:
+        if (best in ("torso", "lleg", "rleg") or (best == "head" and c.z <= collar_z)) and hem_z <= c.z <= collar_z:
             keep.add(f.index)
         elif best in ("lup", "rup") and t <= sleeve_t and c.z >= hem_z:
             keep.add(f.index)
@@ -91,7 +91,7 @@ def _classify(co, segs, radius):
 
 
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
-              extra_mesh=None, extra_gap=0.008):
+              extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     Returns (mesh, list of body vertex ids still covered)."""
@@ -111,7 +111,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         loop = []
         for v in f.verts:
             if v.index not in vmap:
-                nv = g.verts.new(v.co + v.normal * ease)
+                nv = g.verts.new(v.co + v.normal * (ease(v.co.z) if callable(ease) else ease))
                 nv[layer] = v.index + 1
                 vmap[v.index] = nv
             loop.append(vmap[v.index])
@@ -145,6 +145,13 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             v.co = c
         push_out()
 
+    if neck is not None:  # crew neckline: remove shell inside an ellipse around the neck
+        kill = []
+        for f in g.faces:
+            c = f.calc_center_median()
+            if c.z > neck["z"] - 0.12 and ((c.x - neck["cx"]) / neck["a"]) ** 2 + ((c.y - neck["cy"]) / neck["b"]) ** 2 < 1.0:
+                kill.append(f)
+        bmesh.ops.delete(g, geom=kill, context="FACES_ONLY")
     # smooth the open boundary (neckline) a few times to remove stair-steps
     for it in range(6):
         new_co = {}
@@ -178,6 +185,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         kill = [v for v in g.verts if _classify(v.co, segs, radius) in (key, "lfo" if side == "l" else "rfo")
                 and (v.co - pc).dot(d) > 1e-4]
         bmesh.ops.delete(g, geom=kill, context="VERTS")
+    if extend_hem_to is not None and hem_z is not None and extend_hem_to < hem_z - 1e-4:
+        # hanging tube below the crotch: extrude the hem loop straight down, then keep it clear of the body and trousers
+        edges = [e for e in g.edges if e.is_boundary and all(abs(v.co.z - hem_z) < 3e-4 for v in e.verts)]
+        r = bmesh.ops.extrude_edge_only(g, edges=edges)
+        for x in r["geom"]:
+            if isinstance(x, bmesh.types.BMVert):
+                x.co.z = extend_hem_to
+        bmesh.ops.recalc_face_normals(g, faces=list(g.faces))
+        push_out()
     loose = [v for v in g.verts if not v.link_faces]
     bmesh.ops.delete(g, geom=loose, context="VERTS")
     g.normal_update()
@@ -243,7 +259,7 @@ def landmarks(body_bm, faces, vids, joints):
     return {"hem_height_cm": round(hem * 100, 1), "sleeve_end_from_shoulder_cm": round(sleeve * 100, 1)}
 
 
-def define_trousers(ref_h, hem_frac=0.055, waist_frac=0.66):
+def define_trousers(ref_h, hem_frac=0.03, waist_frac=0.66):
     """Body faces for trousers on the reference body: pelvis and both legs between hem and a little above the waist."""
     j = joint_positions(ref_h, JOINTS + ["joint-l-ankle", "joint-r-ankle"])
     bm = body_bm(ref_h)
@@ -290,7 +306,7 @@ def crotch_height_cm(body_bm_, H_m):
         for ed in cut:
             for v in ed.verts:
                 comps.setdefault(find(v), []).append(v.co.x)
-        legs = [xs for xs in comps.values() if len(xs) > 12 and 0.03 < abs(sum(xs) / len(xs)) < 0.2]
+        legs = [xs for xs in comps.values() if len(xs) > 12 and 0.03 < abs(sum(xs) / len(xs)) < 0.3]
         b.free()
         if len(legs) >= 2:
             return (z - zmin) * 100.0

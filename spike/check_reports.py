@@ -18,5 +18,14 @@ for f in sorted(folder.glob("*_report.json")):
         ok = c["fraction"] <= tol["garment_clipping_max_fraction"] and c["worst_penetration_cm"] <= tol["garment_clipping_max_depth_cm"]
         failures += not ok
         print(f"  {'PASS' if ok else 'FAIL'} {g} clipping: {c['showing_through']}/{c['covered_body_verts']} ({c['fraction']*100:.2f}%), worst {c['worst_penetration_cm']} cm")
+    for m in r.get("garment_landmarks_vs_real", []):
+        ok = abs(m["error"]) <= tol["garment_landmark_cm"]
+        failures += not ok
+        print(f"  {'PASS' if ok else 'FAIL'} {m['garment']} {m['measure']}: real {m['target']} model {m['achieved']} (error {m['error']:+}, tol {tol['garment_landmark_cm']})")
+    for k, m in r.get("extra_body_checks", {}).items():
+        err = round(m["achieved"] - m["target"], 1)
+        ok = abs(err) <= tol["circumference_cm"]
+        failures += not ok
+        print(f"  {'PASS' if ok else 'FAIL'} {k}: target {m['target']} got {m['achieved']} (error {err:+}, tol {tol['circumference_cm']})")
 print("FAILED" if failures else "ALL PASSED", f"({failures} failures)")
 sys.exit(1 if failures else 0)
