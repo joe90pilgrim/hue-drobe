@@ -340,6 +340,8 @@ TG = (G or {}).get("tee")
 RG = (G or {}).get("trousers")
 two_pi = 2 * math.pi
 
+tr_cal = None
+tee_cal = None
 # --- trousers: ease is calibrated so the garment's measured circumferences hit the real garment's numbers
 # (smoothing shrinks the shell, so a nominal ease would give the wrong size)
 tr_hem_z = zmin_f + 0.06 * H_f
@@ -372,6 +374,9 @@ if RG:
         gt.free()
         want = {"hem": RG["leg_opening_circ_cm"], "hip": RG["hip_circ_cm"], "waist": RG["waist_circ_cm"]}
         print("CAL trousers", it, {k: (round(got[k], 1), want[k]) for k in want})
+        tr_cal = {"converged": all(abs(got[k] - want[k]) < 0.5 for k in want),
+                  "ease_at_floor": [k for k in knots if knots[k] <= 0.0031],
+                  "residual_cm": {k: round(got[k] - want[k], 2) for k in want}}
         if all(abs(got[k] - want[k]) < 0.5 for k in want):
             break
         for k in knots:
@@ -407,6 +412,9 @@ if TG:
         gt.free()
         got_sleeve = garment.landmarks(body_final, tee_faces, vids, joints_final)["sleeve_end_from_shoulder_cm"]
         print("CAL tee", it, round(got, 1), TG["chest_circ_cm"], "sleeve", got_sleeve, TG["sleeve_cm"])
+        tee_cal = {"converged": abs(got - TG["chest_circ_cm"]) < 0.5 and abs(got_sleeve - TG["sleeve_cm"]) < 0.7,
+                   "ease_at_floor": ["chest"] if tee_ease <= 0.0031 else [],
+                   "residual_cm": {"chest": round(got - TG["chest_circ_cm"], 2), "sleeve": round(got_sleeve - TG["sleeve_cm"], 2)}}
         sleeve_ok = abs(got_sleeve - TG["sleeve_cm"]) < 0.7
         if abs(got - TG["chest_circ_cm"]) < 0.5 and sleeve_ok:
             break
@@ -418,14 +426,20 @@ else:
                                        sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck)
 
 # --- reports
+def _in_neck_hole(p):
+    return p.z > neck["z"] - 0.12 and (p.x / (neck["a"] + 0.03)) ** 2 + ((p.y - neck["cy"]) / (neck["b"] + 0.03)) ** 2 < 1.0
+
+
 tee_report = {"template_faces": len(tee_faces), "ease_cm": round(tee_ease * 100, 2),
-              "clipping": garment.clipping_report(body_final, tee_mesh, vids, zrange=((tee_extend if tee_extend else tee_hem_z) + 0.01, 10.0)),
+              "clipping": garment.clipping_report(body_final, tee_mesh, vids, zrange=((tee_extend if tee_extend else tee_hem_z) + 0.01, 10.0), skip=_in_neck_hole),
               **garment.landmarks(body_final, tee_faces, vids, joints_final)}
 gtee = bmesh.new()
 gtee.from_mesh(tee_mesh)
 gtr = bmesh.new()
 gtr.from_mesh(tr_mesh)
 gz_min_tee = min(v.co.z for v in gtee.verts)
+tee_report["clipping_ray"] = garment.clipping_report_ray(body_final, tee_mesh, vids, zrange=((tee_extend if tee_extend else tee_hem_z) + 0.01, 10.0), skip=_in_neck_hole)
+tee_report["calibration"] = tee_cal
 tee_report["hem_height_from_hps_cm"] = round((hps_z - gz_min_tee) * 100, 1)
 _top = [v for v in gtee.verts if v.is_boundary and v.co.z > joints_final["joint-neck"].z - 0.10 and abs(v.co.x) < 0.2]
 tee_report["neckline_width_cm"] = round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None
@@ -438,6 +452,10 @@ tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_eas
              "hip_circ_cm": round(circ_loop(gtr, hip_z), 1) if "hips_cm" in marks else None,
              "waist_circ_cm": round(circ_loop(gtr, tr_top_z - 0.015), 1),
              "leg_opening_circ_cm": round(circ_loop(gtr, tr_hem_z + 0.005, side=1), 1)}
+tr_report["calibration"] = tr_cal
+tr_report["clipping_ray"] = garment.clipping_report_ray(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01))
+_zmin = zmin_f
+tr_report["body_self_intersections_crotch"] = garment.self_intersections_band(body_final, crotch_z - 0.10, crotch_z + 0.05)
 _hole = [v for v in gtr.verts if v.is_boundary and abs(v.co.x) < 0.06 and crotch_z - 0.08 < v.co.z < crotch_z + 0.1]
 tr_report["boundary_verts_near_crotch"] = len(_hole)
 prof = []

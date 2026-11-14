@@ -11,9 +11,13 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x1b1b1f);
 const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 50);
-camera.position.set(0, 1.0, 4);
+const view = new URLSearchParams(location.search).get('view');
+const views = { front: [0, 1.0, 4, 0, 0.9, 0], side: [4, 1.0, 0, 0, 0.9, 0], back: [0, 1.0, -4, 0, 0.9, 0],
+                below: [0.0, 0.05, 1.6, 0, 0.85, 0], crotch: [0.0, 0.2, 1.1, 0, 0.82, 0] };
+const v0 = views[view] || views.front;
+camera.position.set(v0[0], v0[1], v0[2]);
 const controls = new OrbitControls(camera, renderer.domElement);
-controls.target.set(0, 0.9, 0);
+controls.target.set(v0[3], v0[4], v0[5]);
 controls.enableDamping = true;
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444455, 1.6));
 const key = new THREE.DirectionalLight(0xffffff, 2); key.position.set(2, 3, 3); scene.add(key);

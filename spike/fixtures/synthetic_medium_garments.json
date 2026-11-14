@@ -1,0 +1,16 @@
+{
+  "_note": "Synthetic garment fixture, made-up flat measurements (not a real item).",
+  "tee": {
+    "chest_circ_cm": 106,
+    "length_cm": 72,
+    "sleeve_cm": 22,
+    "neckline_width_cm": 20
+  },
+  "trousers": {
+    "waist_circ_cm": 88,
+    "hip_circ_cm": 104,
+    "rise_cm": 25,
+    "inseam_cm": 73,
+    "leg_opening_circ_cm": 34
+  }
+}

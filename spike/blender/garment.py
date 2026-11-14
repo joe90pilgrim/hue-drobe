@@ -129,6 +129,14 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             d = (v.co - loc).dot(nor)
             if d < min_gap:
                 v.co += nor * (min_gap - d)
+            # nearest-point tests are unreliable in folds (crotch), so also keep each vertex outside its own source vertex's plane
+            si = v[layer] - 1
+            if 0 <= si < len(bm.verts):
+                sv = bm.verts[si]
+                if (sv.co - v.co).length < 0.08:
+                    d2 = (v.co - sv.co).dot(sv.normal)
+                    if d2 < min_gap:
+                        v.co += sv.normal * (min_gap - d2)
             if extra_bvh is not None:
                 loc2, nor2, fi2, dist2 = extra_bvh.find_nearest(v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
@@ -196,6 +204,16 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         push_out()
     loose = [v for v in g.verts if not v.link_faces]
     bmesh.ops.delete(g, geom=loose, context="VERTS")
+    # orientation guard: recalc_face_normals can flip an open mesh as a whole, so check the cloth faces point away from the body
+    g.normal_update()
+    votes = 0
+    for f in g.faces:
+        c = f.calc_center_median()
+        loc, nor, fi, dist = body_bvh.find_nearest(c)
+        if loc is not None:
+            votes += 1 if (c - loc).dot(f.normal) > 0 else -1
+    if votes < 0:
+        bmesh.ops.reverse_faces(g, faces=list(g.faces))
     g.normal_update()
     # bisect interpolates the int layer on new verts (garbage indices), so keep only verts still near their body vertex
     vids = []
@@ -211,7 +229,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     return me, vids
 
 
-def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None, edge_margin=0.012):
+def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None, edge_margin=0.012, skip=None):
     """Fraction of covered body vertices that lie outside (or on) the garment surface => body showing through."""
     gb = bmesh.new()
     gb.from_mesh(garment_obj_mesh)
@@ -231,6 +249,8 @@ def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=
         body_vertex_ids = [i for i in body_vertex_ids if zrange[0] <= body_bm.verts[i].co.z <= zrange[1]]
     for i in body_vertex_ids:
         p = body_bm.verts[i].co
+        if skip and skip(p):
+            continue
         loc, nor, fi, dist = bvh.find_nearest(p)
         if loc is None:
             continue
@@ -312,3 +332,77 @@ def crotch_height_cm(body_bm_, H_m):
             return (z - zmin) * 100.0
         z -= 0.005
     return float("nan")
+
+
+def clipping_report_ray(body_bm, garment_mesh, body_vertex_ids, zrange=None, max_dist=0.30, edge_margin=0.03, skip=None):
+    """Second, independent clipping test. From each covered body vertex AND each covered face centre, cast a ray outward
+    along the body normal at the garment. The point is covered if the first hit is the garment's inside (the garment's
+    outward normal points the same way as the ray). It is showing through if the first hit is a front face (the ray started
+    outside the cloth) or nothing is hit within max_dist.
+    Misses next to an open fabric edge are also counted separately, so both a strict and an edge-tolerant figure are reported."""
+    from mathutils.kdtree import KDTree
+    gb = bmesh.new()
+    gb.from_mesh(garment_mesh)
+    gb.normal_update()
+    bvh = BVHTree.FromBMesh(gb)
+    bverts = [v for v in gb.verts if v.is_boundary]
+    kd = KDTree(max(1, len(bverts)))
+    for k, v in enumerate(bverts):
+        kd.insert(v.co, k)
+    kd.balance()
+    body_bm.normal_update()
+    ids = set(body_vertex_ids)
+    if zrange:
+        ids = {i for i in ids if zrange[0] <= body_bm.verts[i].co.z <= zrange[1]}
+    samples = [(body_bm.verts[i].co.copy(), body_bm.verts[i].normal.copy()) for i in ids]
+    for f in body_bm.faces:
+        if all(v.index in ids for v in f.verts):
+            samples.append((f.calc_center_median(), f.normal.copy()))
+    if skip:
+        samples = [(p, n) for p, n in samples if not skip(p)]
+    strict = tolerant = front_hits = misses = 0
+    worst = 0.0
+    where = []
+    for p, n in samples:
+        origin = p - n * 0.02  # start 2 cm inside the body so a tight garment is not missed at the origin
+        loc, nor, fi, dist = bvh.ray_cast(origin, n, max_dist + 0.02)
+        bad = False
+        if loc is None:
+            bad = True
+            misses += 1
+        else:
+            # first hit must be the garment's inside; the first hit along the ray from inside the body
+            if nor.dot(n) < 0:
+                bad = True
+                front_hits += 1
+                worst = max(worst, (p - loc).dot(n))
+        if bad:
+            where.append((round(p.z * 100), round(p.x * 100), round(p.y * 100), 'miss' if loc is None else 'front'))
+            strict += 1
+            near_edge = bool(bverts) and kd.find(loc if loc is not None else p)[2] < edge_margin
+            if not near_edge:
+                tolerant += 1
+    gb.free()
+    n_s = max(1, len(samples))
+    return {"samples": len(samples), "showing_through_strict": strict, "fraction_strict": round(strict / n_s, 4),
+            "showing_through_excluding_edges": tolerant, "fraction_excluding_edges": round(tolerant / n_s, 4),
+            "front_face_hits": front_hits, "no_hit": misses, "worst_cm": round(worst * 100, 2),
+            "where_z_x_y_kind_cm": where[:400]}
+
+
+def self_intersections_band(body_bm_, z_lo, z_hi):
+    """Count pairs of body faces that overlap each other (ignoring faces that share a vertex) inside a height band."""
+    body_bm_.faces.ensure_lookup_table()
+    tree = BVHTree.FromBMesh(body_bm_)
+    pairs = tree.overlap(tree)
+    seen = set()
+    for a, b in pairs:
+        if a >= b:
+            continue
+        fa, fb = body_bm_.faces[a], body_bm_.faces[b]
+        if set(fa.verts) & set(fb.verts):
+            continue
+        za, zb = fa.calc_center_median().z, fb.calc_center_median().z
+        if z_lo <= za <= z_hi and z_lo <= zb <= z_hi:
+            seen.add((a, b))
+    return len(seen)

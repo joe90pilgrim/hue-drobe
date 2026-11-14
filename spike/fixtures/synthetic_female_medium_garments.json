@@ -1,0 +1,16 @@
+{
+  "_note": "Synthetic garment fixture for the female medium body.",
+  "tee": {
+    "chest_circ_cm": 96,
+    "length_cm": 62,
+    "sleeve_cm": 18,
+    "neckline_width_cm": 19
+  },
+  "trousers": {
+    "waist_circ_cm": 86,
+    "hip_circ_cm": 104,
+    "rise_cm": 24,
+    "inseam_cm": 66,
+    "leg_opening_circ_cm": 33
+  }
+}

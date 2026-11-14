@@ -1,5 +1,5 @@
 {
-  "_note": "Single source of truth for spike pass criteria. Changing a value is a reviewed edit. Colour tolerances not set yet.",
+  "_note": "Single source of truth for spike pass criteria. Changing a value is a reviewed edit. Clipping is judged by the ray test (edges within 3 cm excluded). Colour tolerances not set yet.",
   "circumference_cm": 2.0,
   "length_cm": 1.5,
   "garment_clipping_max_fraction": 0.005,
