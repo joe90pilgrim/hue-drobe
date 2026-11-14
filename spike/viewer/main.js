@@ -37,14 +37,15 @@ const load = url => fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(buf
 if (q) { load('/models/personal/' + q + '.glb'); load('/models/personal/' + q + '_tee.glb'); load('/models/personal/' + q + '_trousers.glb'); }
 else load('/models/test_body.glb');
 
-let frames = 0, last = performance.now(), fps = 0;
+let frames = 0, last = performance.now(), fps = 0, worstMs = 0, prev = performance.now();
 renderer.setAnimationLoop(() => {
   controls.update();
   renderer.render(scene, camera);
   frames++;
   const now = performance.now();
+  worstMs = Math.max(worstMs, now - prev); prev = now;
   if (now - last >= 1000) {
-    fps = Math.round(frames * 1000 / (now - last)); frames = 0; last = now;
+    fps = Math.round(frames * 1000 / (now - last)); frames = 0; last = now; worstMs = 0;
     hud.textContent = `${info}\nFPS: ${fps}\nModel: ${(modelBytes / 1024).toFixed(0)} KB`;
   }
 });
