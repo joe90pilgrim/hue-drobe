@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.blend1
+__pycache__/
+# Personal photos and measurements never go in the repo
+private/
+spike/viewer/public/models/personal/
+spike/vite.log
