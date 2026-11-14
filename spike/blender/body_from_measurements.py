@@ -174,10 +174,14 @@ ref = HumanService.create_human(scale=0.1)
 faces = garment.define_tee(ref)
 body_final = garment.body_bm(h)
 joints_final = garment.joint_positions(h, garment.JOINTS)
-tee_mesh, vids = garment.build_garment_mesh(body_final, faces, ease=0.010)
-tee_report = {"template_faces": len(faces), "ease_cm": 1.0,
+HEM_FRAC = 0.49
+zmin_f = min(v.co.z for v in body_final.verts)
+H_f = max(v.co.z for v in body_final.verts) - zmin_f
+tee_mesh, vids = garment.build_tee(body_final, faces, joints_final, hem_z=zmin_f + HEM_FRAC * H_f)
+tee_report = {"template_faces": len(faces), "ease_cm": 2.2, "min_gap_cm": 0.6,
               "clipping": garment.clipping_report(body_final, tee_mesh, vids),
               **garment.landmarks(body_final, faces, vids, joints_final)}
+zs = [v.co.z for v in tee_mesh.vertices]
 bpy.data.objects.remove(ref)
 results_extra = {"tee": tee_report}
 

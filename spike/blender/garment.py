@@ -55,7 +55,7 @@ def body_bm(h):
     return bm
 
 
-def define_tee(ref_h, hem_frac=0.50, collar_drop=0.035, sleeve_t=0.55):
+def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.75):
     """Choose body faces forming a short-sleeve tee on the reference body. Returns the set of face indices."""
     j = joint_positions(ref_h, JOINTS)
     bm = body_bm(ref_h)
@@ -77,7 +77,7 @@ def define_tee(ref_h, hem_frac=0.50, collar_drop=0.035, sleeve_t=0.55):
         c = f.calc_center_median()
         best = min(((_seg_dist(c, *segs[k])[0] - radius[k], k) for k in segs))[1]
         d, t = _seg_dist(c, *segs[best])
-        if best == "torso" and hem_z <= c.z <= collar_z:
+        if best in ("torso", "lleg", "rleg") and hem_z <= c.z <= collar_z:
             keep.add(f.index)
         elif best in ("lup", "rup") and t <= sleeve_t and c.z >= hem_z:
             keep.add(f.index)
@@ -85,29 +85,100 @@ def define_tee(ref_h, hem_frac=0.50, collar_drop=0.035, sleeve_t=0.55):
     return keep
 
 
-def build_garment_mesh(bm, faces, ease):
-    """Return a new mesh: the chosen faces of bm, each vertex pushed out along its normal by ease (metres)."""
+def _classify(co, segs, radius):
+    best = min(((_seg_dist(co, *segs[k])[0] - radius[k], k) for k in segs))[1]
+    return best
+
+
+def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55):
+    """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
+    to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
+    Returns (mesh, list of body vertex ids still covered)."""
     bm.normal_update()
+    body_bvh = BVHTree.FromBMesh(bm)
     g = bmesh.new()
+    layer = g.verts.layers.int.new("bodyidx")
     vmap = {}
     for fi in faces:
         f = bm.faces[fi]
         loop = []
         for v in f.verts:
             if v.index not in vmap:
-                vmap[v.index] = g.verts.new(v.co + v.normal * ease)
+                nv = g.verts.new(v.co + v.normal * ease)
+                nv[layer] = v.index + 1
+                vmap[v.index] = nv
             loop.append(vmap[v.index])
         try:
             g.faces.new(loop)
         except ValueError:
             pass
+    g.verts.ensure_lookup_table()
+
+    def push_out():
+        for v in g.verts:
+            loc, nor, fi, dist = body_bvh.find_nearest(v.co)
+            if loc is None:
+                continue
+            d = (v.co - loc).dot(nor)
+            if d < min_gap:
+                v.co += nor * (min_gap - d)
+
+    for it in range(smooth_iters):
+        new_co = {}
+        for v in g.verts:
+            nb = [e.other_vert(v) for e in v.link_edges]
+            if nb:
+                avg = sum((n.co for n in nb), Vector()) / len(nb)
+                new_co[v] = v.co.lerp(avg, 0.5)
+        for v, c in new_co.items():
+            v.co = c
+        push_out()
+
+    # smooth the open boundary (neckline) a few times to remove stair-steps
+    for it in range(6):
+        new_co = {}
+        for v in g.verts:
+            if v.is_boundary:
+                nb = [e.other_vert(v) for e in v.link_edges if e.is_boundary]
+                if len(nb) == 2:
+                    new_co[v] = v.co.lerp((nb[0].co + nb[1].co) / 2, 0.5)
+        for v, c in new_co.items():
+            v.co = c
+    push_out()
+
+    # straight hem
+    if hem_z is not None:
+        geom = list(g.verts) + list(g.edges) + list(g.faces)
+        bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, hem_z), plane_no=(0, 0, 1), clear_inner=True)
+    # straight sleeve ends
+    segs = {"torso": (joints["joint-pelvis"], joints["joint-neck"]), "head": (joints["joint-neck"], joints["joint-head"]),
+            "lup": (joints["joint-l-shoulder"], joints["joint-l-elbow"]), "rup": (joints["joint-r-shoulder"], joints["joint-r-elbow"]),
+            "lfo": (joints["joint-l-elbow"], joints["joint-l-hand"]), "rfo": (joints["joint-r-elbow"], joints["joint-r-hand"])}
+    radius = {"torso": 0.14, "head": 0.09, "lup": 0.045, "rup": 0.045, "lfo": 0.035, "rfo": 0.035}
+    for side, key in (("l", "lup"), ("r", "rup")):
+        a, b = segs[key]
+        d = (b - a).normalized()
+        pc = a + (b - a) * sleeve_t
+        geom = list(g.verts) + list(g.edges) + list(g.faces)
+        bmesh.ops.bisect_plane(g, geom=geom, plane_co=pc, plane_no=d)
+        kill = [v for v in g.verts if _classify(v.co, segs, radius) in (key, "lfo" if side == "l" else "rfo")
+                and (v.co - pc).dot(d) > 1e-4]
+        bmesh.ops.delete(g, geom=kill, context="VERTS")
+    loose = [v for v in g.verts if not v.link_faces]
+    bmesh.ops.delete(g, geom=loose, context="VERTS")
     g.normal_update()
+    # bisect interpolates the int layer on new verts (garbage indices), so keep only verts still near their body vertex
+    vids = []
+    for v in g.verts:
+        i = v[layer] - 1
+        if 0 <= i < len(bm.verts) and (bm.verts[i].co - v.co).length < 0.06:
+            vids.append(i)
     me = bpy.data.meshes.new("garment")
     g.to_mesh(me)
     g.free()
     for p in me.polygons:
         p.use_smooth = True
-    return me, sorted(vmap)
+    return me, vids
 
 
 def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0):
