@@ -90,12 +90,19 @@ def _classify(co, segs, radius):
     return best
 
 
-def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55):
+def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
+              extra_mesh=None, extra_gap=0.008):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     Returns (mesh, list of body vertex ids still covered)."""
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
+    extra_bvh = None
+    if extra_mesh is not None:  # an inner garment the new one must sit over
+        eb = bmesh.new()
+        eb.from_mesh(extra_mesh)
+        eb.normal_update()
+        extra_bvh = BVHTree.FromBMesh(eb)
     g = bmesh.new()
     layer = g.verts.layers.int.new("bodyidx")
     vmap = {}
@@ -122,6 +129,10 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             d = (v.co - loc).dot(nor)
             if d < min_gap:
                 v.co += nor * (min_gap - d)
+            if extra_bvh is not None:
+                loc2, nor2, fi2, dist2 = extra_bvh.find_nearest(v.co)
+                if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
+                    v.co += nor2 * (extra_gap - (v.co - loc2).dot(nor2))
 
     for it in range(smooth_iters):
         new_co = {}
@@ -150,12 +161,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     if hem_z is not None:
         geom = list(g.verts) + list(g.edges) + list(g.faces)
         bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, hem_z), plane_no=(0, 0, 1), clear_inner=True)
+    if top_z is not None:
+        geom = list(g.verts) + list(g.edges) + list(g.faces)
+        bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, top_z), plane_no=(0, 0, 1), clear_outer=True)
     # straight sleeve ends
     segs = {"torso": (joints["joint-pelvis"], joints["joint-neck"]), "head": (joints["joint-neck"], joints["joint-head"]),
             "lup": (joints["joint-l-shoulder"], joints["joint-l-elbow"]), "rup": (joints["joint-r-shoulder"], joints["joint-r-elbow"]),
             "lfo": (joints["joint-l-elbow"], joints["joint-l-hand"]), "rfo": (joints["joint-r-elbow"], joints["joint-r-hand"])}
     radius = {"torso": 0.14, "head": 0.09, "lup": 0.045, "rup": 0.045, "lfo": 0.035, "rfo": 0.035}
-    for side, key in (("l", "lup"), ("r", "rup")):
+    for side, key in (("l", "lup"), ("r", "rup")) if sleeve_t is not None else ():
         a, b = segs[key]
         d = (b - a).normalized()
         pc = a + (b - a) * sleeve_t
@@ -181,7 +195,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     return me, vids
 
 
-def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0):
+def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None):
     """Fraction of covered body vertices that lie outside (or on) the garment surface => body showing through."""
     gb = bmesh.new()
     gb.from_mesh(garment_obj_mesh)
@@ -189,6 +203,9 @@ def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0):
     bvh = BVHTree.FromBMesh(gb)
     bad = 0
     worst = 0.0
+    where = []
+    if zrange:
+        body_vertex_ids = [i for i in body_vertex_ids if zrange[0] <= body_bm.verts[i].co.z <= zrange[1]]
     for i in body_vertex_ids:
         p = body_bm.verts[i].co
         loc, nor, fi, dist = bvh.find_nearest(p)
@@ -198,9 +215,11 @@ def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0):
         if s > tol:
             bad += 1
             worst = max(worst, s)
+            where.append((round(p.z * 100), round(abs(p.x) * 100), round(s * 100, 1)))
     gb.free()
     return {"covered_body_verts": len(body_vertex_ids), "showing_through": bad,
-            "fraction": round(bad / max(1, len(body_vertex_ids)), 4), "worst_penetration_cm": round(worst * 100, 2)}
+            "fraction": round(bad / max(1, len(body_vertex_ids)), 4), "worst_penetration_cm": round(worst * 100, 2),
+            "worst_at_z_x_depth_cm": sorted(where, key=lambda w: -w[2])[:6]}
 
 
 def landmarks(body_bm, faces, vids, joints):
@@ -212,3 +231,58 @@ def landmarks(body_bm, faces, vids, joints):
     sleeve = max((body_bm.verts[i].co - sh).dot(arm_dir) for i in vids
                  if body_bm.verts[i].co.x > 0 and _seg_dist(body_bm.verts[i].co, sh, el)[0] < 0.06)
     return {"hem_height_cm": round(hem * 100, 1), "sleeve_end_from_shoulder_cm": round(sleeve * 100, 1)}
+
+
+def define_trousers(ref_h, hem_frac=0.055, waist_frac=0.66):
+    """Body faces for trousers on the reference body: pelvis and both legs between hem and a little above the waist."""
+    j = joint_positions(ref_h, JOINTS + ["joint-l-ankle", "joint-r-ankle"])
+    bm = body_bm(ref_h)
+    zmin = min(v.co.z for v in bm.verts)
+    H = max(v.co.z for v in bm.verts) - zmin
+    hem_z, top_z = zmin + hem_frac * H, zmin + waist_frac * H
+    segs = {
+        "torso": (j["joint-pelvis"], j["joint-neck"]),
+        "lup": (j["joint-l-shoulder"], j["joint-l-elbow"]), "rup": (j["joint-r-shoulder"], j["joint-r-elbow"]),
+        "lfo": (j["joint-l-elbow"], j["joint-l-hand"]), "rfo": (j["joint-r-elbow"], j["joint-r-hand"]),
+        "lleg": (j["joint-l-upper-leg"], j["joint-l-knee"]), "rleg": (j["joint-r-upper-leg"], j["joint-r-knee"]),
+        "lshin": (j["joint-l-knee"], j["joint-l-ankle"]), "rshin": (j["joint-r-knee"], j["joint-r-ankle"]),
+    }
+    radius = {"torso": 0.14, "lup": 0.045, "rup": 0.045, "lfo": 0.035, "rfo": 0.035,
+              "lleg": 0.08, "rleg": 0.08, "lshin": 0.05, "rshin": 0.05}
+    keep = set()
+    for f in bm.faces:
+        c = f.calc_center_median()
+        if hem_z <= c.z <= top_z and _classify(c, segs, radius) in ("torso", "lleg", "rleg", "lshin", "rshin"):
+            keep.add(f.index)
+    bm.free()
+    return keep
+
+
+def crotch_height_cm(body_bm_, H_m):
+    """Highest height at which the body cross-section splits into two separate leg loops (scanning down from 0.55H)."""
+    zmin = min(v.co.z for v in body_bm_.verts)
+    z = zmin + 0.55 * H_m
+    while z > zmin + 0.30 * H_m:
+        b = body_bm_.copy()
+        res = bmesh.ops.bisect_plane(b, geom=list(b.verts) + list(b.edges) + list(b.faces),
+                                     plane_co=(0, 0, z), plane_no=(0, 0, 1))
+        cut = [g for g in res["geom_cut"] if isinstance(g, bmesh.types.BMEdge)]
+        parent = {}
+
+        def find(v):
+            while parent.setdefault(v, v) != v:
+                parent[v] = parent[parent[v]]
+                v = parent[v]
+            return v
+        for ed in cut:
+            parent[find(ed.verts[0])] = find(ed.verts[1])
+        comps = {}
+        for ed in cut:
+            for v in ed.verts:
+                comps.setdefault(find(v), []).append(v.co.x)
+        legs = [xs for xs in comps.values() if len(xs) > 12 and 0.03 < abs(sum(xs) / len(xs)) < 0.2]
+        b.free()
+        if len(legs) >= 2:
+            return (z - zmin) * 100.0
+        z -= 0.005
+    return float("nan")

@@ -30,7 +30,7 @@ const load = url => fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(buf
   modelBytes += buf.byteLength;
   loader.parse(buf, '', g => scene.add(g.scene));
 });
-if (q) { load('/models/personal/' + q + '.glb'); load('/models/personal/' + q + '_tee.glb'); }
+if (q) { load('/models/personal/' + q + '.glb'); load('/models/personal/' + q + '_tee.glb'); load('/models/personal/' + q + '_trousers.glb'); }
 else load('/models/test_body.glb');
 
 let frames = 0, last = performance.now(), fps = 0;

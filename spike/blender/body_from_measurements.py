@@ -177,13 +177,24 @@ joints_final = garment.joint_positions(h, garment.JOINTS)
 HEM_FRAC = 0.49
 zmin_f = min(v.co.z for v in body_final.verts)
 H_f = max(v.co.z for v in body_final.verts) - zmin_f
-tee_mesh, vids = garment.build_tee(body_final, faces, joints_final, hem_z=zmin_f + HEM_FRAC * H_f)
+# trousers: same idea, waist at this body's waist landmark, hem near the ankle
+tr_faces = garment.define_trousers(ref)
+waist_f = marks.get("waist_cm", 0.625)
+tr_hem_z = zmin_f + 0.06 * H_f
+tr_top_z = zmin_f + (waist_f + 0.012) * H_f
+tr_mesh, tr_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=0.018, hem_z=tr_hem_z, sleeve_t=None, top_z=tr_top_z)
+crotch = garment.crotch_height_cm(body_final, H_f)
+tr_report = {"template_faces": len(tr_faces), "ease_cm": 1.8, "min_gap_cm": 0.6,
+             "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
+             "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
+             "crotch_height_cm": round(crotch, 1), "inseam_cm": round(crotch - (tr_hem_z - zmin_f) * 100, 1)}
+tee_mesh, vids = garment.build_tee(body_final, faces, joints_final, hem_z=zmin_f + HEM_FRAC * H_f, extra_mesh=tr_mesh, extra_gap=0.008)
 tee_report = {"template_faces": len(faces), "ease_cm": 2.2, "min_gap_cm": 0.6,
-              "clipping": garment.clipping_report(body_final, tee_mesh, vids),
+              "clipping": garment.clipping_report(body_final, tee_mesh, vids, zrange=(zmin_f + HEM_FRAC * H_f + 0.01, 10.0)),
               **garment.landmarks(body_final, faces, vids, joints_final)}
 zs = [v.co.z for v in tee_mesh.vertices]
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report}
+results_extra = {"tee": tee_report, "trousers": tr_report}
 
 os.makedirs(out_dir, exist_ok=True)
 json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "results": results, **results_extra},
@@ -208,6 +219,16 @@ bpy.ops.object.select_all(action="DESELECT")
 tee_ob.select_set(True)
 bpy.context.view_layer.objects.active = tee_ob
 bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tee.glb"), export_format="GLB", use_selection=True)
+tr_ob = bpy.data.objects.new(name + "_trousers", tr_mesh)
+mat2 = bpy.data.materials.new("trousers"); mat2.use_nodes = True
+mat2.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.1, 0.15, 0.35, 1)
+tr_mesh.materials.append(mat2)
+bpy.context.scene.collection.objects.link(tr_ob)
+bpy.ops.object.select_all(action="DESELECT")
+tr_ob.select_set(True)
+bpy.context.view_layer.objects.active = tr_ob
+bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_trousers.glb"), export_format="GLB", use_selection=True)
 print("TEE", json.dumps(tee_report))
+print("TROUSERS", json.dumps(tr_report))
 print("REPORT", json.dumps(results))
 print("GLB_BYTES", os.path.getsize(glb))
