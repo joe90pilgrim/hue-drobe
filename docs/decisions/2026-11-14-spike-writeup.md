@@ -6,7 +6,23 @@ Date: 14 November 2026 (Saturday evening). The spike's deadline is Sunday evenin
 
 A body built from tape measurements, and a tee and trousers fitted to it, come within 2 cm of Joe's real measurements and of his real garments' flat measurements on every check. The body works on a Pixel 8 at 60 fps. Two things are not proven: the two clipping checks still fail on Joe's jeans (crotch) and tee (neckline), and nothing has been judged by eye against the photos or against Beth's real numbers. Provisional recommendation: **go, with conditions** (below). It is not a clean pass.
 
-## Pass criteria against the measured numbers
+## Update after the independent review (same evening)
+
+The review was right on its main points. Corrections to the table below:
+
+- **Garment landmark rows are not independent evidence.** Rise, inseam, tee length and neckline are set from the real numbers by construction. Waist, hip, leg opening, tee chest and sleeve are calibration targets. They show the loop converged, not that the model is right.
+- **Two did not converge, and the cause is now confirmed:** Joe's jeans waist (+1.5 cm) and tee chest (+1.65 cm) sit at the ease floor (body plus 3 mm). The real items are smaller than the body there. Stretch is not modelled by an offset shell.
+- **Body rows are partly circular too.** Chest, waist and hips are solved to the target at our own landmark heights. Thigh is not solved, only reported, and is the honest estimate (1.2 cm).
+- **The earlier synthetic tests ran the easier path.** Calibrated synthetic fixtures (small, medium, large, plus a female medium) now run the real path.
+- **New clipping test (ray cast).** The old nearest-point test overstated the crotch problem (3.6 cm "penetration" was a sign flip between the two thigh shells; the body does not intersect itself there: 0 face pairs). The ray test finds 0.79% of samples uncovered at the crotch centre on Joe's jeans, with 0.68% to 0.97% on every synthetic body, so it is systematic, not Joe-specific. The reviewer's description of a "back face" hit as showing through is inverted for outward normals; the check uses the correct sense (first hit a front face, or no hit within 30 cm). The 5 cm hit limit in the brief gave false alarms because the real crotch hangs 6 cm below the body crotch.
+- **Bug found by the stricter check:** open-mesh normals could flip as a whole after the hem extension, which would make the tee invisible from outside. An orientation guard now fixes this. The old tests could not have caught it.
+- **Tee neckline:** under the ray test, with points within 3 cm of an open edge excluded, Joe's tee is 0.11%. Synthetic tees are 0% to 0.65%. These exclusions are generous.
+
+Current state of `python spike/check_reports.py spike/out`: still failing, on the crotch (jeans clipping 0.7% to 1.0% on every body), tee chest on synthetic small (landmark likely at the armpit; not confirmed), and a few calibrations that stop 1 to 1.7 cm short. Nothing has been loosened to make it pass.
+
+Not done: the photo comparison with Joe's judgement (needs him), a loose-garment test (skirt or dress), and Pixel readings on the final models.
+
+## Pass criteria against the measured numbers (original draft table, see corrections above)
 
 Tolerances are in `spike/tolerances.json`. Check with `python spike/check_reports.py <folder>`.
 
