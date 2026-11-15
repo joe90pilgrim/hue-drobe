@@ -1,6 +1,6 @@
 # Task 5 result: tee drape with Blender cloth (B22)
 
-Date: 2026-11-15. Task 5 of `2026-11-15-fable-review.md`; exit numbers agreed in `2026-11-15-joe-accepts-fable-review.md`. Time box 3 hours, started 12:44, stopped at about 13:25.
+Date: 2026-11-15. Task 5 of `2026-11-15-fable-review.md`; exit numbers agreed in `2026-11-15-joe-accepts-fable-review.md`. Time box 3 hours, started 12:44, stopped at about 15:30 (nearly all of it).
 
 ## Result
 
