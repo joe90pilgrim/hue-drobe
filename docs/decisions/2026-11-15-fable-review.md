@@ -19,7 +19,7 @@ Read first: `CLAUDE.md`, `docs/fable-brief.md`, `docs/bug-log.md`. This note ans
 - Read the brief, bug log, all of `docs/decisions/`, the blueprint, `spike/blender/garment.py`, `spike/blender/body_from_measurements.py`, `spike/check_reports.py` and `spike/tolerances.json`.
 - Re-ran `python spike/check_reports.py spike/out`: FAILED, 12 failures on the six synthetic bodies: 10 clipping failures (5 tees, 5 trousers) and 2 trouser calibrations that did not converge (synthetic_large, synthetic_female_large). The per-body clipping figures match the results table.
 - Measured the six synthetic builds in `spike/out` (Blender 5.3.0, MPFB 2.0.18) with a throwaway headless script. Numbers are below.
-- **Not done:** `private/` was not opened, so nothing here was measured on Joe's or Beth's builds. Every Joe number is quoted from the brief or bug log. No screenshots were taken. No cloth simulation was run. Repo changes from this review: this note, `spike/blender/analyse_meshes.py` and its README entry. Nothing is committed.
+- **Not done:** `private/` was not opened, so nothing here was measured on Joe's or Beth's builds. Every Joe number is quoted from the brief or bug log. No screenshots were taken. No cloth simulation was run. Repo changes from this review: this note, `spike/blender/analyse_meshes.py` and its README entry, all committed in `9211c4f`.
 
 ### The analysis script
 
