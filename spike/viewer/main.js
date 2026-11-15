@@ -3,6 +3,23 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 const hud = document.getElementById('hud');
+
+// Buttons: pick a person and a camera view. Each keeps the other settings (m, view, hide) so the URL parameters are not lost on a phone.
+{
+  const cur = new URLSearchParams(location.search);
+  const link = (label, key, val) => {
+    const p = new URLSearchParams(cur);
+    if (val) p.set(key, val); else p.delete(key);
+    const a = document.createElement('a');
+    a.textContent = label;
+    a.href = '/?' + p.toString();
+    return a;
+  };
+  const pick = document.getElementById('pick');
+  pick.replaceChildren(
+    link('test', 'm', ''), link('Joe', 'm', 'joe'), link('Beth', 'm', 'beth'),
+    link('Front', 'view', 'front'), link('Side', 'view', 'side'), link('Back', 'view', 'back'));
+}
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);

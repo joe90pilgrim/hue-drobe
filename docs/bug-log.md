@@ -28,7 +28,7 @@ Status: **open** = fails a tolerance or is visibly wrong; **unverified** = no me
 | ID | Status | Problem | Next step |
 | --- | --- | --- | --- |
 | B10 | unverified | Joe's likeness to his photos from the front and side | Joe to compare `?view=front` and `?view=side` with the photos. Front comparison done; side not yet. |
-| B11 | unverified | Frame rate and download size on the real phone | Needs a reading on Joe's phone. The pane reading (about 8 fps early on, 57 to 60 later) is a desktop browser and does not count. Model size is about 740 KB. |
+| B11 | passed (one device) | Frame rate and download size on the real phone | Joe, 2026-11-15, on his phone over home Wi-Fi: 60 fps while dragging around the avatar, no drops below 60. Model download about 744 KB (limit 15 MB). Phone model and browser not recorded. One scene only (Joe with tee and trousers). |
 | B12 | deferred | Loose clothing (skirt or dress) | Not attempted. Milestone 1 scope is close-fitting garments only (confirmed 2026-11-15). Dress and jumper move out until a cloth-simulation test from a hung shell succeeds. |
 | B13 | closed | Blended in-between sizes | Withdrawn by decision on 2026-11-15, not passed. Garments are fitted per person offline. See `docs/decisions/2026-11-14-decisions-to-confirm.md`. |
 | B14 | unverified | Beth's body against her real measurements | Needs her tape measurements. |
@@ -45,3 +45,9 @@ Status: **open** = fails a tolerance or is visibly wrong; **unverified** = no me
 ## Fixed on 2026-11-15 (for reference)
 
 Belly-button bumps, frayed sleeves, tee covering the crotch, marks on the buttock, V-shaped back neckline, wrong colour, chest measurement merging loops, legs 5.7 cm too long. See `docs/decisions/2026-11-15-photo-review-fixes.md`.
+
+## Viewer
+
+| ID | Status | Problem | Next step |
+| --- | --- | --- | --- |
+| B19 | fixed, not retested on the phone | On Joe's phone the `?view=` URL parameter did not seem to work. In a phone-sized desktop window it does work, so the likely cause is that the Joe, Beth and test buttons dropped the `view` setting. | Buttons now keep `m`, `view` and `hide`, and Front, Side and Back buttons were added. Joe to confirm on the phone. |
