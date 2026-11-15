@@ -28,5 +28,5 @@ Each of the four seasons splits into three, and each sub-season is defined by it
 - Joe has reviewed and signed off the questions and all 12 advice texts.
 
 ## Status
-**Draft done 15 November 2026 (about 10 minutes, started 19:04). Waiting for Joe's review; not closed.**
+**Closed 15 November 2026. Joe reviewed and signed off the questions and all 12 advice texts. Draft took about 10 minutes (started 19:04).**
 Content is `app/src/data/colour-quiz.json` (11 questions, 12 seasons, 10-swatch palettes), with scoring in `app/src/quiz/quiz.ts`. `app/tests/quiz.test.ts` walks all 4,082,400 possible answer sets and reaches all 12 seasons (from 66,344 for True Winter to 577,880 for Deep Autumn); `npm run check` passes.
