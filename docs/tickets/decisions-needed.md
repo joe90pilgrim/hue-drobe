@@ -4,8 +4,8 @@ Every open implementation decision across the roadmap tickets, by version. Tick 
 
 ## v1.1-make-it-mine
 
-- **V1.1-01** Favourite colours in the picker: Can favourites include colours from outside your season's palette (for example, picked freely in the colour picker)? Recommendation: yes, but palette colours are marked as such.
-- **V1.1-01** Favourite colours in the picker: Is there a limit on the number of favourites? Recommendation: no limit, but show the first 12 and a 'more' option.
+- ~~**V1.1-01** Favourite colours in the picker: Can favourites include colours from outside your season's palette?~~ Decided 15 Nov 2026: yes, palette colours are marked as such.
+- ~~**V1.1-01** Favourite colours in the picker: Is there a limit on the number of favourites?~~ Decided 15 Nov 2026: no limit; the picker shows the first 12 and a 'more' option.
 - **V1.1-02** Saved clothes library: Naming: required, or auto-named ('Navy tee') and editable? Recommendation: auto-named from the colour and garment, editable.
 - **V1.1-02** Saved clothes library: Where does the library live in the app's navigation? Check against the concept designs.
 - **V1.1-03** Preset outfits: What does 'preset' mean? (a) outfits you save yourself, (b) starter outfits that come with the app, or (c) both. This ticket assumes (a). Starter outfits would need content from you.

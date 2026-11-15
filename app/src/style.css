@@ -64,7 +64,22 @@ button { font-family: inherit; }
 .secondary { height: 48px; padding: 0 18px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; }
 
 .palette { list-style: none; margin: 0 0 4px; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
-.chip { aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line); }
+.palette-item { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.chip { display: block; aspect-ratio: 1; border-radius: 10px; border: 1px solid var(--line); }
+.fav-toggle { height: 28px; padding: 0 2px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 12px; }
+.fav-toggle[aria-pressed="true"] { border-color: var(--accent); background: #eef3f0; color: var(--accent-deep); font-weight: 600; }
+
+/* Favourite colours above each slot's picker (V1.1-01). */
+.fav-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.fav-tile { position: relative; width: 28px; height: 28px; padding: 0; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: var(--card); color: var(--muted); font-size: 15px; line-height: 1; display: flex; align-items: center; justify-content: center; }
+.fav-tile[data-hex] { border-color: var(--line); }
+.fav-tile.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--accent); }
+.fav-tile:disabled { opacity: .4; }
+.fav-tile .palette-dot { position: absolute; top: 2px; right: 2px; width: 6px; height: 6px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 1px #fff; }
+.fav-row.editing .fav-tile[data-hex]::after { content: '\00d7'; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 7px; background: rgba(255, 255, 255, .75); color: var(--ink); font-size: 18px; }
+.fav-text { height: 28px; padding: 0 8px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 11px; }
 
 @media (min-width: 900px) {
   .shell { flex-direction: row; }
@@ -86,6 +101,8 @@ button { font-family: inherit; }
   .primary:hover:not(:disabled) { background: var(--accent-deep); }
   .secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--bg); }
   .answer:hover:not([aria-checked="true"]) { border-color: var(--accent); background: #f6f8f7; }
+  .fav-tile:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--accent); }
+  .fav-toggle:hover { border-color: var(--accent); }
 }
 
 .hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }

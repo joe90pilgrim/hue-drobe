@@ -1,5 +1,6 @@
 import { quiz, scoreQuiz } from '../quiz/quiz';
 import { kvGet, kvPut } from '../store';
+import { addFavourite, hasFavourite, loadFavourites, removeFavourite, saveFavourites, type Favourite } from '../favourites';
 
 /** The saved result: the answers that produced it, so the season can always be re-run from them. */
 const KEY = 'colourQuiz';
@@ -24,6 +25,22 @@ export function renderQuiz(el: HTMLElement): () => void {
   let current = -1; // question index in the quiz in progress, or -1 on the intro or result screen
   let draft: Answers = {}; // answers given in the quiz in progress
   let saved: Answers | null = null; // the last finished quiz, shown on return
+  let favourites: Favourite[] = []; // shared with the colour picker on the Dress screen
+
+  /** Sets each palette swatch's save button to match the favourites. */
+  function syncFavButtons() {
+    card.querySelectorAll<HTMLButtonElement>('[data-fav]').forEach((b) => {
+      const on = hasFavourite(favourites, b.dataset.fav!);
+      b.setAttribute('aria-pressed', String(on));
+      b.textContent = on ? 'Saved' : 'Save';
+    });
+  }
+
+  function toggleFavourite(hex: string) {
+    favourites = hasFavourite(favourites, hex) ? removeFavourite(favourites, hex) : addFavourite(favourites, hex, true);
+    syncFavButtons();
+    void saveFavourites(favourites);
+  }
 
   function showIntro() {
     current = -1;
@@ -67,7 +84,14 @@ export function renderQuiz(el: HTMLElement): () => void {
       <p>${esc(s.description)}</p>
       <h3>Your palette</h3>
       <ul class="palette">
-        ${s.palette.map((hex) => `<li class="chip" role="img" aria-label="${esc(hex)}" title="${esc(hex)}" style="background:${esc(hex)}"></li>`).join('')}
+        ${s.palette
+          .map(
+            (hex) => `<li class="palette-item">
+          <span class="chip" role="img" aria-label="${esc(hex)}" title="${esc(hex)}" style="background:${esc(hex)}"></span>
+          <button type="button" class="fav-toggle" data-fav="${esc(hex)}" aria-pressed="false" aria-label="Favourite ${esc(hex)}">Save</button>
+        </li>`,
+          )
+          .join('')}
       </ul>
       <h3>Colours that flatter you</h3>
       <p>${esc(s.advice.flatters)}</p>
@@ -76,6 +100,7 @@ export function renderQuiz(el: HTMLElement): () => void {
       <h3>Colours to approach with care</h3>
       <p>${esc(s.advice.careWith)}</p>
       <div class="actions"><button type="button" class="secondary" data-action="retake">Retake the quiz</button></div>`;
+    syncFavButtons();
   }
 
   async function finish() {
@@ -88,6 +113,11 @@ export function renderQuiz(el: HTMLElement): () => void {
   // One listener on the card, which stays in place while its contents change.
   card.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
+    const fav = target.closest<HTMLButtonElement>('[data-fav]');
+    if (fav) {
+      toggleFavourite(fav.dataset.fav!);
+      return;
+    }
     const answer = target.closest<HTMLButtonElement>('[data-answer]');
     if (answer && current >= 0) {
       draft[quiz.questions[current].id] = answer.dataset.answer!;
@@ -107,6 +137,12 @@ export function renderQuiz(el: HTMLElement): () => void {
       if (current + 1 < n) showQuestion(current + 1);
       else void finish();
     }
+  });
+
+  loadFavourites().then((list) => {
+    if (gone) return;
+    favourites = list;
+    syncFavButtons();
   });
 
   kvGet<{ answers?: unknown } | null>(KEY, null).then((v) => {
