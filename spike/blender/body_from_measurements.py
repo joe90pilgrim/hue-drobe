@@ -556,8 +556,8 @@ bpy.data.objects.remove(ref)
 results_extra = {"tee": tee_report, "trousers": tr_report, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
-json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra},
-          open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
+report = {"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
+json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 
 def _lin(rgb):
     """sRGB 0-255 to the linear RGBA that glTF/Blender expect."""
@@ -593,6 +593,11 @@ bpy.ops.object.select_all(action="DESELECT")
 tr_ob.select_set(True)
 bpy.context.view_layer.objects.active = tr_ob
 bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_trousers.glb"), export_format="GLB", use_selection=True)
+# mesh checks run on the exported GLBs read back in, because glTF export splits quads into its own triangles and the phone
+# shows those triangles; checking the in-memory quads gives lower intersection counts
+import mesh_checks
+report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z)
+json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))
 print("REPORT", json.dumps(results))

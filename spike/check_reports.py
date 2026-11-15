@@ -4,8 +4,10 @@ Stricter than the first version:
 - every tolerance comes from tolerances.json (never from the report);
 - a missing measure, garment or test is a failure, not a silent skip;
 - a garment whose size calibration did not converge fails, because a number that is only true by construction proves nothing;
-- clipping is judged by the ray test (excluding points within 3 cm of an open fabric edge); the older nearest-point test is
-  printed for information only because it misjudges folds such as the crotch.
+- garment clipping is judged by hard mesh limits (tolerances.json "garment_mesh"): zero intersecting face pairs between body
+  and garment, within a garment and between tee and trousers; a minimum cloth-to-body clearance; and the expected number of
+  pieces and openings. The ray test and the older nearest-point test are printed for information only.
+- height and inside leg use the length tolerance; circumferences use the circumference tolerance.
 
 Usage: python spike/check_reports.py <folder> [--no-garments]
 """
@@ -17,6 +19,8 @@ need_garments = "--no-garments" not in sys.argv
 folder = pathlib.Path(args[0])
 reports = sorted(folder.glob("*_report.json"))
 failures = 0
+LENGTHS = {"height_cm", "inside_leg_cm"}
+gm = tol["garment_mesh"]
 
 
 def check(ok, text):
@@ -36,7 +40,7 @@ for f in reports:
     if "height_cm" not in got:
         check(False, "height_cm missing from report")
     for k, m in got.items():
-        limit = tol["length_cm"] if k == "height_cm" else tol["circumference_cm"]
+        limit = tol["length_cm"] if k in LENGTHS else tol["circumference_cm"]
         err = m["achieved"] - m["target"]
         check(abs(err) <= limit, f"{k}: target {m['target']} got {m['achieved']} (error {err:+.2f}, tol {limit})")
     for k, m in r.get("extra_body_checks", {}).items():
@@ -49,12 +53,18 @@ for f in reports:
             continue
         gr = r[g]
         ray = gr.get("clipping_ray")
-        if ray is None:
-            check(False, f"{g} ray clipping test missing")
+        if ray:
+            print(f"  info {g} ray test (edges excluded): {ray['fraction_excluding_edges']*100:.2f}% of {ray['samples']} samples; strict {ray['fraction_strict']*100:.2f}% (not used for pass/fail)")
+        mc = r.get("mesh_checks", {}).get(g)
+        if mc is None:
+            check(False, f"{g} mesh checks missing from report (rebuild with the current body_from_measurements.py)")
         else:
-            frac = ray["fraction_excluding_edges"]
-            check(frac <= tol["garment_clipping_max_fraction"],
-                  f"{g} clipping (ray, edges excluded): {frac*100:.2f}% of {ray['samples']} samples (limit {tol['garment_clipping_max_fraction']*100:.2f}%); strict incl. edges {ray['fraction_strict']*100:.2f}%")
+            check(mc["pieces"] == gm[f"{g}_pieces"], f"{g} pieces: {mc['pieces']} (want {gm[g + '_pieces']}); faces/area {[(p['faces'], p['area_cm2']) for p in mc['piece_faces_area']]}")
+            check(mc["openings"] == gm[f"{g}_openings"], f"{g} openings: {mc['openings']} (want {gm[g + '_openings']}); lengths cm {mc['opening_lengths_cm']}")
+            check(mc["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"{g} body-through-cloth intersecting face pairs: {mc['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']})")
+            check(mc["self_intersecting_pairs"] <= gm["self_intersecting_pairs_max"], f"{g} self-intersecting face pairs: {mc['self_intersecting_pairs']} (max {gm['self_intersecting_pairs_max']}); by height cm {mc['self_intersections_by_z_cm']}")
+            cl = mc["clearance_to_body_cm"]["min"]
+            check(cl >= gm["min_clearance_cm"], f"{g} minimum clearance to body: {cl} cm (min {gm['min_clearance_cm']})")
         old = gr.get("clipping")
         if old:
             print(f"  info {g} old nearest-point test: {old['fraction']*100:.2f}%, worst {old['worst_penetration_cm']} cm (not used for pass/fail)")
@@ -66,6 +76,12 @@ for f in reports:
                 check(cal["converged"], f"{g} calibration converged (residuals {cal['residual_cm']}) -- landmark matches are otherwise by construction")
                 if cal["ease_at_floor"]:
                     print(f"  info {g} ease at its floor for: {cal['ease_at_floor']} (real item smaller than body plus 3 mm; stretch is not modelled)")
+
+    if "mesh_checks" in r:
+        n = r["mesh_checks"]["tee_vs_trousers_intersecting_pairs"]
+        check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"tee-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+        sg = r["mesh_checks"]["tee"]["shoulder_gap"]
+        print(f"  info tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm, max {sg['max_cm']} cm (limit comes with task 3)")
 
     if need_garments:
         lm = r.get("garment_landmarks_vs_real", [])

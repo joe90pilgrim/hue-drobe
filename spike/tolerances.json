@@ -1,9 +1,17 @@
 {
-  "_note": "Single source of truth for spike pass criteria. Changing a value is a reviewed edit. Clipping is judged by the ray test (edges within 3 cm excluded). Colour tolerances not set yet.",
+  "_note": "Single source of truth for spike pass criteria. Changing a value is a reviewed edit. Garment clipping is judged by the hard limits under garment_mesh (decided 2026-11-15, docs/decisions/2026-11-15-joe-accepts-fable-review.md); the ray test is reported for information only. Colour tolerances not set yet.",
   "circumference_cm": 2.0,
   "length_cm": 1.5,
-  "garment_clipping_max_fraction": 0.005,
-  "garment_clipping_max_depth_cm": 1.0,
+  "garment_mesh": {
+    "body_intersecting_pairs_max": 0,
+    "self_intersecting_pairs_max": 0,
+    "tee_vs_trousers_intersecting_pairs_max": 0,
+    "min_clearance_cm": 0.2,
+    "tee_pieces": 1,
+    "tee_openings": 4,
+    "trousers_pieces": 1,
+    "trousers_openings": 3
+  },
   "garment_landmark_cm": 2.0,
   "phone_min_fps": 30,
   "phone_max_load_mb": 15

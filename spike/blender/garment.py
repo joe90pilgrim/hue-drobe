@@ -424,7 +424,6 @@ def clipping_report_ray(body_bm, garment_mesh, body_vertex_ids, zrange=None, max
     if skip:
         samples = [(p, n) for p, n in samples if not skip(p)]
     strict = tolerant = front_hits = misses = 0
-    worst = 0.0
     where = []
     for p, n in samples:
         origin = p - n * 0.02  # start 2 cm inside the body so a tight garment is not missed at the origin
@@ -438,7 +437,6 @@ def clipping_report_ray(body_bm, garment_mesh, body_vertex_ids, zrange=None, max
             if nor.dot(n) < 0:
                 bad = True
                 front_hits += 1
-                worst = max(worst, (p - loc).dot(n))
         if bad:
             where.append((round(p.z * 100), round(p.x * 100), round(p.y * 100), 'miss' if loc is None else 'front'))
             strict += 1
@@ -449,7 +447,7 @@ def clipping_report_ray(body_bm, garment_mesh, body_vertex_ids, zrange=None, max
     n_s = max(1, len(samples))
     return {"samples": len(samples), "showing_through_strict": strict, "fraction_strict": round(strict / n_s, 4),
             "showing_through_excluding_edges": tolerant, "fraction_excluding_edges": round(tolerant / n_s, 4),
-            "front_face_hits": front_hits, "no_hit": misses, "worst_cm": round(worst * 100, 2),
+            "front_face_hits": front_hits, "no_hit": misses,
             "where_z_x_y_kind_cm": where[:400]}
 
 

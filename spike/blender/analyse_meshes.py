@@ -6,13 +6,13 @@ Run:
 
 <hps_cm> is `hps_height_cm_estimate` from <out_dir>/<name>_report.json. Output: <json_out_dir>/<name>_analysis.json.
 
-Reports: garment pieces and openings, face-pair intersections (body/garment, garment/garment, garment with itself),
-cloth-to-body clearance, the shoulder-line gap, circumference by height, and the centre-line front and back profile.
+Reports: everything in mesh_checks.py (which the build also runs and checks), plus analysis-only extras: garment piece
+positions, faces above the shoulder line, the centre-line front and back profile, a positioned crotch ray test, where the tee
+ray test misses, and circumference by height. Nothing here reads spike/tolerances.json or fails the build.
 
-Known weak part: the `camera_visibility_*` figures count legitimate sightlines into the neck opening and up the trouser
-legs, so they overstate visible skin. Do not quote them. This is spike analysis code, not yet a build check: nothing here
-reads spike/tolerances.json or fails the build."""
-import sys, json, math, collections
+The camera visibility test from the review was removed: it counted legitimate sightlines into the neck opening and up the
+trouser legs, so it overstated visible skin."""
+import sys, os, json, math, collections
 import bpy, bmesh
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
@@ -112,26 +112,6 @@ R["tee_faces_above_hps"] = {"count": len(hi), "max_z_above_hps_cm": round((max((
                             "abs_x_max_cm": round(max((abs(f.calc_center_median().x) for f in hi), default=0) * 100, 1)}
 
 
-def gap(p, tree=bb):
-    """Signed distance of cloth point p from the body surface (positive = outside)."""
-    loc, nor, fi, d = tree.find_nearest(p)
-    return (p - loc).dot(nor), d
-
-
-# --- B23: cloth to body gap along the shoulder line (top-facing cloth, between neck and shoulder point)
-sh = []
-for v in tee.verts:
-    if v.co.z > hps - 0.07 and 0.04 < abs(v.co.x) < 0.20 and v.normal.z > 0.6:
-        s, d = gap(v.co)
-        sh.append((round(abs(v.co.x) * 100), d * 100 if s > 0 else -d * 100))
-by = collections.defaultdict(list)
-for x, d in sh:
-    by[(x // 2) * 2].append(d)
-R["shoulder_gap_cm_by_absx"] = {int(k): [round(sum(v) / len(v), 2), round(max(v), 2), len(v)] for k, v in sorted(by.items())}
-allg = [gap(v.co) for v in tee.verts]
-ds = sorted(d * 100 if s > 0 else -d * 100 for s, d in allg)
-R["tee_gap_cm_all"] = {"min": round(ds[0], 2), "p05": round(ds[len(ds) // 20], 2), "median": round(ds[len(ds) // 2], 2), "p95": round(ds[-len(ds) // 20], 2), "max": round(ds[-1], 2)}
-
 # --- B22: centre-front and centre-back profile. y-extent (front-to-back depth) of body torso and tee at x=0 by height
 prof = []
 zt_lo = min(v.co.z for v in tee.verts); zt_hi = hps
@@ -191,82 +171,16 @@ for r_ in json.load(open(f"{out_dir}/{name}_report.json"))["trousers"].items():
 res, ex = ray_test(trs, rb, (cz - 0.12, cz + 0.08), xmax=0.12)
 R["crotch_ray"] = dict(res)
 R["crotch_examples kind,x,y_front,z,normal,nearest_cloth_cm,signed_outside_cloth_cm"] = ex[:40]
-# garment self-intersection
-def self_int(bm, tree):
-    n = 0; zs = []
-    for a, b in tree.overlap(tree):
-        if a < b and not (set(bm.faces[a].verts) & set(bm.faces[b].verts)):
-            n += 1; zs.append(round(bm.faces[a].calc_center_median().z * 100))
-    return {"pairs": n, "z_hist_cm": sorted(collections.Counter((z // 5) * 5 for z in zs).items())}
-R["trousers_self_intersections"] = self_int(trs, rb)
-R["tee_self_intersections"] = self_int(tee, tb)
-R["tee_vs_trousers_intersections"] = len(tb.overlap(rb))
-R["body_vs_tee_intersections"] = len(bb.overlap(tb))
-R["body_vs_trousers_intersections"] = len(bb.overlap(rb))
+# pieces, openings, intersections, clearance and shoulder gap: the same code the build runs
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import mesh_checks
+R["mesh_checks"] = mesh_checks.run(body, tee, trs, hps)
 # tee: where do ray misses sit
 zt = min(v.co.z for v in tee.verts)
 res2, ex2 = ray_test(tee, tb, (zt + 0.02, hps - 0.03))
 R["tee_ray_all_body_verts_in_z_band (includes uncovered arms/neck: expect misses there)"] = dict(res2)
 arm = [e for e in ex2 if e[0] != "miss"]
 R["tee_non_miss_examples"] = arm[:30]
-# camera-style visibility: from 72 horizontal directions x 3 elevations, is each covered body vertex the first thing seen?
-import random
-random.seed(1)
-def visible_fraction(cloth_bvh, cover_test):
-    vis = collections.Counter(); tot = 0; worst = []
-    cand = [v for v in body.verts if cover_test(v)]
-    for v in cand:
-        tot += 1
-        seen = False
-        for k in range(36):
-            for el in (-75, -45, -20, 0, 25, 55):
-                a = 2 * math.pi * k / 36; e_ = math.radians(el)
-                d = Vector((math.cos(a) * math.cos(e_), math.sin(a) * math.cos(e_), math.sin(e_)))
-                if d.dot(v.normal) <= 0.05:
-                    continue
-                o = v.co + d * 3.0
-                hb = bb.ray_cast(o, -d, 3.2)
-                if hb[0] is None or (hb[0] - v.co).length > 0.003:
-                    continue  # body hides it
-                hc = cloth_bvh.ray_cast(o, -d, 3.0 - 0.0005)
-                hc2 = rb.ray_cast(o, -d, 3.0 - 0.0005) if cloth_bvh is tb else tb.ray_cast(o, -d, 3.0 - 0.0005)
-                if hc[0] is None and hc2[0] is None:
-                    seen = True; break
-            if seen:
-                break
-        if seen:
-            vis["seen"] += 1
-            worst.append((round(v.co.x * 100, 1), round(v.co.y * FRONT * 100, 1), round(v.co.z * 100, 1)))
-    return tot, vis["seen"], worst
-
-def covered_by(cloth_bvh, margin_lo, margin_hi, zlo, zhi):
-    def t(v):
-        if not (zlo <= v.co.z <= zhi):
-            return False
-        loc, nor, fi, d = cloth_bvh.find_nearest(v.co)
-        return d < 0.06
-    return t
-# edge distance for cloth
-from mathutils.kdtree import KDTree
-def edge_kd(bm):
-    bv = [v for v in bm.verts if v.is_boundary]
-    kd = KDTree(len(bv))
-    for i, v in enumerate(bv):
-        kd.insert(v.co, i)
-    kd.balance(); return kd
-for label, cloth, tree in (("trousers", trs, rb), ("tee", tee, tb)):
-    kd = edge_kd(cloth)
-    zlo = min(v.co.z for v in cloth.verts) + 0.01; zhi = max(v.co.z for v in cloth.verts) - 0.01
-    def cov(v, tree=tree, kd=kd, zlo=zlo, zhi=zhi):
-        if not (zlo <= v.co.z <= zhi):
-            return False
-        loc, nor, fi, d = tree.find_nearest(v.co)
-        return d < 0.05 and kd.find(loc)[2] > 0.03
-    tot, seen, worst = visible_fraction(tree, cov)
-    neckzone = [w for w in worst if w[2] > hps * 100 - 14 and abs(w[0]) < 20]
-    R[f"camera_visibility_{label}"] = {"covered_verts_tested": tot, "visible_from_some_camera": seen, "pct": round(100.0 * seen / max(1, tot), 2),
-                                       "of_which_neck_shoulder_zone": len(neckzone),
-                                       "elsewhere_x_yfront_z_cm": [w for w in worst if w not in neckzone][:40]}
 def loop_circ(bm, z):
     b = bm.copy()
     res = bmesh.ops.bisect_plane(b, geom=list(b.verts) + list(b.edges) + list(b.faces), plane_co=(0, 0, z), plane_no=(0, 0, 1))
