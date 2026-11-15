@@ -1,6 +1,6 @@
 // Preset outfits: a name and one saved item per slot (top, bottom). Stored on the device.
 import { kvGet, kvPut } from './store';
-import { GARMENTS, cleanName, type SavedItem } from './wardrobe';
+import { GARMENTS, NECKLINE_KEY, cleanName, type SavedItem } from './wardrobe';
 
 /** A look made of saved items: one per slot (top, bottom). A slot with no item is empty. */
 export interface OutfitLook {
@@ -98,4 +98,5 @@ export async function wearOutfit(outfit: Outfit, items: SavedItem[]): Promise<vo
   const used = [look.top, look.bottom].filter((i): i is SavedItem => !!i);
   await kvPut('outfit', { Top: optionFor(look.top), Bottom: optionFor(look.bottom) });
   await kvPut('colours', { ...colours, ...Object.fromEntries(used.map((i) => [i.garment, i.colour])) });
+  if (look.top?.neckline) await kvPut(NECKLINE_KEY, look.top.neckline);
 }

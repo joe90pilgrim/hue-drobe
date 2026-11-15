@@ -39,11 +39,12 @@ add-on folder from anything it starts. Run the script with the interpreter's ful
 
 `private/pack/joe/` (git-ignored, because `private/` is):
 
-- `body.glb`, `tee.glb`, `trousers.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
+- `body.glb`, `tee.glb`, `tee_v.glb`, `tee_scoop.glb`, `trousers.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
+  `tee.glb` is the crew neck; `tee_v.glb` and `tee_scoop.glb` (V1.1-04) are the same shell cut with a deeper V or scoop front. The depths and widths are in `fit_config.json` under `tee.necklines`.
 - `manifest.json`: file sizes and SHA-256, Blender version, the fit config used, build time.
 
 `private/pack/build/` holds the build logs, reports and garment size files for inspection. Garments are built in a neutral light grey;
-the app sets the colour. The sweatshirt (MVP-07) is an alternative top over the trousers, held to the tee's mesh limits.
+the app sets the colour. The sweatshirt (MVP-07) is an alternative top over the trousers, held to the tee's mesh limits. So are the V and scoop tees: each gets the same hard mesh checks as the crew neck, plus its own neckline width and front depth against the config.
 
 ## How the fit works
 

@@ -537,6 +537,44 @@ if SG:
         if not math.isnan(got):
             sw_ease = min(0.08, max(0.003, sw_ease + (SG["chest_circ_cm"] - got) / two_pi / 100.0))
 
+# --- V1.1-04: other tee necklines. The same offset shell as the crew-neck tee (same ease, sleeve and hem, taken from the
+# calibration above), cut with a different neck shape. Each gets its own calibration record and its own mesh checks.
+# garments.json: tee.necklines = {"v": {"drop_front_cm", "neckline_width_cm"}, "scoop": {...}}
+var_necks, var_meshes, var_vids, var_cal = {}, {}, {}, {}
+
+
+def _measured_front_drop_cm(gm):
+    """How far the neckline's lowest front point sits below the highest-point-shoulder height, in cm (None if not found)."""
+    nb = [v.co.z for v in gm.verts if v.is_boundary and abs(v.co.x) < 0.03 and (v.co.y - neck["cy"]) * FRONT > 0 and v.co.z > neck["z"] - 0.25]
+    return round((hps_z - min(nb)) * 100, 1) if nb else None
+
+
+for _style, _VG in ((TG or {}).get("necklines") or {}).items():
+    # The cut edge is smoothed after cutting, which rounds a V's tip and lifts it, so the depth set in the cut is not the depth
+    # that comes out. Calibrate the cut depth until the measured front depth is the one asked for (same idea as the chest and sleeve).
+    _want = _VG["drop_front_cm"]
+    _drop = _want / 100.0
+    _best = None  # the measured depth moves in steps (whole mesh faces), so keep the closest of the tries, not the last
+    for _it in range(6):
+        _vn = {**neck, "style": _style, "a": _VG["neckline_width_cm"] / 200.0, "drop_front": _drop,
+               "reach": max(0.0, _drop - neck["drop_front"])}
+        _vm, _vv = garment.build_tee(
+            body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z, sleeve_t=tee_sleeve_t,
+            extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True)
+        _g = bmesh.new()
+        _g.from_mesh(_vm)
+        _got = _measured_front_drop_cm(_g)
+        _g.free()
+        print("CAL tee", _style, _it, "front drop", _got, _want, "cut depth cm", round(_drop * 100, 2))
+        if _got is not None and (_best is None or abs(_got - _want) < abs(_best[0] - _want)):
+            _best = (_got, _vn, _vm, _vv)
+        if _got is None or abs(_got - _want) < 0.4:
+            break
+        _drop = min(0.25, max(0.03, _drop + (_want - _got) / 100.0))
+    _got, _vn, _vm, _vv = _best
+    var_necks[_style], var_meshes[_style], var_vids[_style] = _vn, _vm, _vv
+    var_cal[_style] = {"drop_residual_cm": round(_got - _want, 2), "cut_depth_cm": round(_vn["drop_front"] * 100, 2)}
+
 # --- task 5: cloth drape (optional)
 drape_info = None
 if DRAPE and TG:
@@ -655,6 +693,38 @@ if SG:
     sw_report["circ_cm"] = {"above_band": round(circ_loop(gsw, sw_hem_z + SG["rib_band_cm"] / 100.0 + 0.04), 1),
                             "hem": round(circ_loop(gsw, sw_hem_z + 0.01), 1)}
     gsw.free()
+tee_report["neckline_drop_front_cm"] = _measured_front_drop_cm(gtee)  # information for the crew neck: how deep the 6 cm really is
+var_reports = {}
+for _style, _vm in var_meshes.items():
+    _vn, _VG = var_necks[_style], TG["necklines"][_style]
+    _vids = var_vids[_style]
+    _gv = bmesh.new()
+    _gv.from_mesh(_vm)
+    _top = [v for v in _gv.verts if v.is_boundary and v.co.z > joints_final["joint-neck"].z - 0.10 and abs(v.co.x) < 0.2]
+    _got_chest = tee_chest_circ(_gv)
+    _got_sleeve = garment.landmarks(body_final, tee_faces, _vids, joints_final)["sleeve_end_from_shoulder_cm"]
+    _skip = lambda p, _vn=_vn: garment.in_neckline(p, {**_vn, "a": _vn["a"] + 0.03, "b": _vn["b"] + 0.03}, margin=0.03)
+    _zr = ((tee_extend if tee_extend else tee_hem_z) + 0.01, 10.0)
+    var_reports[_style] = {
+        "template_faces": len(tee_faces), "ease_cm": round(tee_ease * 100, 2),
+        "clipping": garment.clipping_report(body_final, _vm, _vids, zrange=_zr, skip=_skip),
+        "clipping_ray": garment.clipping_report_ray(body_final, _vm, _vids, zrange=_zr, skip=_skip),
+        **garment.landmarks(body_final, tee_faces, _vids, joints_final),
+        # chest and sleeve: the shell is the crew tee's, so the variant must match what the crew tee reached (within 0.3 cm),
+        # as well as the crew tee itself having converged; the depth is the variant's own calibration
+        "calibration": {"converged": tee_cal["converged"]
+                        and abs(_got_chest - tee_report["chest_circ_cm"]) < 0.3
+                        and abs(_got_sleeve - tee_report["sleeve_end_from_shoulder_cm"]) < 0.3
+                        and abs(var_cal[_style]["drop_residual_cm"]) < 0.6,
+                        "ease_at_floor": ["chest"] if tee_ease <= 0.0031 else [],
+                        "residual_cm": {"chest": round(_got_chest - TG["chest_circ_cm"], 2), "sleeve": round(_got_sleeve - TG["sleeve_cm"], 2),
+                                        "front_drop": var_cal[_style]["drop_residual_cm"]},
+                        "cut_depth_cm": var_cal[_style]["cut_depth_cm"]},
+        "neckline_style": _style, "chest_circ_cm": round(_got_chest, 1),
+        "neckline_width_cm": round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None,
+        "neckline_drop_front_cm": _measured_front_drop_cm(_gv),
+    }
+    _gv.free()
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
@@ -703,6 +773,12 @@ if SG:
     add("sweatshirt", "hem_above_crotch_cm", SG["hem_above_crotch_cm"], sw_report["hem_above_crotch_cm"])
     add("sweatshirt", "cuff_above_wrist_cm", SG["cuff_above_wrist_cm"], sw_report["cuff_above_wrist_cm"])
     add("sweatshirt", "neckline_width_cm", SG["neckline_width_cm"], sw_report["neckline_width_cm"])
+for _style, _vr in var_reports.items():
+    _VG = TG["necklines"][_style]
+    add(f"tee_{_style}", "chest_circ_cm", TG["chest_circ_cm"], _vr["chest_circ_cm"])
+    add(f"tee_{_style}", "sleeve_cm", TG["sleeve_cm"], _vr["sleeve_end_from_shoulder_cm"])
+    add(f"tee_{_style}", "neckline_width_cm", _VG["neckline_width_cm"], _vr["neckline_width_cm"])
+    add(f"tee_{_style}", "neckline_drop_front_cm", _VG["drop_front_cm"], _vr["neckline_drop_front_cm"])
 if RG:
     add("trousers", "waist_circ_cm", RG["waist_circ_cm"], tr_report["waist_circ_cm"])
     add("trousers", "hip_circ_cm", RG["hip_circ_cm"], tr_report["hip_circ_cm"])
@@ -710,7 +786,7 @@ if RG:
     add("trousers", "inseam_cm (visible + stacked over the foot)", RG["inseam_cm"], round(tr_report["inseam_cm"] + tr_report["inseam_leftover_cm"], 1))
     add("trousers", "leg_opening_circ_cm", RG["leg_opening_circ_cm"], tr_report["leg_opening_circ_cm"])
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report, "trousers": tr_report, **({"sweatshirt": sw_report} if SG else {}), "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
+results_extra = {"tee": tee_report, "trousers": tr_report, **({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
 report = {"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
@@ -760,15 +836,28 @@ if SG:
     sw_ob.select_set(True)
     bpy.context.view_layer.objects.active = sw_ob
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_sweatshirt.glb"), export_format="GLB", use_selection=True)
+for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, same material setup as the crew tee
+    _vo = bpy.data.objects.new(f"{name}_tee_{_style}", _vm)
+    _mv = bpy.data.materials.new(f"tee_{_style}"); _mv.use_nodes = True
+    _mv.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((TG or {}).get("colour_srgb", [217, 51, 64]))
+    _vm.materials.append(_mv)
+    bpy.context.scene.collection.objects.link(_vo)
+    bpy.ops.object.select_all(action="DESELECT")
+    _vo.select_set(True)
+    bpy.context.view_layer.objects.active = _vo
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_tee_{_style}.glb"), export_format="GLB", use_selection=True)
 # mesh checks run on the exported GLBs read back in, because glTF export splits quads into its own triangles and the phone
 # shows those triangles; checking the in-memory quads gives lower intersection counts
 import mesh_checks
 report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z,
-                                        sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None)
+                                        sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None,
+                                        tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes})
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))
 if SG:
     print("SWEATSHIRT", json.dumps({k: v for k, v in sw_report.items() if k != "clipping_ray"}))
+for _style, _vr in var_reports.items():
+    print(f"TEE_{_style.upper()}", json.dumps({k: v for k, v in _vr.items() if k not in ("clipping_ray", "clipping")}))
 print("REPORT", json.dumps(results))
 print("GLB_BYTES", os.path.getsize(glb))

@@ -55,16 +55,31 @@ def body_bm(h):
     return bm
 
 
+NECKLINES = ("crew", "v", "scoop")  # V1.1-04: cut shapes on the same tee shell; "crew" is the original and is unchanged
+
+
 def neckline_drop(x, y, neck):
-    """How far below the highest-point-shoulder height the crew neckline sits at (x, y): deepest at the front centre,
-    shallow at the back, zero at the shoulder ends. None if (x, y) is outside the neck opening."""
+    """How far below the highest-point-shoulder height the neckline sits at (x, y): deepest at the front centre,
+    shallow at the back, zero at the shoulder ends. None if (x, y) is outside the neck opening.
+    neck["style"] (V1.1-04, default "crew") changes the front only; the back stays the crew curve, because a V-shaped back
+    neckline was a reported fault (docs/bug-log.md):
+      crew   the front curve is an ellipse (unchanged from the MVP);
+      v      the front is two straight lines from the shoulder ends to the front centre;
+      scoop  a rounder, flatter-bottomed curve (a superellipse of power 3).
+    neck["reach"] (m) widens how far in front of the neck centre the cut looks, so a deeper front is not cut short."""
     a, b = neck["a"], neck["b"]
-    if abs(x) >= a or abs(y - neck["cy"]) > b + 0.04:
+    if abs(x) >= a or abs(y - neck["cy"]) > b + 0.04 + neck.get("reach", 0.0):
         return None
     u = (y - neck["cy"]) * neck["front"] / b
     t = max(0.0, min(1.0, (u + 1.0) / 2.0))
     t = t * t * (3 - 2 * t)
-    return (neck["drop_back"] + (neck["drop_front"] - neck["drop_back"]) * t) * math.sqrt(1.0 - (x / a) ** 2)
+    ell = math.sqrt(1.0 - (x / a) ** 2)
+    style = neck.get("style", "crew")
+    if style == "crew":
+        return (neck["drop_back"] + (neck["drop_front"] - neck["drop_back"]) * t) * ell
+    s = abs(x) / a
+    front_shape = 1.0 - s if style == "v" else math.sqrt(1.0 - s ** 3)
+    return neck["drop_back"] * ell + (neck["drop_front"] - neck["drop_back"]) * t * front_shape
 
 
 def in_neckline(p, neck, margin=0.0):
@@ -275,6 +290,25 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         if len(groups) > 1:
             groups.sort(key=len, reverse=True)
             bmesh.ops.delete(g, geom=[f for grp in groups[1:] for f in grp], context="FACES")
+        if neck.get("style", "crew") == "v":
+            # V1.1-04: the cut removes whole faces, so along a slanted edge (the V) it leaves steps. Move each vertex on the cut
+            # edge to the nearest point of the neckline curve, if that is within 3 cm (the hem and sleeve edges are further).
+            # Nearest point, not straight up or down: the two ends of a step then land at different points on the line.
+            for v in g.verts:
+                if not v.is_boundary:
+                    continue
+                best = None
+                for k in range(-15, 16):
+                    x2 = v.co.x + k * 0.002
+                    d = neckline_drop(x2, v.co.y, neck)
+                    if d is None:
+                        continue
+                    z2 = neck["z"] - d
+                    dist2 = (x2 - v.co.x) ** 2 + (z2 - v.co.z) ** 2
+                    if dist2 < 0.03 ** 2 and (best is None or dist2 < best[0]):
+                        best = (dist2, x2, z2)
+                if best:
+                    v.co.x, v.co.z = best[1], best[2]
     # smooth the open boundary (neckline) a few times to remove stair-steps
     for it in range(6):
         new_co = {}
@@ -300,8 +334,11 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     continue
                 t = min(1.0, max(0.0, (max(nor.z, v.normal.z) - 0.3) / 0.5))
                 t = t * t * (3 - 2 * t)
-                if neck is not None and v.is_boundary and abs(v.co.x) < neck["a"] + 0.03:
-                    t = 1.0  # the neckline edge: a crew neck's ribbing lies against the body
+                if neck is not None and v.is_boundary and abs(v.co.x) < neck["a"] + 0.03 and (
+                        neck.get("style", "crew") != "v" or v.co.z > neck["z"] - 0.05):
+                    # the neckline edge: a crew or scoop neck's ribbing lies against the body. Pulling the whole slanted edge of a
+                    # V onto the body made it ragged, so only its top 5 cm (by the shoulder) is pulled in.
+                    t = 1.0
                 if t > 0.0:
                     v.co = v.co.lerp(loc + nor * min_gap, t)
             push_out()

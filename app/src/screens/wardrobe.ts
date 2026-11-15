@@ -1,4 +1,4 @@
-import { deleteItem, loadItems, renameItem, saveItems, wearItem, GARMENTS, type SavedItem } from '../wardrobe';
+import { deleteItem, itemKind, loadItems, renameItem, saveItems, wearItem, type SavedItem } from '../wardrobe';
 import {
   autoOutfitName,
   deleteOutfit,
@@ -52,7 +52,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
           : `<li class="w-item" data-id="${i.id}">
               <button type="button" class="w-wear" data-act="wear" aria-label="Wear ${esc(i.name)}">
                 <span class="w-swatch" style="background:${i.colour}"></span>
-                <span class="w-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${GARMENTS[i.garment].option}</span></span>
+                <span class="w-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${itemKind(i)}</span></span>
               </button>
               <button type="button" data-act="rename" aria-label="Rename ${esc(i.name)}">Rename</button>
               <button type="button" data-act="delete" aria-label="Delete ${esc(i.name)}">Delete</button>

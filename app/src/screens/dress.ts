@@ -9,7 +9,21 @@ import {
   saveFavourites,
   type Favourite,
 } from '../favourites';
-import { GARMENTS, ensureItem, loadItems, newItem, saveItems, type GarmentId } from '../wardrobe';
+import {
+  DEFAULT_NECKLINE,
+  GARMENTS,
+  NECKLINES,
+  NECKLINE_KEY,
+  ensureItem,
+  hasNecklines,
+  isNeckline,
+  loadItems,
+  meshName,
+  meshesOf,
+  saveItems,
+  type GarmentId,
+  type Neckline,
+} from '../wardrobe';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
 
 interface Slot {
@@ -38,6 +52,13 @@ export function renderDress(el: HTMLElement): () => void {
           (s) => `<div class="slot">
             <div class="slot-label">${s.name}</div>
             <div class="slot-item" data-slot="${s.name}">${s.options[0]}</div>
+            ${
+              Object.values(s.garments).some((g) => hasNecklines(g as GarmentId))
+                ? `<div class="neckline-row" role="group" aria-label="Neckline" data-necklines hidden>${(Object.keys(NECKLINES) as Neckline[])
+                    .map((n) => `<button type="button" class="neckline-btn" data-neckline="${n}" aria-pressed="false">${NECKLINES[n].label}</button>`)
+                    .join('')}</div>`
+                : ''
+            }
             <div class="fav-row" role="group" aria-label="${s.name} favourite colours" data-favs="${s.name}"></div>
             <div class="slot-controls">
               <button aria-label="Previous ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&lsaquo;</button>
@@ -61,6 +82,7 @@ export function renderDress(el: HTMLElement): () => void {
 
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
   let colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
+  let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
   let favourites: Favourite[] = []; // shared by every slot
   let editing = false; // while true, tapping a favourite removes it instead of applying it
   let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
@@ -97,8 +119,17 @@ export function renderDress(el: HTMLElement): () => void {
 
   const apply = (slot: Slot) => {
     el.querySelector(`[data-slot="${slot.name}"]`)!.textContent = outfit[slot.name];
-    for (const [opt, g] of Object.entries(slot.garments)) viewer.setGarment(g, outfit[slot.name] === opt);
+    // Show exactly one mesh: the chosen garment, with the chosen neckline if it has them.
+    for (const [opt, id] of Object.entries(slot.garments)) {
+      const shown = meshName(id as GarmentId, neckline);
+      for (const mesh of meshesOf(id as GarmentId)) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
+    }
     const g = garmentOf(slot);
+    const necks = el.querySelector<HTMLElement>(`[data-slot="${slot.name}"] ~ [data-necklines]`);
+    if (necks) {
+      necks.hidden = !g || !hasNecklines(g as GarmentId);
+      for (const b of necks.querySelectorAll<HTMLButtonElement>('[data-neckline]')) b.setAttribute('aria-pressed', String(b.dataset.neckline === neckline));
+    }
     const picker = pickerOf(slot);
     picker.disabled = !g;
     el.querySelector<HTMLButtonElement>(`[data-save="${slot.name}"]`)!.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
@@ -112,8 +143,10 @@ export function renderDress(el: HTMLElement): () => void {
     kvGet<Record<string, string>>('outfit', {}),
     kvGet<Record<string, string>>('colours', {}),
     loadFavourites(),
-  ]).then(([saved, savedColours, favs]) => {
+    kvGet<unknown>(NECKLINE_KEY, DEFAULT_NECKLINE),
+  ]).then(([saved, savedColours, favs, savedNeckline]) => {
     if (gone) return;
+    if (isNeckline(savedNeckline)) neckline = savedNeckline;
     for (const s of SLOTS) if (saved[s.name] && s.options.includes(saved[s.name])) outfit[s.name] = saved[s.name];
     for (const [g, hex] of Object.entries(savedColours)) {
       if (/^#[0-9a-f]{6}$/i.test(hex)) {
@@ -134,6 +167,14 @@ export function renderDress(el: HTMLElement): () => void {
     el.querySelector(`[aria-label="Previous ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(-1));
     el.querySelector(`[aria-label="Next ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(1));
 
+    el.querySelector(`[data-slot="${s.name}"] ~ [data-necklines]`)?.addEventListener('click', (e) => {
+      const n = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-neckline]')?.dataset.neckline;
+      if (!isNeckline(n) || n === neckline) return;
+      neckline = n;
+      apply(s);
+      void kvPut(NECKLINE_KEY, neckline);
+    });
+
     const picker = pickerOf(s);
     picker.addEventListener('input', () => {
       const g = garmentOf(s);
@@ -147,8 +188,8 @@ export function renderDress(el: HTMLElement): () => void {
       if (!g || !(g in GARMENTS)) return;
       const btn = e.currentTarget as HTMLButtonElement;
       const items = await loadItems();
-      const colour = picker.value.toLowerCase();
-      if (!items.some((i) => i.garment === g && i.colour === colour)) await saveItems([...items, newItem(g, colour)]);
+      const r = ensureItem(items, g, picker.value, Date.now(), neckline); // one item per garment, colour and (for a tee) neckline
+      if (r.list !== items) await saveItems(r.list);
       btn.textContent = 'Saved';
       setTimeout(() => (btn.textContent = 'Save'), 1500);
     });
@@ -198,7 +239,7 @@ export function renderDress(el: HTMLElement): () => void {
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
       if (!g) continue;
-      const r = ensureItem(items, g, pickerOf(s).value);
+      const r = ensureItem(items, g, pickerOf(s).value, Date.now(), neckline);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
       else look.bottom = r.item;

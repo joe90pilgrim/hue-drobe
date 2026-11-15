@@ -1,7 +1,7 @@
 """Geometry checks on a body and its tee and trousers, shared by the build (body_from_measurements.py) and by
 analyse_meshes.py. Pure bmesh and mathutils; nothing here changes the meshes it is given.
 
-run(body, tee, trousers, hps_z, sweatshirt=None) returns a JSON-ready dict:
+run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None) returns a JSON-ready dict:
 - pieces and openings of each garment (connected face groups, closed boundary-edge loops)
 - intersecting face pairs: body with each garment, tee with trousers, each garment with itself (pairs sharing a vertex ignored),
   with a count by height above the floor (5 cm bands) for body and self pairs so they can be located
@@ -9,6 +9,7 @@ run(body, tee, trousers, hps_z, sweatshirt=None) returns a JSON-ready dict:
 - shoulder gap: the same clearance for top-facing tee vertices between the neck and the shoulder point, in 2 cm bands
 - with a sweatshirt (MVP-07): the same checks for it as for the tee, and sweatshirt with trousers. It is an alternative top, not a
   layer, so it is not checked against the tee.
+- with tee_variants (V1.1-04, {'tee_v': bmesh, 'tee_scoop': bmesh}): the same checks as for the tee, and each with trousers.
 The build runs it on the exported GLBs (load_glb), which is what the phone shows. Inputs are bmeshes in one coordinate frame. Each is copied and its duplicate vertices merged first, so a mesh read back from
 glTF (which splits vertices at seams) gives the same answers as the in-memory mesh.
 """
@@ -111,7 +112,7 @@ def shoulder_gap(tee, body_tree, hps_z):
             "max_cm": max((b["max"] for b in bands.values()), default=None)}
 
 
-def run(body, tee, trousers, hps_z, sweatshirt=None):
+def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None):
     body, tee, trousers = merged(body), merged(tee), merged(trousers)
     bt, tt, rt = BVHTree.FromBMesh(body), BVHTree.FromBMesh(tee), BVHTree.FromBMesh(trousers)
     garments = [("tee", tee, tt), ("trousers", trousers, rt)]
@@ -119,6 +120,11 @@ def run(body, tee, trousers, hps_z, sweatshirt=None):
         sweatshirt = merged(sweatshirt)
         st = BVHTree.FromBMesh(sweatshirt)
         garments.append(("sweatshirt", sweatshirt, st))
+    variants = {}  # V1.1-04: other tee necklines, each held to the tee's limits and checked against the trousers like the tee
+    for label, vm in (tee_variants or {}).items():
+        vm = merged(vm)
+        variants[label] = (vm, BVHTree.FromBMesh(vm))
+        garments.append((label, vm, variants[label][1]))
     floor = min(v.co.z for v in body.verts)  # heights below are reported above the floor
     R = {}
     for label, g, tree in garments:
@@ -136,6 +142,10 @@ def run(body, tee, trousers, hps_z, sweatshirt=None):
         R["sweatshirt_vs_trousers_intersecting_pairs"] = len(st.overlap(rt))
         R["sweatshirt"]["shoulder_gap"] = shoulder_gap(sweatshirt, bt, hps_z)
         sweatshirt.free()
+    for label, (vm, vt) in variants.items():
+        R[f"{label}_vs_trousers_intersecting_pairs"] = len(vt.overlap(rt))
+        R[label]["shoulder_gap"] = shoulder_gap(vm, bt, hps_z)
+        vm.free()
     for b in (body, tee, trousers):
         b.free()
     return R

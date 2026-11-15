@@ -26,6 +26,15 @@ class DefaultGarments(unittest.TestCase):
         self.assertEqual(g["sweatshirt"]["neckline_width_cm"], 18.7)
         self.assertEqual(g["sweatshirt"]["colour_srgb"], CFG["colour_srgb"])
 
+    def test_other_necklines_are_deeper_than_the_crew_neck(self):
+        # V1.1-04, depths decided by Joe: V 12 cm and scoop 9 cm below the shoulder-top line, crew 6 cm
+        n = fit.default_garments(BODY, CFG)["tee"]["necklines"]
+        self.assertEqual(set(n), {"v", "scoop"})
+        self.assertEqual(n["v"]["drop_front_cm"], 12)
+        self.assertEqual(n["scoop"]["drop_front_cm"], 9)
+        self.assertEqual(n["v"]["neckline_width_cm"], 21.2)  # 0.125 * 170 = 21.25, rounded to 1 decimal place
+        self.assertEqual(n["scoop"]["neckline_width_cm"], 23.4)  # 1.1 times that
+
     def test_ease_is_positive(self):
         g = fit.default_garments(BODY, CFG)
         self.assertGreater(g["tee"]["chest_circ_cm"], BODY["chest_cm"])

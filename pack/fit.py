@@ -47,6 +47,10 @@ def default_garments(m, cfg):
         "sleeve_cm": _r(t["sleeve_fraction_of_height"] * height),
         "neckline_width_cm": _r(t["neckline_width_fraction_of_height"] * height),
         "neckline_drop_front_cm": t["neckline_drop_front_cm"],
+        # V1.1-04: the other necklines, each with its own width and depth (the width is a multiple of the crew neck's)
+        "necklines": {name: {"drop_front_cm": n["drop_front_cm"],
+                             "neckline_width_cm": _r(n["width_factor"] * t["neckline_width_fraction_of_height"] * height)}
+                      for name, n in t.get("necklines", {}).items()},
         "colour_srgb": colour,
     }
     s = cfg["sweatshirt"]

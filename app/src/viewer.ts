@@ -3,13 +3,16 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** Files of the avatar pack that the viewer loads. Joe's pack is served from private/pack/joe by the dev server only. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'trousers.glb', 'sweatshirt.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'sweatshirt.glb'];
+
+/** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
+const groupOf = (name: string) => name.split('_')[0];
 const PACK_URL = './pack/joe/';
 
 export interface Viewer {
-  /** Shows or hides a garment (`tee`, `sweatshirt`, `trousers`) instantly. Works before the garment has loaded. */
+  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`) instantly. Works before it has loaded. */
   setGarment: (name: string, visible: boolean) => void;
-  /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`. Works before the garment has loaded. */
+  /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;
   dispose: () => void;
 }
@@ -74,7 +77,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     const name = file.replace('.glb', '');
     gltf.scene.visible = wanted.get(name) ?? true;
     garments.set(name, gltf.scene);
-    const colour = colours.get(name);
+    const colour = colours.get(groupOf(name));
     if (colour) paint(gltf.scene, colour);
     scene.add(gltf.scene);
   });
@@ -116,8 +119,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     },
     setColour(name, hex) {
       colours.set(name, hex);
-      const g = garments.get(name);
-      if (g) paint(g, hex);
+      for (const [n, g] of garments) if (groupOf(n) === name) paint(g, hex);
     },
     dispose() {
       disposed = true;

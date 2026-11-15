@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
 // The avatar pack files the viewer loads (keep in step with PACK_FILES in src/viewer.ts).
-const PACK_FILES = ['body', 'tee', 'trousers', 'sweatshirt'];
+const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'sweatshirt'];
 
 // Dev and preview only: serves Joe's private avatar pack at /pack/joe/. It is never copied into a build.
 function servePrivatePack(): Plugin {
