@@ -19,6 +19,6 @@ A regular-fit sweatshirt using the same offset-shell method as the tee.
 ## If the ceiling is reached
 Stop and report. The fallback is a long-sleeve tee in the sweatshirt slot. Joe decides.
 
-## Done, awaiting Joe's sign-off (15 Nov 2026)
+## Done (15 Nov 2026)
 Regular-fit sweatshirt (chest + 10 cm, long tapered sleeves, hem and cuffs drawn in by shape) in the pack build and the Top slot. It passes the tee's mesh checks on Joe and all six synthetic bodies (0 intersecting pairs, 0.3 cm minimum clearance), and Joe's pack is 832 KB. `npm run check` passes. Started 18:46, done by 19:01 on the clock; details in `docs/decisions/2026-11-15-sweatshirt.md`.
-**Joe's visual sign-off:** pending.
+**Joe's visual sign-off** (15 Nov 2026): **yes**, it reads as a sweatshirt. Ticket closed.

@@ -1,6 +1,6 @@
 # Sweatshirt template (MVP-07)
 
-Date: 15 November 2026. Settles how the sweatshirt is built and checked. Joe's visual sign-off is still needed.
+Date: 15 November 2026. Settles how the sweatshirt is built and checked. Joe signed it off by eye on 15 November 2026.
 
 ## Result
 
