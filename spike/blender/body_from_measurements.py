@@ -404,9 +404,20 @@ tr_ease = 0.018
 tr_gap = 0.006
 hip_z = max(zmin_f + marks.get("hips_cm", 0.5) * H_f, crotch_z + 0.05)  # garment hip is read 5 cm above the crotch
 if RG:
-    tr_hem_z = crotch_z - RG["inseam_cm"] / 100.0
-    tr_top_z = crotch_z + RG["rise_cm"] / 100.0
     tr_gap = 0.003
+    tr_hem_z = crotch_z - RG["inseam_cm"] / 100.0
+    # B3: the leg opening is measured above the foot. If the body is too big round at the inseam hem for the opening plus
+    # the minimum gap, raise the hem to the lowest height where it fits; the leftover inseam is fabric that would stack
+    # over the foot, reported separately (the taper over the heel is not modelled).
+    tr_hem_inseam_z = tr_hem_z
+    _z = tr_hem_z
+    while _z < crotch_z - 0.10:
+        _g = circ_loop(body_final, _z, side=1)
+        if not math.isnan(_g) and _g + two_pi * tr_gap * 100 <= RG["leg_opening_circ_cm"]:
+            break
+        _z += 0.005
+    tr_hem_z = _z
+    tr_top_z = crotch_z + RG["rise_cm"] / 100.0
     knots = {"hem": 0.01, "hip": 0.01, "waist": 0.01}
 
 
@@ -509,6 +520,7 @@ tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_eas
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
              "crotch_height_cm": round((crotch_z - zmin_f) * 100, 1), "inseam_cm": round((crotch_z - tr_hem_z) * 100, 1),
+             "inseam_leftover_cm": round((tr_hem_z - tr_hem_inseam_z) * 100, 1) if RG else None,
              "rise_cm": round((tr_top_z - crotch_z) * 100, 1),
              "hip_circ_cm": round(circ_loop(gtr, hip_z), 1) if "hips_cm" in marks else None,
              "waist_circ_cm": round(circ_loop(gtr, tr_top_z - 0.015), 1),
@@ -551,7 +563,7 @@ if RG:
     add("trousers", "waist_circ_cm", RG["waist_circ_cm"], tr_report["waist_circ_cm"])
     add("trousers", "hip_circ_cm", RG["hip_circ_cm"], tr_report["hip_circ_cm"])
     add("trousers", "rise_cm", RG["rise_cm"], tr_report["rise_cm"])
-    add("trousers", "inseam_cm", RG["inseam_cm"], tr_report["inseam_cm"])
+    add("trousers", "inseam_cm (visible + stacked over the foot)", RG["inseam_cm"], round(tr_report["inseam_cm"] + tr_report["inseam_leftover_cm"], 1))
     add("trousers", "leg_opening_circ_cm", RG["leg_opening_circ_cm"], tr_report["leg_opening_circ_cm"])
 bpy.data.objects.remove(ref)
 results_extra = {"tee": tee_report, "trousers": tr_report, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
