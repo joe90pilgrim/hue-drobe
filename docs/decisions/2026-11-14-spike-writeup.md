@@ -1,86 +1,59 @@
-# Spike write-up (draft for review)
+# Spike write-up (final)
 
-Date: 14 November 2026 (Saturday evening). The spike's deadline is Sunday evening, 15 November. Prepared for an independent review and a go/no-go.
+Started 14 November 2026; closed 15 November 2026 by Joe. This replaces the draft prepared for the independent review. Detail for each step is in the decision records listed at the end.
 
-## Result in one paragraph
+## Decision
 
-A body built from tape measurements, and a tee and trousers fitted to it, come within 2 cm of Joe's real measurements and of his real garments' flat measurements on every check. The body works on a Pixel 8 at 60 fps. Two things are not proven: the two clipping checks still fail on Joe's jeans (crotch) and tee (neckline), and nothing has been judged by eye against the photos or against Beth's real numbers. Provisional recommendation: **go, with conditions** (below). It is not a clean pass.
+**Go for the MVP with close-fitting garments only: tee, shirt and trousers.** Garments use the offset-shell method (one template re-fitted to each body, ease calibrated to the real item's flat measurements). The cloth drape (`--drape`) stays off the MVP path.
 
-## Update after the independent review (same evening)
+Dresses and jumpers are deferred to a later, time-boxed experiment.
 
-The review was right on its main points. Corrections to the table below:
+## Where the spike ended
 
-- **Garment landmark rows are not independent evidence.** Rise, inseam, tee length and neckline are set from the real numbers by construction. Waist, hip, leg opening, tee chest and sleeve are calibration targets. They show the loop converged, not that the model is right.
-- **Two did not converge, and the cause is now confirmed:** Joe's jeans waist (+1.5 cm) and tee chest (+1.65 cm) sit at the ease floor (body plus 3 mm). The real items are smaller than the body there. Stretch is not modelled by an offset shell.
-- **Body rows are partly circular too.** Chest, waist and hips are solved to the target at our own landmark heights. Thigh is not solved, only reported, and is the honest estimate (1.2 cm).
-- **The earlier synthetic tests ran the easier path.** Calibrated synthetic fixtures (small, medium, large, plus a female medium) now run the real path.
-- **New clipping test (ray cast).** The old nearest-point test overstated the crotch problem (3.6 cm "penetration" was a sign flip between the two thigh shells; the body does not intersect itself there: 0 face pairs). The ray test finds 0.79% of samples uncovered at the crotch centre on Joe's jeans, with 0.68% to 0.97% on every synthetic body, so it is systematic, not Joe-specific. The reviewer's description of a "back face" hit as showing through is inverted for outward normals; the check uses the correct sense (first hit a front face, or no hit within 30 cm). The 5 cm hit limit in the brief gave false alarms because the real crotch hangs 6 cm below the body crotch.
-- **Bug found by the stricter check:** open-mesh normals could flip as a whole after the hem extension, which would make the tee invisible from outside. An orientation guard now fixes this. The old tests could not have caught it.
-- **Tee neckline:** under the ray test, with points within 3 cm of an open edge excluded, Joe's tee is 0.11%. Synthetic tees are 0% to 0.65%. These exclusions are generous.
+All numbers are from `python spike/check_reports.py` on builds made on 15 November with Blender 5.3.0 and MPFB 2.0.18 (default build, offset-shell garments, unless stated).
 
-Current state of `python spike/check_reports.py spike/out`: still failing, on the crotch (jeans clipping 0.7% to 1.0% on every body), tee chest on synthetic small (landmark likely at the armpit; not confirmed), and a few calibrations that stop 1 to 1.7 cm short. Nothing has been loosened to make it pass.
+- **Body from tape measurements: works.** Joe's height, chest, waist, hips, thigh and inside leg are all within tolerance (2 cm circumferences, 1.5 cm lengths). Six synthetic bodies (three male, three female) pass the same checks.
+- **Garments (offset shell):** Joe's build passes every check:
+  - 0 body-through-cloth and 0 self-intersecting face pairs
+  - tee in 1 piece with 4 openings
+  - shoulder gap within 0.5 cm mean and 1.0 cm max
+  - all tee and jeans landmarks within 2 cm, the jeans leg opening included (+1.2 cm after the B3 fix)
+- **Synthetic bodies:**
+  - Trouser hip calibration still stops short on synthetic_large (-1.64 cm) and synthetic_female_large (-1.04 cm), and the female large trouser waist is +1.78 cm. The real garment is smaller than body plus 3 mm, and stretch is not modelled (B4).
+  - The female large tee passes through its trousers at 33 face pairs with the offset shell.
+- **Builds are repeatable:** two default builds give byte-identical files (`spike/check_repeatable.py`).
+- **Phone:** Pixel 8, 60 fps and about 750 KB for body, tee and trousers (measured earlier in the spike; not re-measured on the final models).
+- **Beth:** only her height is real, and she has no garment measurements, so her results are not meaningful yet.
 
-Not done: the photo comparison with Joe's judgement (needs him), a loose-garment test (skirt or dress), and Pixel readings on the final models.
+What the spike changed since the review:
+- **Checks:** clipping is now judged by hard mesh checks (intersecting face pairs, clearance, pieces and openings) on the exported GLBs, not a ray-test percentage.
+- **Repeatability:** a face-order bug that made builds vary is fixed.
+- **Garment fixes:** the stray piece under the chin (B24), the floating shoulders (B23), the trouser legs crossing at the crotch (B1) and Joe's leg opening (B3).
 
-## Pass criteria against the measured numbers (original draft table, see corrections above)
+## Known limitations, moved to the backlog
 
-Tolerances are in `spike/tolerances.json`. Check with `python spike/check_reports.py <folder>`.
+- **Underarm folds.** With the cloth drape, Joe's tee folds under the arms (5 to 17 self-intersecting pairs across runs). This happens where its 94 cm hem has to stretch over about 98 cm of jeans, and knit stretch is not modelled.
+- **Crotch clipping.** The offset shell is weakest in the fold between the legs. The trouser legs no longer cross (0 pairs on all eight builds after task 4), but this has only been checked on these bodies and stays on the backlog to recheck as new bodies and trousers are added.
+- **Drape varies between runs.** Blender cloth is not bit-for-bit repeatable: up to 0.99 cm per vertex between two builds on the synthetic tees and 2.3 cm on Joe's, even on one thread. So `--drape` stays off the MVP path, and MVP garments use the offset shell, which is byte-identical between builds. The offset-shell tee still narrows at the waist (B22); the drape fixed that but is not used.
 
-| Criterion | Limit | Measured | Status |
-| --- | --- | --- | --- |
-| Circumferences (chest, waist, hips, thigh), Joe, real tape | 2 cm | chest 0.04, waist 0.08, hips 0.06, thigh 1.2 | Pass |
-| Height, Joe | 1.5 cm | 0.01 | Pass |
-| Same checks on 3 synthetic sizes (small, medium, large) | 2 / 1.5 cm | all within limits | Pass |
-| Beth | 2 cm | within limits, but only her height is real; other values are placeholders | Not meaningful yet |
-| Limb lengths (arm, inside leg, back) | 1.5 cm | not measured, not modelled | Not tested |
-| Tee landmarks vs real tee (chest circ, length, sleeve, neckline) | 2 cm | +1.1, 0.0, -0.7, +0.3 | Pass |
-| Jeans landmarks vs real jeans (waist, hip, rise, inseam, leg opening) | 2 cm | +1.3, 0.0, 0.0, 0.0, -0.1 | Pass |
-| No body showing through cloth | 0.5% of points, 1 cm deep | jeans 3.9% (worst 3.6 cm, crotch); tee 0.69% (worst 0.5 cm, neckline); synthetic sizes 0% | **Fail** (Joe only) |
-| In-between sizes plausible | no tearing or stretching | withdrawn 2026-11-15 (runtime blending dropped by decision) | Withdrawn |
-| Phone: at least 30 fps, under 15 MB | 30 fps, 15 MB | Pixel 8: 60 fps (readout on the placeholder figure and earlier garments); body plus tee plus trousers about 750 KB | Pass for frame rate on early garments; load size pass; not re-measured on the final models |
-| Recognisability ("looks like me") | each person says yes | Joe judged the earlier body "realistic"; not compared with photos | Not tested |
-| Honor 200 Pro | n/a | not tested | Not tested |
+## Still to do by Joe
 
-## What worked
+- Compare the avatar with his photos (front and side) and say whether it looks like him.
 
-- MPFB2 (GPL code, CC0 core assets) runs headlessly in Blender 5.3 and has a Python route to set body shape. Licence: fine for personal use; output licence unconfirmed.
-- Body solving: macro controls (height, weight) first, then the fine measure controls, with fallbacks (hip width, stomach, leg fat) when a control saturates. About 10 seconds per body.
-- Garments as offset shells of the body mesh. All MPFB2 bodies share one vertex layout, so one template re-fits to any body. The phone loads a finished pack.
-- Calibrated ease: smoothing shrinks the shell, so the script builds, measures the garment circumference, and adjusts until it matches the real item.
-- Automatic checks that fail the build on a missed tolerance.
+## Decision records
 
-## What did not work, or is open
-
-- **Jeans crotch clipping (3.9%, worst 3.6 cm).** Cause unconfirmed: either the inside/outside test misjudges a deep fold, or the shell overlaps between the thighs. Not inspected from below on screen. This is the biggest open item.
-- **Tee neckline clipping (0.69%).** Marginally over the limit.
-- **The clipping check is lenient:** it skips body points within 1.2 cm of an open fabric edge (about 10% of covered points).
-- **Hips bug found and fixed late:** the hip landmark was at the crotch notch and made hips about 8 cm too big. Beth's earlier numbers were affected; she is rebuilt with the fix but still on placeholders.
-- **Landmark definitions are ours** (narrowest/widest torso point, shoulder estimate from the mesh). They may differ from where a tape sits. Only a photo or tape check on the avatar can show that.
-- **Blueprint divergence:** the blueprint planned fitted small, medium and large shapes blended at runtime. We fit per person offline instead. Runtime blending is untested and may not be needed for two users. This should be a conscious decision, not an accident.
-- **Tee hem below the crotch** is a straight tube from 5 cm above the crotch, not draped.
-- **Simplifications:** plain single colour, no folds, no collar band, neutral head only, A-pose only. Wrist is recorded but not modelled. Shoulder width, arm length, back length, underbust, neck, upper arm are not used.
-
-## Effort per garment type
-
-Roughly one to two hours each for the first tee and trousers, including debugging. Most time went on shared machinery (clipping check, ease calibration, layering) that the next garment reuses. A new type still needs a face-selection template and landmark definitions. A dress or jumper is untested and is likely harder (longer, looser, two-layer drape).
-
-## Recommendation (provisional)
-
-Decision rule from the blueprint: body passes and garments pass on fit, with clipping failing in two places. Proposed: **go to milestone 1 on this pipeline, on three conditions:**
-
-1. Fix or explain the jeans crotch clipping, and bring the tee neckline under the limit.
-2. Joe and Beth each judge the avatar against their photos, and Beth supplies real measurements and a real garment to check.
-3. Decide on purpose whether runtime size blending is dropped from the blueprint.
-
-Not required for the go, but worth doing early: Honor 200 Pro test, a skirt or dress to test the harder garment shape, and an automated front/side/back visual regression render.
-
-## Questions for the reviewer
-
-- Is "offset shell, fitted per person" a sound foundation, or will it hit a ceiling on loose or layered clothing (dresses, jumpers, coats)?
-- Is dropping runtime blending acceptable for a two-user app, given the pack is built on a laptop?
-- Is a 2 cm tolerance with our own landmark definitions credible, or should we validate against a tape on the avatar?
-- Should the clipping check use a more robust test (for example ray casting) before we trust it?
+- `2026-11-15-fable-review.md`: the independent review and its task list
+- `2026-11-15-joe-accepts-fable-review.md`: Joe's acceptance of the review
+- `2026-11-15-task1-mesh-checks.md`: clipping test replaced by hard mesh checks
+- `2026-11-15-repeatable-builds.md`: face-order bug fixed
+- `2026-11-15-task2-chin-fragment.md`: B24
+- `2026-11-15-task3-floating-shoulders.md`: B23
+- `2026-11-15-task4-crotch.md`: B1
+- `2026-11-15-joe-ankle-intersections.md`: B3 diagnosis
+- `2026-11-15-b3-leg-opening.md`: B3 fix
+- `2026-11-15-task5-tee-drape.md`: cloth drape (not on the MVP path)
+- `2026-11-15-hem-stretched-size.md`: tee judged against its stretched size
 
 ## Reproduce
 
-Blender 5.3.0 and MPFB 2.0.18. See `spike/README.md` and `spike/blender/README.md`. Personal data is in the git-ignored `private/` folder; committed tests use `spike/fixtures/`.
+Blender 5.3.0 and MPFB 2.0.18. See `spike/README.md` and `spike/blender/README.md`. `python spike/build_all.py --jobs 4` rebuilds every synthetic body and runs the checker; add `--private` for Joe and Beth. Personal data is in the git-ignored `private/` folder; committed tests use `spike/fixtures/`.
