@@ -61,7 +61,7 @@ for f in reports:
         else:
             check(mc["pieces"] == gm[f"{g}_pieces"], f"{g} pieces: {mc['pieces']} (want {gm[g + '_pieces']}); faces/area {[(p['faces'], p['area_cm2']) for p in mc['piece_faces_area']]}")
             check(mc["openings"] == gm[f"{g}_openings"], f"{g} openings: {mc['openings']} (want {gm[g + '_openings']}); lengths cm {mc['opening_lengths_cm']}")
-            check(mc["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"{g} body-through-cloth intersecting face pairs: {mc['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']})")
+            check(mc["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"{g} body-through-cloth intersecting face pairs: {mc['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']}); by height cm {mc.get('body_intersections_by_z_cm')}")
             check(mc["self_intersecting_pairs"] <= gm["self_intersecting_pairs_max"], f"{g} self-intersecting face pairs: {mc['self_intersecting_pairs']} (max {gm['self_intersecting_pairs_max']}); by height cm {mc['self_intersections_by_z_cm']}")
             cl = mc["clearance_to_body_cm"]["min"]
             check(cl >= gm["min_clearance_cm"], f"{g} minimum clearance to body: {cl} cm (min {gm['min_clearance_cm']})")

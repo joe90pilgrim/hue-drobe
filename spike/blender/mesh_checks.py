@@ -3,7 +3,8 @@ analyse_meshes.py. Pure bmesh and mathutils; nothing here changes the meshes it 
 
 run(body, tee, trousers, hps_z) returns a JSON-ready dict:
 - pieces and openings of each garment (connected face groups, closed boundary-edge loops)
-- intersecting face pairs: body with each garment, tee with trousers, each garment with itself (pairs sharing a vertex ignored)
+- intersecting face pairs: body with each garment, tee with trousers, each garment with itself (pairs sharing a vertex ignored),
+  with a count by height above the floor (5 cm bands) for body and self pairs so they can be located
 - cloth-to-body clearance: signed distance from each cloth vertex to the nearest body point (positive = outside)
 - shoulder gap: the same clearance for top-facing tee vertices between the neck and the shoulder point, in 2 cm bands
 The build runs it on the exported GLBs (load_glb), which is what the phone shows. Inputs are bmeshes in one coordinate frame. Each is copied and its duplicate vertices merged first, so a mesh read back from
@@ -78,11 +79,11 @@ def openings(bm):
     return sorted((round(sum(e.calc_length() for e in es) * 100, 1) for es in loops.values()), reverse=True)
 
 
-def self_intersections(bm, tree):
+def self_intersections(bm, tree, floor=0.0):
     n, zs = 0, []
     for a, b in tree.overlap(tree):
         if a < b and not (set(bm.faces[a].verts) & set(bm.faces[b].verts)):
-            n += 1; zs.append(round(bm.faces[a].calc_center_median().z * 100))
+            n += 1; zs.append(round((bm.faces[a].calc_center_median().z - floor) * 100))
     return n, sorted(collections.Counter(int(z // 5) * 5 for z in zs).items())
 
 
@@ -111,13 +112,16 @@ def shoulder_gap(tee, body_tree, hps_z):
 def run(body, tee, trousers, hps_z):
     body, tee, trousers = merged(body), merged(tee), merged(trousers)
     bt, tt, rt = BVHTree.FromBMesh(body), BVHTree.FromBMesh(tee), BVHTree.FromBMesh(trousers)
+    floor = min(v.co.z for v in body.verts)  # heights below are reported above the floor
     R = {}
     for label, g, tree in (("tee", tee, tt), ("trousers", trousers, rt)):
         p = pieces(g)
         o = openings(g)
-        si, si_z = self_intersections(g, tree)
+        si, si_z = self_intersections(g, tree, floor)
+        bp = bt.overlap(tree)
+        bz = sorted(collections.Counter(int(round((body.faces[a].calc_center_median().z - floor) * 100)) // 5 * 5 for a, _ in bp).items())
         R[label] = {"pieces": len(p), "piece_faces_area": p, "openings": len(o), "opening_lengths_cm": o,
-                    "body_intersecting_pairs": len(bt.overlap(tree)), "self_intersecting_pairs": si,
+                    "body_intersecting_pairs": len(bp), "body_intersections_by_z_cm": bz, "self_intersecting_pairs": si,
                     "self_intersections_by_z_cm": si_z, "clearance_to_body_cm": clearance_cm(g, bt)}
     R["tee_vs_trousers_intersecting_pairs"] = len(tt.overlap(rt))
     R["tee"]["shoulder_gap"] = shoulder_gap(tee, bt, hps_z)
