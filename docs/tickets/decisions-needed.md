@@ -12,7 +12,7 @@ Every open implementation decision across the roadmap tickets, by version. Tick 
 - ~~**V1.1-03** Preset outfits: Should applying an outfit replace everything on the avatar, or only the slots the outfit fills? Recommendation: replace everything.~~ Decided 15 Nov 2026: replace everything.
 - ~~**V1.1-04** Other t-shirt necklines: Which necklines? Suggested: V-neck and scoop. Others such as henley (buttons) or polo (collar) are new geometry and would move to v3.~~ Decided 15 Nov 2026: V-neck and scoop.
 - ~~**V1.1-04** Other t-shirt necklines: How deep should the V and the scoop be? A measurement in cm below the crew neck, or 'match a tee I own'.~~ Decided 15 Nov 2026: V-neck 12 cm and scoop 9 cm below the shoulder-top line.
-- **V1.1-05** Shorts: What length? Mid-thigh (about 18 cm inseam), above the knee (about 23 cm) or knee length (about 28 cm). One length for now; more later if wanted.
+- ~~**V1.1-05** Shorts: What length? Mid-thigh (about 18 cm inseam), above the knee (about 23 cm) or knee length (about 28 cm). One length for now; more later if wanted.~~ Decided 15 Nov 2026: above the knee, 23 cm inseam.
 - **V1.1-06** Back up and restore your data (recommended addition): Is this wanted in 1.1? The blueprint listed backup as a must, and 1.1 is the first version where losing data would hurt (saved clothes and outfits). Recommendation: yes.
 - **V1.1-07** Show a close second season: Wording and threshold. What should the line say, and how close counts as borderline? Recommendation: show it when the runner-up is within 15% of the top score.
 - **V1.1-07** Show a close second season: Can you save favourites (V1.1-01) from the second season's palette too? Recommendation: yes.

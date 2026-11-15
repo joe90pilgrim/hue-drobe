@@ -6,6 +6,7 @@ export const GARMENTS = {
   tee: { label: 'tee', slot: 'Top', option: 'T-shirt' },
   sweatshirt: { label: 'sweatshirt', slot: 'Top', option: 'Sweatshirt' },
   trousers: { label: 'trousers', slot: 'Bottom', option: 'Trousers' },
+  shorts: { label: 'shorts', slot: 'Bottom', option: 'Shorts' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 

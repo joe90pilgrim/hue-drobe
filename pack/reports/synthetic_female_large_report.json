@@ -820,6 +820,116 @@
       ]
     ]
   },
+  "shorts": {
+    "template_faces": 3846,
+    "calibration": {
+      "converged": true,
+      "ease_at_floor": [],
+      "residual_cm": {
+        "leg_opening": -0.01
+      },
+      "flare_cm": 1.01
+    },
+    "clipping": {
+      "covered_body_verts": 778,
+      "showing_through": 0,
+      "fraction": 0.0,
+      "worst_penetration_cm": 0.0,
+      "skipped_near_edge": 11,
+      "worst_at_z_x_depth_cm": []
+    },
+    "clipping_ray": {
+      "samples": 1506,
+      "showing_through_strict": 12,
+      "fraction_strict": 0.008,
+      "showing_through_excluding_edges": 12,
+      "fraction_excluding_edges": 0.008,
+      "front_face_hits": 0,
+      "no_hit": 12,
+      "where_z_x_y_kind_cm": [
+        [
+          81,
+          -1,
+          -7,
+          "miss"
+        ],
+        [
+          81,
+          0,
+          -2,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -5,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -7,
+          "miss"
+        ],
+        [
+          81,
+          0,
+          -2,
+          "miss"
+        ],
+        [
+          81,
+          -1,
+          -5,
+          "miss"
+        ],
+        [
+          81,
+          -1,
+          -5,
+          "miss"
+        ],
+        [
+          81,
+          0,
+          -3,
+          "miss"
+        ],
+        [
+          81,
+          -1,
+          -3,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -5,
+          "miss"
+        ],
+        [
+          81,
+          0,
+          -3,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -3,
+          "miss"
+        ]
+      ]
+    },
+    "hem_height_cm": 57.6,
+    "inseam_cm": 23.0,
+    "leg_opening_circ_cm": 61.9,
+    "trousers_at_same_height_circ_cm": 58.1,
+    "leg_opening_target_circ_cm": 62.1,
+    "thigh_at_hem_circ_cm": 43.8,
+    "hip_circ_cm": 116.8,
+    "waist_circ_cm": 101.7
+  },
   "sweatshirt": {
     "template_faces": 3084,
     "ease_cm": 3.65,
@@ -3154,6 +3264,42 @@
       "error": 1.3,
       "tolerance": 2.0,
       "pass": true
+    },
+    {
+      "garment": "shorts",
+      "measure": "inseam_cm",
+      "target": 23,
+      "achieved": 23.0,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shorts",
+      "measure": "leg_opening_circ_cm (trousers at that height + extra)",
+      "target": 62.1,
+      "achieved": 61.9,
+      "error": -0.2,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shorts",
+      "measure": "waist_circ_cm",
+      "target": 101.4,
+      "achieved": 101.7,
+      "error": 0.3,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shorts",
+      "measure": "hip_circ_cm",
+      "target": 117,
+      "achieved": 116.8,
+      "error": -0.2,
+      "tolerance": 2.0,
+      "pass": true
     }
   ],
   "extra_body_checks": {},
@@ -3502,10 +3648,43 @@
         "max_cm": 0.55
       }
     },
+    "shorts": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 1742,
+          "area_cm2": 5952.8,
+          "z_cm": [
+            57.6,
+            105.4
+          ]
+        }
+      ],
+      "openings": 3,
+      "opening_lengths_cm": [
+        99.7,
+        61.8,
+        61.8
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.29,
+        "p05": 0.35,
+        "median": 1.6,
+        "max": 4.12
+      }
+    },
     "tee_vs_trousers_intersecting_pairs": 0,
+    "tee_vs_shorts_intersecting_pairs": 0,
+    "sweatshirt_vs_shorts_intersecting_pairs": 0,
+    "tee_v_vs_shorts_intersecting_pairs": 0,
+    "tee_scoop_vs_shorts_intersecting_pairs": 0,
     "sweatshirt_vs_trousers_intersecting_pairs": 0,
     "tee_v_vs_trousers_intersecting_pairs": 0,
     "tee_scoop_vs_trousers_intersecting_pairs": 0
   },
-  "fit_config_sha256": "e20d282d658e0eb8743e5ea581ebda3720533da1a39a046c651893d94e324494"
+  "fit_config_sha256": "96d319ad8022430d208b7cc2f2f41fd0e3e41c136c0c1484bb1b41ce19838ff1"
 }

@@ -3,7 +3,7 @@
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build Joe from private/measurements_joe.json into private/pack, check him, and write his pack
-             (private/pack/joe/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, sweatshirt.glb, manifest.json). The pack is written only if every check passes.
+             (private/pack/joe/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, sweatshirt.glb, manifest.json). The pack is written only if every check passes.
   --only     build just one body (a fixture name such as synthetic_medium, or 'joe'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3)
   --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
@@ -27,7 +27,7 @@ TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
 DEFAULT_CONFIG = HERE / "fit_config.json"
 CFG = json.load(open(DEFAULT_CONFIG))  # replaced in main() when --config is given
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
-              "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb"}
+              "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb"}
 
 
 def arg(flag, default=None):
@@ -79,7 +79,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts"]).returncode
 
 
 def config_hash(cfg):
@@ -111,7 +111,8 @@ def write_pack(name, build_dir, pack_dir):
         "files": files,
         "total_bytes": total,
         "garments": {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
-                     "trousers": {"fit": "regular"}, "sweatshirt": {"fit": "regular"}},
+                     "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": CFG["shorts"]["inseam_cm"]},
+                     "sweatshirt": {"fit": "regular"}},
         "garment_colour_srgb": CFG["colour_srgb"],
         "fit_config": CFG,
         "checks": "all passed (spike/check_reports.py)",

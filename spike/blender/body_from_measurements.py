@@ -458,6 +458,39 @@ else:
     tr_mesh, tr_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=tr_ease, min_gap=tr_gap, hem_z=tr_hem_z,
                                          sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
 
+# --- V1.1-05: shorts. The trouser template with the trousers' calibrated ease, cut at a shorter inseam. Only the bottom
+# flare band is let out, so the leg opening is wider than the trousers at the same height; above the band the shorts are
+# the trousers' shell, so every top keeps the clearance it was built with over the trousers.
+# garments.json: shorts = {"inseam_cm", "leg_opening_extra_cm", "flare_band_cm"}
+HG = (G or {}).get("shorts") if RG else None
+sh_mesh = sh_vids = sh_cal = None
+if HG:
+    sh_hem_z = crotch_z - HG["inseam_cm"] / 100.0
+    _sh_band = HG["flare_band_cm"] / 100.0
+    _gt = bmesh.new()
+    _gt.from_mesh(tr_mesh)
+    sh_trousers_opening = circ_loop(_gt, sh_hem_z + 0.01, side=1)  # the trousers round the leg at the shorts' hem
+    _gt.free()
+    sh_want = sh_trousers_opening + HG["leg_opening_extra_cm"]
+    _flare = HG["leg_opening_extra_cm"] / two_pi / 100.0
+
+    def sh_ease(z):
+        return tr_ease(z) + _flare * max(0.0, 1.0 - (z - sh_hem_z) / _sh_band)
+
+    for it in range(6):
+        sh_mesh, sh_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=sh_ease, min_gap=tr_gap, hem_z=sh_hem_z,
+                                             sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
+        _gt = bmesh.new()
+        _gt.from_mesh(sh_mesh)
+        _got = circ_loop(_gt, sh_hem_z + 0.01, side=1)
+        _gt.free()
+        print("CAL shorts", it, round(_got, 1), round(sh_want, 1), "flare cm", round(_flare * 100, 2))
+        sh_cal = {"converged": abs(_got - sh_want) < 0.5, "ease_at_floor": [],
+                  "residual_cm": {"leg_opening": round(_got - sh_want, 2)}, "flare_cm": round(_flare * 100, 2)}
+        if sh_cal["converged"] or math.isnan(_got):
+            break
+        _flare = min(0.05, max(0.0, _flare + 1.6 * (sh_want - _got) / two_pi / 100.0))
+
 # --- tee (built over the trousers)
 tee_hem_z = zmin_f + 0.49 * H_f
 tee_extend = None
@@ -735,6 +768,21 @@ tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_eas
              "waist_circ_cm": round(circ_loop(gtr, tr_top_z - 0.015), 1),
              "leg_opening_circ_cm": round(circ_loop(gtr, tr_hem_z + 0.005, side=1), 1)}
 tr_report["calibration"] = tr_cal
+sh_report = None
+if HG:
+    _gs = bmesh.new()
+    _gs.from_mesh(sh_mesh)
+    _zr = (sh_hem_z + 0.01, tr_top_z - 0.01)
+    sh_report = {"template_faces": len(tr_faces), "calibration": sh_cal,
+                 "clipping": garment.clipping_report(body_final, sh_mesh, sh_vids, zrange=_zr),
+                 "clipping_ray": garment.clipping_report_ray(body_final, sh_mesh, sh_vids, zrange=_zr),
+                 "hem_height_cm": round((sh_hem_z - zmin_f) * 100, 1), "inseam_cm": round((crotch_z - sh_hem_z) * 100, 1),
+                 "leg_opening_circ_cm": round(circ_loop(_gs, sh_hem_z + 0.005, side=1), 1),
+                 "trousers_at_same_height_circ_cm": round(sh_trousers_opening, 1),
+                 "leg_opening_target_circ_cm": round(sh_want, 1),
+                 "thigh_at_hem_circ_cm": round(circ_loop(body_final, sh_hem_z + 0.005, side=1), 1),
+                 "hip_circ_cm": round(circ_loop(_gs, hip_z), 1), "waist_circ_cm": round(circ_loop(_gs, tr_top_z - 0.015), 1)}
+    _gs.free()
 tr_report["clipping_ray"] = garment.clipping_report_ray(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01))
 _zmin = zmin_f
 tr_report["body_self_intersections_crotch"] = garment.self_intersections_band(body_final, crotch_z - 0.10, crotch_z + 0.05)
@@ -785,8 +833,13 @@ if RG:
     add("trousers", "rise_cm", RG["rise_cm"], tr_report["rise_cm"])
     add("trousers", "inseam_cm (visible + stacked over the foot)", RG["inseam_cm"], round(tr_report["inseam_cm"] + tr_report["inseam_leftover_cm"], 1))
     add("trousers", "leg_opening_circ_cm", RG["leg_opening_circ_cm"], tr_report["leg_opening_circ_cm"])
+if HG:
+    add("shorts", "inseam_cm", HG["inseam_cm"], sh_report["inseam_cm"])
+    add("shorts", "leg_opening_circ_cm (trousers at that height + extra)", sh_report["leg_opening_target_circ_cm"], sh_report["leg_opening_circ_cm"])
+    add("shorts", "waist_circ_cm", RG["waist_circ_cm"], sh_report["waist_circ_cm"])
+    add("shorts", "hip_circ_cm", RG["hip_circ_cm"], sh_report["hip_circ_cm"])
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report, "trousers": tr_report, **({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
+results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
 report = {"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
@@ -836,6 +889,16 @@ if SG:
     sw_ob.select_set(True)
     bpy.context.view_layer.objects.active = sw_ob
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_sweatshirt.glb"), export_format="GLB", use_selection=True)
+if HG:  # V1.1-05: shorts.glb, same material setup as the trousers
+    sh_ob = bpy.data.objects.new(name + "_shorts", sh_mesh)
+    mat4 = bpy.data.materials.new("shorts"); mat4.use_nodes = True
+    mat4.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(HG.get("colour_srgb", [214, 214, 214]))
+    sh_mesh.materials.append(mat4)
+    bpy.context.scene.collection.objects.link(sh_ob)
+    bpy.ops.object.select_all(action="DESELECT")
+    sh_ob.select_set(True)
+    bpy.context.view_layer.objects.active = sh_ob
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_shorts.glb"), export_format="GLB", use_selection=True)
 for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, same material setup as the crew tee
     _vo = bpy.data.objects.new(f"{name}_tee_{_style}", _vm)
     _mv = bpy.data.materials.new(f"tee_{_style}"); _mv.use_nodes = True
@@ -851,7 +914,8 @@ for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, sam
 import mesh_checks
 report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z,
                                         sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None,
-                                        tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes})
+                                        tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
+                                        shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None)
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))

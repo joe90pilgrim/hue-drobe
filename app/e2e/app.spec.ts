@@ -27,6 +27,8 @@ test('switches outfit and remembers it after a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Next top' }).click();
   await expect(top).toHaveText('None');
   await page.getByRole('button', { name: 'Next bottom' }).click();
+  await expect(bottom).toHaveText('Shorts');
+  await page.getByRole('button', { name: 'Next bottom' }).click();
   await expect(bottom).toHaveText('None');
 
   await page.reload();

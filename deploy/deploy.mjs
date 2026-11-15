@@ -13,7 +13,7 @@ const secret = flags.secret ?? DEFAULTS.secret;
 const user = flags.user ?? DEFAULTS.user;
 
 // The same four files the viewer loads (app/src/viewer.ts).
-const PACK = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'sweatshirt'];
+const PACK = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'sweatshirt'];
 const packDir = here('../private/pack/joe/');
 const missing = PACK.filter((n) => !existsSync(packDir + n + '.glb'));
 if (missing.length) {

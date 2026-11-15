@@ -19,6 +19,6 @@ function runPython(args) {
   return 1;
 }
 
-const reports = runPython([script, folder, '--sweatshirt', '--necklines']);
+const reports = runPython([script, folder, '--sweatshirt', '--necklines', '--shorts']);
 const packTests = runPython(['-m', 'unittest', 'discover', '-s', packDir]);
 process.exit(reports || packTests);

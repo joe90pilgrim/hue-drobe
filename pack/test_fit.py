@@ -35,6 +35,14 @@ class DefaultGarments(unittest.TestCase):
         self.assertEqual(n["v"]["neckline_width_cm"], 21.2)  # 0.125 * 170 = 21.25, rounded to 1 decimal place
         self.assertEqual(n["scoop"]["neckline_width_cm"], 23.4)  # 1.1 times that
 
+    def test_shorts_are_above_the_knee(self):
+        # V1.1-05, length decided by Joe: 23 cm inseam, opening a little wider than the trousers at that height
+        s = fit.default_garments(BODY, CFG)["shorts"]
+        self.assertEqual(s["inseam_cm"], 23)
+        self.assertGreater(s["leg_opening_extra_cm"], 0)
+        self.assertLess(s["inseam_cm"], fit.default_garments(BODY, CFG)["trousers"]["inseam_cm"])
+        self.assertEqual(s["colour_srgb"], CFG["colour_srgb"])
+
     def test_ease_is_positive(self):
         g = fit.default_garments(BODY, CFG)
         self.assertGreater(g["tee"]["chest_circ_cm"], BODY["chest_cm"])

@@ -34,7 +34,8 @@ interface Slot {
 const SLOTS: Slot[] = [
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
   { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
-  { name: 'Bottom', options: ['Trousers', 'None'], garments: { Trousers: 'trousers' } },
+  // Shorts (V1.1-05) are the trousers cut at a 23 cm inseam, so the tops sit over them exactly as over the trousers.
+  { name: 'Bottom', options: ['Trousers', 'Shorts', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts' } },
 ];
 
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */

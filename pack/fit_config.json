@@ -36,5 +36,11 @@
     "hem_above_floor_cm": 4,
     "inside_leg_fraction_of_height": 0.45,
     "leg_opening_fraction_of_hip": 0.40
+  },
+  "shorts": {
+    "_note": "Shorts (V1.1-05): the trouser template with the trousers' ease, cut at a shorter inseam. Length decided by Joe on 15 Nov 2026: above the knee, 23 cm inseam (crotch to hem, the same for every body). The leg opening is the trousers' circumference at that height plus leg_opening_extra_cm, let out over the bottom flare_band_cm only, so above the band the shorts are the trousers' shell and the tops keep their clearance.",
+    "inseam_cm": 23,
+    "leg_opening_extra_cm": 4,
+    "flare_band_cm": 8
   }
 }

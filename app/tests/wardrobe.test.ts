@@ -24,6 +24,7 @@ describe('colourName and autoName', () => {
   it('builds an automatic name from colour and garment', () => {
     expect(autoName('tee', '#1f2a5a')).toBe('Navy tee');
     expect(autoName('trousers', '#000000')).toBe('Black trousers');
+    expect(autoName('shorts', '#1f2a5a')).toBe('Navy shorts');
   });
 });
 
@@ -98,6 +99,9 @@ describe('necklines', () => {
   it('describes an item for the library list', () => {
     expect(itemKind(newItem('tee', '#000000', 1, 'scoop'))).toBe('T-shirt, scoop neck');
     expect(itemKind(newItem('trousers', '#000000', 1))).toBe('Trousers');
+    expect(itemKind(newItem('shorts', '#000000', 1))).toBe('Shorts');
+    expect(meshesOf('shorts')).toEqual(['shorts']);
+    expect(newItem('shorts', '#000000', 1, 'v')).not.toHaveProperty('neckline');
   });
 });
 

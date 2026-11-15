@@ -3,14 +3,14 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** Files of the avatar pack that the viewer loads. Joe's pack is served from private/pack/joe by the dev server only. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'sweatshirt.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'sweatshirt.glb'];
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
 const groupOf = (name: string) => name.split('_')[0];
 const PACK_URL = './pack/joe/';
 
 export interface Viewer {
-  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`) instantly. Works before it has loaded. */
+  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`, `shorts`) instantly. Works before it has loaded. */
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;

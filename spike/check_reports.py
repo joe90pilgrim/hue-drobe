@@ -15,7 +15,10 @@ Stricter than the first version:
 - the other tee necklines (V1.1-04: tee_v, tee_scoop), when the report has them, get exactly the tee's mesh limits too, plus their
   own neckline width and front depth against the fit config. --necklines makes a missing one a failure.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines]
+- shorts (V1.1-05), when the report has them, get exactly the trousers' mesh limits, and every top is checked against them with
+  the tee-with-trousers limit. --shorts makes missing shorts a failure.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts]
 """
 import json, sys, pathlib
 
@@ -61,8 +64,9 @@ for f in reports:
         check(abs(err) <= tol["circumference_cm"], f"{k}: target {m['target']} got {m['achieved']} (error {err:+.1f}, tol {tol['circumference_cm']})")
 
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
-    for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants:
-        lim = "trousers" if g == "trousers" else "tee"  # the sweatshirt and the other necklines are held to the tee's limits
+    shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
+    for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts:
+        lim = "trousers" if g in ("trousers", "shorts") else "tee"  # the sweatshirt and the other necklines are held to the tee's limits, the shorts to the trousers'
         if g not in r:
             check(False, f"{g} missing from report")
             continue
@@ -104,6 +108,11 @@ for f in reports:
         for v in variants:
             n = r["mesh_checks"].get(f"{v}_vs_trousers_intersecting_pairs")
             check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{v}-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+        for top in (("tee", "sweatshirt") + variants) if shorts else ():
+            if top not in r["mesh_checks"]:
+                continue
+            n = r["mesh_checks"].get(f"{top}_vs_shorts_intersecting_pairs")
+            check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{top}-through-shorts intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
         for top in ("tee", "sweatshirt") + variants:
             if top not in r["mesh_checks"]:
                 continue

@@ -10,6 +10,7 @@ run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None) returns a JS
 - with a sweatshirt (MVP-07): the same checks for it as for the tee, and sweatshirt with trousers. It is an alternative top, not a
   layer, so it is not checked against the tee.
 - with tee_variants (V1.1-04, {'tee_v': bmesh, 'tee_scoop': bmesh}): the same checks as for the tee, and each with trousers.
+- with shorts (V1.1-05): the same checks as for the trousers, and every top (tee, sweatshirt, tee variants) with the shorts.
 The build runs it on the exported GLBs (load_glb), which is what the phone shows. Inputs are bmeshes in one coordinate frame. Each is copied and its duplicate vertices merged first, so a mesh read back from
 glTF (which splits vertices at seams) gives the same answers as the in-memory mesh.
 """
@@ -112,7 +113,7 @@ def shoulder_gap(tee, body_tree, hps_z):
             "max_cm": max((b["max"] for b in bands.values()), default=None)}
 
 
-def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None):
+def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=None):
     body, tee, trousers = merged(body), merged(tee), merged(trousers)
     bt, tt, rt = BVHTree.FromBMesh(body), BVHTree.FromBMesh(tee), BVHTree.FromBMesh(trousers)
     garments = [("tee", tee, tt), ("trousers", trousers, rt)]
@@ -125,6 +126,10 @@ def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None):
         vm = merged(vm)
         variants[label] = (vm, BVHTree.FromBMesh(vm))
         garments.append((label, vm, variants[label][1]))
+    if shorts is not None:  # V1.1-05: an alternative bottom, held to the trousers' limits
+        shorts = merged(shorts)
+        sht = BVHTree.FromBMesh(shorts)
+        garments.append(("shorts", shorts, sht))
     floor = min(v.co.z for v in body.verts)  # heights below are reported above the floor
     R = {}
     for label, g, tree in garments:
@@ -138,6 +143,11 @@ def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None):
                     "self_intersections_by_z_cm": si_z, "clearance_to_body_cm": clearance_cm(g, bt)}
     R["tee_vs_trousers_intersecting_pairs"] = len(tt.overlap(rt))
     R["tee"]["shoulder_gap"] = shoulder_gap(tee, bt, hps_z)
+    if shorts is not None:
+        for label, _g, tree in garments:
+            if label not in ("trousers", "shorts"):
+                R[f"{label}_vs_shorts_intersecting_pairs"] = len(tree.overlap(sht))
+        shorts.free()
     if sweatshirt is not None:
         R["sweatshirt_vs_trousers_intersecting_pairs"] = len(st.overlap(rt))
         R["sweatshirt"]["shoulder_gap"] = shoulder_gap(sweatshirt, bt, hps_z)
