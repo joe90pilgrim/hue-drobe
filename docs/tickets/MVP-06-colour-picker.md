@@ -18,4 +18,4 @@ Joe sets the colour of each garment.
 
 ## Done (15 Nov 2026)
 A native colour input in each garment's slot, applied through `Color.set` (sRGB hex, converted to linear), kept per garment in IndexedDB. The e2e test covers picking, the trousers keeping their own colour, and a reload. `npm run check` passes. About 5 minutes of work, started 18:43.
-**Joe's visual sign-off:** pending. Open `npm run dev` on the Pixel 8 and desktop, pick a colour on the tee and check it looks right.
+**Joe's visual sign-off** (15 Nov 2026): **yes**. Ticket closed.
