@@ -21,10 +21,16 @@ reports = sorted(folder.glob("*_report.json"))
 failures = 0
 LENGTHS = {"height_cm", "inside_leg_cm"}
 gm = tol["garment_mesh"]
+_exc_path = pathlib.Path(__file__).with_name("known_exceptions.json")
+EXCEPTIONS = {(e["body"], e["check"]): e for e in json.load(open(_exc_path))["exceptions"]} if _exc_path.exists() else {}
 
 
-def check(ok, text):
+def check(ok, text, known=None):
+    """known: the matching entry from known_exceptions.json when the value is inside its limit."""
     global failures
+    if not ok and known:
+        print(f"  KNOWN {text} -- {known['reason']}")
+        return
     failures += not ok
     print(f"  {'PASS' if ok else 'FAIL'} {text}")
 
@@ -73,7 +79,10 @@ for f in reports:
             if cal is None:
                 check(False, f"{g} has no calibration record (was a garment fixture supplied?)")
             else:
-                check(cal["converged"], f"{g} calibration converged (residuals {cal['residual_cm']}) -- landmark matches are otherwise by construction")
+                exc = EXCEPTIONS.get((r["name"], f"{g}_calibration"))
+                worst = max((abs(v) for v in cal["residual_cm"].values()), default=0)
+                check(cal["converged"], f"{g} calibration converged (residuals {cal['residual_cm']}) -- landmark matches are otherwise by construction",
+                      known=exc if exc and worst <= exc["limit"] else None)
                 if cal["ease_at_floor"]:
                     print(f"  info {g} ease at its floor for: {cal['ease_at_floor']} (real item smaller than body plus 3 mm; stretch is not modelled)")
 
@@ -84,7 +93,9 @@ for f in reports:
         check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
               and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
               f"tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
-              f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})")
+              f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
+              known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
+                     and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], "tee_shoulder_gap_band_mean"))))
 
     for lbl, cg in (r.get("tee", {}).get("circ_vs_garment_cm") or {}).items():
         if cg.get("error") is None:

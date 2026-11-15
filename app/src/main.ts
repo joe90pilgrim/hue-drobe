@@ -1,8 +1,7 @@
 import './style.css';
 import { renderDress } from './screens/dress';
 import { renderQuiz } from './screens/quiz';
-
-type Route = 'dress' | 'colour';
+import { routeFromHash, type Route } from './route';
 
 const screens: Record<Route, { label: string; icon: string; render: (el: HTMLElement) => () => void }> = {
   dress: {
@@ -35,13 +34,8 @@ app.innerHTML = `
 const main = document.getElementById('main')!;
 let cleanup: (() => void) | undefined;
 
-function currentRoute(): Route {
-  const r = location.hash.replace('#/', '');
-  return r === 'colour' ? 'colour' : 'dress';
-}
-
 function show() {
-  const route = currentRoute();
+  const route = routeFromHash(location.hash);
   cleanup?.();
   main.innerHTML = '';
   cleanup = screens[route].render(main);

@@ -6,12 +6,22 @@
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
-    "icons": "node scripts/make-icons.mjs"
+    "icons": "node scripts/make-icons.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run tests",
+    "check:assets": "node scripts/check-assets.mjs",
+    "test:e2e": "playwright test",
+    "check": "npm run typecheck && npm run test && npm run check:assets && npm run test:e2e"
   },
-  "dependencies": { "three": "0.170.0" },
+  "dependencies": {
+    "three": "0.170.0"
+  },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.2",
     "@types/three": "0.170.0",
     "typescript": "5.6.3",
-    "vite": "6.0.7"
+    "vite": "6.0.7",
+    "vitest": "^2.1.8"
   }
 }

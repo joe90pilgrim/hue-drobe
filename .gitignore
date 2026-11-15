@@ -7,3 +7,5 @@ private/
 spike/viewer/public/models/personal/
 spike/vite.log
 spike/out/
+app/test-results/
+app/playwright-report/

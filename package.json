@@ -1,0 +1,7 @@
+{
+  "name": "huedrobe",
+  "private": true,
+  "scripts": {
+    "check": "npm --prefix app run check"
+  }
+}
