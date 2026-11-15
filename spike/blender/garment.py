@@ -210,6 +210,24 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     if neck is not None:  # crew neckline: low at the front, high at the back
         kill = [f for f in g.faces if in_neckline(f.calc_center_median(), neck)]
         bmesh.ops.delete(g, geom=kill, context="FACES_ONLY")
+        # B24: the neckline test stops 12.5 cm in front of the neck centre, so the underside of the chin survives as a
+        # separate island. A tee is one piece: keep the largest connected group of faces and delete the rest.
+        seen, groups = set(), []
+        for f in g.faces:
+            if f in seen:
+                continue
+            stack, grp = [f], []
+            seen.add(f)
+            while stack:
+                x = stack.pop(); grp.append(x)
+                for e in x.edges:
+                    for y in e.link_faces:
+                        if y not in seen:
+                            seen.add(y); stack.append(y)
+            groups.append(grp)
+        if len(groups) > 1:
+            groups.sort(key=len, reverse=True)
+            bmesh.ops.delete(g, geom=[f for grp in groups[1:] for f in grp], context="FACES")
     # smooth the open boundary (neckline) a few times to remove stair-steps
     for it in range(6):
         new_co = {}
