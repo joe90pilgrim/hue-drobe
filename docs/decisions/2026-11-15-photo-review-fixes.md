@@ -29,3 +29,9 @@ Side effects, all measured on Joe's body:
 - The tee hem (photo, 83 cm) now sits about 4 cm above the crotch, so the jeans fork shows below it, as in the photo.
 - The jeans leg opening reads 35.5 cm against 32 cm, and cannot get smaller: the body is already that wide at 7.7 cm above the floor (heel and instep) and the ease is at its floor. Previously it passed only because the hem was wrongly 5 cm higher. Needs a look at how the leg opening is measured near the foot.
 - The trousers template now runs to the sole (`hem_frac=0.0`); the hem plane trims it. Otherwise the shell stopped above the new hem.
+
+## Tee re-measure (later on 2026-11-15)
+
+Joe measured the tee again: pit to pit 54 cm flat, collar bottom to hem 63 cm, collar top to hem 73 cm, collar width 22 cm flat. Applied: chest 108 cm (the old 94 was too small, which is why chest calibration sat at its ease floor; it now converges, residual -0.25 cm), neckline width 22 cm (model 22.3), and front neck drop 10 cm (73 minus 63, an interpretation). Collar bottom to hem reads 55.5 cm against 63, because the hem is still driven by the photo (83 cm). The two cannot both be right; see B7 in `docs/bug-log.md`.
+
+Update: Joe confirmed the collar definitions (top = highest point at the back of the neck, bottom = lowest point at the front) and that the tee does not shrink or ride up. The photo-read hem (83 cm) no longer drives the build. The front hem now comes from collar bottom to hem 63 cm with a 5 cm front neck drop (length 68 cm from the shoulder line). Model: collar bottom to hem 64.1 cm, length 68.9 cm, hem 79.6 cm (photo reading 83 cm, plus or minus 3). The 73 cm is read as a back length, so the back hem is probably about 3.5 cm longer than the front; a curved hem is not modelled.

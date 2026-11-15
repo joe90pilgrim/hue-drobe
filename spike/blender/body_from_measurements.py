@@ -449,7 +449,7 @@ tee_ease = 0.022
 tee_gap = 0.006
 neck_w = (TG or {}).get("neckline_width_cm", 20.0) / 100.0
 neck = {"z": hps_z, "cx": 0.0, "cy": joints_final["joint-neck"].y, "a": neck_w / 2, "b": 0.085, "front": FRONT,
-        "drop_front": 0.075, "drop_back": 0.02}
+        "drop_front": (TG or {}).get("neckline_drop_front_cm", 7.5) / 100.0, "drop_back": 0.02}
 if TG:
     real_hem = hps_z - TG["length_cm"] / 100.0
     if "worn_hem_height_cm" in TG:  # hem height as worn, read off a photo; overrides the flat length
@@ -499,6 +499,8 @@ tee_report["clipping_ray"] = garment.clipping_report_ray(body_final, tee_mesh, v
 tee_report["calibration"] = tee_cal
 tee_report["hem_height_from_hps_cm"] = round((hps_z - gz_min_tee) * 100, 1)
 _top = [v for v in gtee.verts if v.is_boundary and v.co.z > joints_final["joint-neck"].z - 0.10 and abs(v.co.x) < 0.2]
+_nb = [v.co.z for v in gtee.verts if v.is_boundary and abs(v.co.x) < 0.03 and (v.co.y - neck["cy"]) * FRONT > 0 and v.co.z > neck["z"] - 0.2]
+tee_report["front_neck_bottom_to_hem_cm"] = round((min(_nb) - gz_min_tee) * 100, 1) if _nb else None
 tee_report["neckline_width_cm"] = round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None
 tee_report["chest_circ_cm"] = round(tee_chest_circ(gtee), 1) if "chest_cm" in marks else None
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
@@ -541,6 +543,8 @@ if TG:
         add("tee", "length_cm (shoulder to hem)", TG["length_cm"], tee_report["hem_height_from_hps_cm"])
     add("tee", "sleeve_cm", TG["sleeve_cm"], tee_report["sleeve_end_from_shoulder_cm"])
     add("tee", "neckline_width_cm", TG["neckline_width_cm"], tee_report["neckline_width_cm"])
+    if "collar_bottom_to_hem_cm" in TG:
+        add("tee", "collar_bottom_to_hem_cm", TG["collar_bottom_to_hem_cm"], tee_report["front_neck_bottom_to_hem_cm"])
 if RG:
     add("trousers", "waist_circ_cm", RG["waist_circ_cm"], tr_report["waist_circ_cm"])
     add("trousers", "hip_circ_cm", RG["hip_circ_cm"], tr_report["hip_circ_cm"])
