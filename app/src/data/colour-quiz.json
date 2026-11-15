@@ -1,0 +1,298 @@
+{
+  "version": 1,
+  "about": "Original content for Hue-drobe. The model (12 seasons, three traits) is the standard one; the questions, scoring numbers, wording and palettes are written for this app. Edit this file to change the quiz; no code change is needed unless the structure changes.",
+  "traits": {
+    "warmth": { "low": "cool (blue-based)", "high": "warm (yellow-based)" },
+    "value": { "low": "deep", "high": "light" },
+    "chroma": { "low": "soft (muted)", "high": "clear (bright)" }
+  },
+  "questions": [
+    {
+      "id": "wrist-veins",
+      "text": "Look at the inside of your wrist in daylight. What colour are your veins?",
+      "help": "Natural daylight by a window works best. Do not use a lamp.",
+      "answers": [
+        { "id": "blue", "label": "Mostly blue or purple", "scores": { "warmth": -2 } },
+        { "id": "mixed", "label": "A mix, or I cannot tell", "scores": {} },
+        { "id": "green", "label": "Mostly green or olive", "scores": { "warmth": 2 } }
+      ]
+    },
+    {
+      "id": "metal",
+      "text": "Hold a silver item and a gold item against your bare face. Which looks better?",
+      "help": "A spoon, a ring or a piece of foil will do.",
+      "answers": [
+        { "id": "silver", "label": "Silver", "scores": { "warmth": -2 } },
+        { "id": "same", "label": "No real difference", "scores": {} },
+        { "id": "gold", "label": "Gold", "scores": { "warmth": 2 } }
+      ]
+    },
+    {
+      "id": "skin-depth",
+      "text": "How deep is your skin colour when it has not been tanned?",
+      "help": "Think of the skin on the inside of your upper arm.",
+      "answers": [
+        { "id": "very-fair", "label": "Very fair", "scores": { "value": 2 } },
+        { "id": "fair", "label": "Fair to light", "scores": { "value": 1 } },
+        { "id": "medium", "label": "Medium", "scores": {} },
+        { "id": "tan-olive", "label": "Olive, tan or golden-brown", "scores": { "value": -1 } },
+        { "id": "deep", "label": "Deep brown", "scores": { "value": -2 } }
+      ]
+    },
+    {
+      "id": "skin-tone",
+      "text": "Which best describes the tone of your skin?",
+      "answers": [
+        { "id": "pink", "label": "Pink or rosy", "scores": { "warmth": -2 } },
+        { "id": "peach", "label": "Peach, golden or yellowish", "scores": { "warmth": 2 } },
+        { "id": "olive-grey", "label": "Olive, or beige with a green or grey cast", "scores": { "chroma": -1 } },
+        { "id": "unsure", "label": "Hard to say", "scores": {} }
+      ]
+    },
+    {
+      "id": "hair-depth",
+      "text": "What is your natural hair colour?",
+      "help": "Ignore dye. If your hair has gone grey, pick the colour it was in your twenties.",
+      "answers": [
+        { "id": "black", "label": "Black or near-black", "scores": { "value": -2 } },
+        { "id": "dark-brown", "label": "Dark brown", "scores": { "value": -1 } },
+        { "id": "mid-brown", "label": "Medium brown", "scores": {} },
+        { "id": "light-brown", "label": "Light brown or dark blonde", "scores": { "value": 1 } },
+        { "id": "blonde", "label": "Blonde", "scores": { "value": 2 } },
+        { "id": "red", "label": "Red, auburn or ginger", "scores": { "warmth": 2 } }
+      ]
+    },
+    {
+      "id": "hair-tone",
+      "text": "In sunlight, what do you see in your hair?",
+      "answers": [
+        { "id": "golden", "label": "Golden, red or copper glints", "scores": { "warmth": 2 } },
+        { "id": "mixed", "label": "A bit of both, or neither", "scores": {} },
+        { "id": "ash", "label": "Ash, grey-brown or blue-black, with no warm glints", "scores": { "warmth": -2 } }
+      ]
+    },
+    {
+      "id": "eye-colour",
+      "text": "Which best describes your eye colour?",
+      "answers": [
+        { "id": "dark", "label": "Dark brown to black", "scores": { "value": -2 } },
+        { "id": "warm-brown", "label": "Warm brown, amber or golden hazel", "scores": { "warmth": 2 } },
+        { "id": "light-blue", "label": "Light blue or light grey-blue", "scores": { "value": 2, "warmth": -1 } },
+        { "id": "deep-blue", "label": "Deep or bright blue", "scores": { "value": -1, "warmth": -1, "chroma": 1 } },
+        { "id": "green", "label": "Green or clear blue-green", "scores": { "warmth": 1, "chroma": 1 } },
+        { "id": "soft-grey", "label": "Soft grey, grey-green or muted hazel", "scores": { "chroma": -2 } }
+      ]
+    },
+    {
+      "id": "eye-clarity",
+      "text": "How do your eyes look up close?",
+      "help": "Look for how sharp the line is between the coloured part and the white.",
+      "answers": [
+        { "id": "crisp", "label": "Bright and sharp: clear whites, a crisp edge to the colour", "scores": { "chroma": 2 } },
+        { "id": "between", "label": "In between", "scores": {} },
+        { "id": "soft", "label": "Soft and blended: the colour melts into the white", "scores": { "chroma": -2 } }
+      ]
+    },
+    {
+      "id": "contrast",
+      "text": "Compare your hair, skin and eyes. How different are they from each other in depth?",
+      "answers": [
+        { "id": "high", "label": "Strong contrast, such as dark hair with pale skin", "scores": { "chroma": 2 } },
+        { "id": "medium", "label": "Some contrast", "scores": {} },
+        { "id": "low", "label": "Low contrast: all three are close in depth", "scores": { "chroma": -2 } }
+      ]
+    },
+    {
+      "id": "sun",
+      "text": "How does your skin react to the sun?",
+      "answers": [
+        { "id": "burn", "label": "It burns quickly and hardly ever tans", "scores": { "value": 1, "warmth": -1 } },
+        { "id": "freckle", "label": "It freckles and burns, then turns golden", "scores": { "value": 1, "warmth": 1 } },
+        { "id": "golden", "label": "It tans easily to golden or bronze", "scores": { "value": -1, "warmth": 1 } },
+        { "id": "deepens", "label": "It rarely burns and goes deeper", "scores": { "value": -1 } }
+      ]
+    },
+    {
+      "id": "compliments",
+      "text": "A hint rather than a test: which kind of colour have people told you suits you?",
+      "help": "Skip to the middle answer if nobody has ever said.",
+      "answers": [
+        { "id": "soft", "label": "Soft, dusty, muted colours", "scores": { "chroma": -2 } },
+        { "id": "pastel", "label": "Light, delicate colours", "scores": { "value": 2 } },
+        { "id": "none", "label": "Nothing in particular", "scores": {} },
+        { "id": "vivid", "label": "Clear, vivid colours", "scores": { "chroma": 2 } },
+        { "id": "deep", "label": "Deep, rich colours", "scores": { "value": -2 } }
+      ]
+    }
+  ],
+  "seasons": [
+    {
+      "id": "light-spring",
+      "family": "Spring",
+      "name": "Light Spring",
+      "leads": ["value", "warmth"],
+      "target": { "warmth": 0.4, "value": 0.7, "chroma": 0.15 },
+      "description": "Light, warm and delicate. Your colouring is fresh and gentle, with little depth and a touch of gold. Colours that are too heavy or too dark can sit on top of you rather than with you.",
+      "advice": {
+        "flatters": "Light, warm, clear colours such as peach, warm pink, buttercream, fresh leaf green and light aqua. Keep the depth low and the warmth gentle.",
+        "neutrals": "Ivory, cream, light camel, warm sand and soft warm grey. A light, clear navy works where others would wear black.",
+        "careWith": "Black, charcoal, stark white and very dark or dusty colours can overpower you. If you wear them, keep them away from your face."
+      },
+      "palette": ["#F8CBAF", "#F9E0A2", "#C7E0A0", "#93D3C2", "#F4A59B", "#F3B955", "#A8D8E8", "#E9B8CF", "#E8D5B5", "#FFF3DC"]
+    },
+    {
+      "id": "true-spring",
+      "family": "Spring",
+      "name": "True Spring",
+      "leads": ["warmth", "chroma"],
+      "target": { "warmth": 0.8, "value": 0.2, "chroma": 0.4 },
+      "description": "Warm, golden and lively. Warmth is your strongest trait, with colouring that is fairly clear and bright. You look best in colours that feel sunny and fresh.",
+      "advice": {
+        "flatters": "Warm, clear colours such as coral, poppy red, tangerine, sunny yellow, leaf green and turquoise.",
+        "neutrals": "Cream, golden tan, warm brown, camel and a warm navy. Choose these over black and grey.",
+        "careWith": "Cool, dusty or icy colours, such as grey-pink, slate and lavender grey, can make your skin look tired. Black is harsh near the face."
+      },
+      "palette": ["#FF7F50", "#FFC83D", "#7ED04B", "#1FB5A8", "#F26B4F", "#F59E2B", "#4FA3D9", "#C9A66B", "#F5E3B8", "#8B5A2B"]
+    },
+    {
+      "id": "bright-spring",
+      "family": "Spring",
+      "name": "Bright Spring",
+      "leads": ["chroma", "warmth"],
+      "target": { "warmth": 0.35, "value": 0.05, "chroma": 0.8 },
+      "description": "Clear, vivid and a little warm. Your colouring has strong contrast and sparkle. Pure, saturated colours suit you; muted ones can make you look faded.",
+      "advice": {
+        "flatters": "Vivid, clean colours such as bright coral, sunshine yellow, emerald green, bright turquoise and clear blue. Strong colour pairings work well.",
+        "neutrals": "Warm white, clear navy, charcoal brown and a deep, warm grey. Avoid beige that is too soft.",
+        "careWith": "Dusty, greyed or earthy colours such as khaki, taupe and dull mauve. They flatten the contrast that makes you stand out."
+      },
+      "palette": ["#FF5A5F", "#FFD500", "#2ED573", "#00B8C4", "#FF8A00", "#2F7DE1", "#E83E8C", "#7B4DE0", "#FFF6E0", "#2B4A6F"]
+    },
+    {
+      "id": "light-summer",
+      "family": "Summer",
+      "name": "Light Summer",
+      "leads": ["value", "warmth"],
+      "target": { "warmth": -0.4, "value": 0.7, "chroma": -0.15 },
+      "description": "Light, cool and soft-edged. Your colouring is gentle, with little depth and a cool, airy feel. Light colours with a hint of grey look natural on you.",
+      "advice": {
+        "flatters": "Light, cool colours such as soft pink, powder blue, lavender, pale mint and light rose.",
+        "neutrals": "Soft white, light grey, blue-grey, rose-beige and a soft navy. Mid grey can stand in for black.",
+        "careWith": "Black, orange, rust and very heavy, dark colours. They can swamp your colouring. Strong warm colours look out of place."
+      },
+      "palette": ["#F6C6D3", "#CFE3F3", "#D8CBE8", "#BFE3D6", "#F4D5C8", "#9DB8D9", "#C99AB8", "#A8C5BD", "#E8E4EC", "#8C9BB0"]
+    },
+    {
+      "id": "true-summer",
+      "family": "Summer",
+      "name": "True Summer",
+      "leads": ["warmth", "chroma"],
+      "target": { "warmth": -0.8, "value": 0.15, "chroma": -0.35 },
+      "description": "Cool, soft and balanced. Coolness is your strongest trait, with colouring that is moderate in depth and gently muted. Cool colours with a little grey in them look best.",
+      "advice": {
+        "flatters": "Cool, slightly muted colours such as rose, dusty blue, periwinkle, blue-green and soft raspberry.",
+        "neutrals": "Cool grey, slate, blue-grey, cool navy and a soft white. Use grey-based browns rather than warm ones.",
+        "careWith": "Golden yellow, orange, tomato red and warm browns. They add a warmth you do not have and can make you look sallow."
+      },
+      "palette": ["#D98AA6", "#7FA3C7", "#9C8FC4", "#6FA39B", "#B76E8E", "#5E7FA8", "#A7B7C9", "#C8A2C8", "#E9E6EE", "#5B6B7F"]
+    },
+    {
+      "id": "soft-summer",
+      "family": "Summer",
+      "name": "Soft Summer",
+      "leads": ["chroma", "warmth"],
+      "target": { "warmth": -0.3, "value": -0.05, "chroma": -0.8 },
+      "description": "Muted, gentle and slightly cool. Your colouring blends together with low contrast. Greyed, smoky colours suit you, while very bright or very stark ones can look harsh.",
+      "advice": {
+        "flatters": "Soft, greyed colours such as dusty rose, misty blue, heather, grey-sage and mauve.",
+        "neutrals": "Stone, soft taupe, grey-brown, denim grey and charcoal blue. Use these in place of black or white.",
+        "careWith": "Neon or very bright colours, pure black and stark white. They can drown out your soft colouring."
+      },
+      "palette": ["#B88B9C", "#8FA5B5", "#9A93B3", "#8AA89A", "#A9788C", "#6E8196", "#B5B0A8", "#C9B2B0", "#D9D3CB", "#5F6E78"]
+    },
+    {
+      "id": "soft-autumn",
+      "family": "Autumn",
+      "name": "Soft Autumn",
+      "leads": ["chroma", "warmth"],
+      "target": { "warmth": 0.3, "value": -0.05, "chroma": -0.8 },
+      "description": "Muted, earthy and slightly warm. Your colouring is gentle and blended, with a warm cast. Softened, natural colours suit you better than bold ones.",
+      "advice": {
+        "flatters": "Soft, warm, earthy colours such as terracotta, wheat, sage, muted jade, clay rose and moss.",
+        "neutrals": "Oatmeal, tan, soft cocoa, warm taupe and olive grey. Choose these rather than black or pure white.",
+        "careWith": "Neon, icy and very bright colours, and stark black. They fight your softness and make your skin look dull."
+      },
+      "palette": ["#C9967A", "#D6B77A", "#A3A67A", "#7F9E8A", "#B9806A", "#C9A58F", "#8C8A6B", "#D8C9A8", "#9B7B63", "#6D8B8A"]
+    },
+    {
+      "id": "true-autumn",
+      "family": "Autumn",
+      "name": "True Autumn",
+      "leads": ["warmth", "chroma"],
+      "target": { "warmth": 0.8, "value": -0.2, "chroma": -0.35 },
+      "description": "Warm, rich and earthy. Warmth is your strongest trait, with colouring that is medium to deep and a little muted. Colours that look like spices, leaves and gold suit you.",
+      "advice": {
+        "flatters": "Warm, rich colours such as rust, mustard, olive, deep teal, brick, pumpkin and fern green.",
+        "neutrals": "Cream, saddle brown, gold khaki, camel and dark olive. Brown usually does the job of black.",
+        "careWith": "Cool pastels, icy colours, blue-based pink and stark black or white. They can make your warm colouring look flat."
+      },
+      "palette": ["#C65D2E", "#D9A21B", "#7C8F2F", "#2F7F73", "#A8442F", "#E08A3C", "#8A5A2B", "#C2A56A", "#F0E0BE", "#5A6B2A"]
+    },
+    {
+      "id": "deep-autumn",
+      "family": "Autumn",
+      "name": "Deep Autumn",
+      "leads": ["value", "warmth"],
+      "target": { "warmth": 0.4, "value": -0.7, "chroma": -0.1 },
+      "description": "Deep, warm and rich. Your colouring has real depth, with a warm cast. Dark, saturated, earthy colours look natural on you, and pale ones can look washed out.",
+      "advice": {
+        "flatters": "Deep, warm colours such as dark brick, burnt copper, dark olive, deep teal, wine and antique gold.",
+        "neutrals": "Espresso, bronze, forest green, warm cream and dark chocolate. Warm black works if you want it.",
+        "careWith": "Pastels, icy colours and anything very light or cool. They lack the depth to hold their own against your colouring."
+      },
+      "palette": ["#8B2E1F", "#B5651D", "#556B2F", "#0F5C57", "#6B2D3A", "#C28B2C", "#4A2F20", "#8C6A3F", "#E6D3B0", "#2E3B2B"]
+    },
+    {
+      "id": "deep-winter",
+      "family": "Winter",
+      "name": "Deep Winter",
+      "leads": ["value", "warmth"],
+      "target": { "warmth": -0.4, "value": -0.7, "chroma": 0.15 },
+      "description": "Deep, cool and striking. Your colouring is dark with a cool cast and strong contrast. Dark, rich colours suit you well, while pale or warm ones can look weak.",
+      "advice": {
+        "flatters": "Deep, cool colours such as burgundy, deep blue, emerald, plum, deep raspberry and petrol.",
+        "neutrals": "Black, blue-black, charcoal, cool slate and icy white. Black is usually safe for you.",
+        "careWith": "Soft pastels, dusty colours and warm shades such as orange and mustard. They lack the depth and coolness your colouring needs."
+      },
+      "palette": ["#7A1F3D", "#0B3D5C", "#1F6B4F", "#4B2A6E", "#B0194A", "#0E4D64", "#1B1B2F", "#5E6B7A", "#EDEDF2", "#8E2A5C"]
+    },
+    {
+      "id": "true-winter",
+      "family": "Winter",
+      "name": "True Winter",
+      "leads": ["warmth", "chroma"],
+      "target": { "warmth": -0.8, "value": -0.2, "chroma": 0.4 },
+      "description": "Cool, clear and high in contrast. Coolness is your strongest trait. Pure, cool colours and sharp contrasts, such as black with white, look good on you.",
+      "advice": {
+        "flatters": "Cool, clear colours such as true red, royal blue, emerald, royal purple, cool pink and icy tones.",
+        "neutrals": "Black, navy, pure white, cool grey and silver grey. Strong contrast between light and dark works well.",
+        "careWith": "Warm, earthy or muted colours such as mustard, rust, khaki and peach. They look dull against your cool colouring."
+      },
+      "palette": ["#D0114F", "#0A5CAD", "#0E8C5E", "#6A2C91", "#E8508F", "#12263F", "#0F8FA0", "#9AA5B5", "#FFFFFF", "#1A1A1A"]
+    },
+    {
+      "id": "bright-winter",
+      "family": "Winter",
+      "name": "Bright Winter",
+      "leads": ["chroma", "warmth"],
+      "target": { "warmth": -0.35, "value": 0.0, "chroma": 0.8 },
+      "description": "Vivid, cool and sharp. Your colouring is clear and high in contrast, with a cool lean. Intense, electric colours suit you, while muted ones can make you look faded.",
+      "advice": {
+        "flatters": "Vivid, cool colours such as vivid raspberry, electric blue, jade, vivid violet, hot pink and cherry red.",
+        "neutrals": "Ink black, optic white, charcoal and a clear, dark navy. Icy tints are good for lighter pieces.",
+        "careWith": "Muted, dusty or earthy colours such as khaki, beige and soft taupe. They dim the clarity that makes your colouring striking."
+      },
+      "palette": ["#E0115F", "#1F4FD8", "#00A878", "#8E2DE2", "#FF3D8B", "#00B8D9", "#D90429", "#F5F7FF", "#101820", "#C6E8F5"]
+    }
+  ]
+}
