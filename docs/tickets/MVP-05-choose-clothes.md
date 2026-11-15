@@ -19,4 +19,4 @@ Joe clicks through the pre-defined clothes on his avatar.
 
 ## Done (15 Nov 2026)
 Top (T-shirt/None) and Bottom (Trousers/None) switch instantly by toggling garment visibility, with the outfit saved in IndexedDB. Layer stays disabled until MVP-07. `npm run check` passes, with a new e2e test that switches outfit and reloads. About 10 minutes of work.
-**Awaiting Joe's visual sign-off** (no body showing through, front, side and back, all four combinations).
+**Joe's visual sign-off** (15 Nov 2026, all four combinations, front, side and back): **yes**. Ticket closed.
