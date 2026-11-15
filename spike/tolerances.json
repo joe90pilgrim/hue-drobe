@@ -10,7 +10,9 @@
     "tee_pieces": 1,
     "tee_openings": 4,
     "trousers_pieces": 1,
-    "trousers_openings": 3
+    "trousers_openings": 3,
+    "tee_shoulder_gap_band_mean_max_cm": 0.5,
+    "tee_shoulder_gap_max_cm": 1.0
   },
   "garment_landmark_cm": 2.0,
   "phone_min_fps": 30,

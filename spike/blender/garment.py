@@ -133,12 +133,20 @@ def canonical_faces(g):
 
 
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
-              extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None):
+              extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
+    settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
+    shoulder joints plus 3 cm), fade the ease to min_gap where the body faces up and settle the cloth onto the body, so it
+    rests on the shoulders instead of floating by the full ease (B23). Chest, bust and sleeves keep their ease.
     Returns (mesh, list of body vertex ids still covered)."""
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
+    if settle_shoulders and neck is not None:
+        _sx = max(abs(joints["joint-l-shoulder"].x), abs(joints["joint-r-shoulder"].x)) + 0.03
+        in_shoulders = lambda p: p.z > neck["z"] - 0.10 and abs(p.x) < _sx
+    else:
+        in_shoulders = lambda p: False
     extra_bvh = None
     extra_verts = []
     if extra_mesh is not None:  # an inner garment the new one must sit over
@@ -165,7 +173,11 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         loop = []
         for v in f.verts:
             if v.index not in vmap:
-                nv = g.verts.new(v.co + v.normal * (ease(v.co.z) if callable(ease) else ease))
+                e = ease(v.co.z) if callable(ease) else ease
+                if in_shoulders(v.co) and e > min_gap:
+                    t = min(1.0, max(0.0, (v.normal.z - 0.3) / 0.5))
+                    e += (min_gap - e) * t * t * (3 - 2 * t)
+                nv = g.verts.new(v.co + v.normal * e)
                 nv[layer] = v.index + 1
                 vmap[v.index] = nv
             loop.append(vmap[v.index])
@@ -239,6 +251,25 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         for v, c in new_co.items():
             v.co = c
     push_out()
+    if settle_shoulders and neck is not None:
+        # settle: smoothing bridges the hollow between neck and shoulder point, so cloth floats there. In the shoulders, where
+        # the body or the cloth faces up, draw the cloth down onto the body (at min_gap), blended by how much it faces up. The
+        # cloth's own normal matters at the base of the neck, where the body turns sideways but the cloth bridging it faces up.
+        for _settle in range(6):  # normals change as the cloth settles, so repeat
+            g.normal_update()
+            for v in g.verts:
+                if not in_shoulders(v.co):
+                    continue
+                loc, nor, fi, dist = nearest(body_bvh, v.co)
+                if loc is None:
+                    continue
+                t = min(1.0, max(0.0, (max(nor.z, v.normal.z) - 0.3) / 0.5))
+                t = t * t * (3 - 2 * t)
+                if neck is not None and v.is_boundary and abs(v.co.x) < neck["a"] + 0.03:
+                    t = 1.0  # the neckline edge: a crew neck's ribbing lies against the body
+                if t > 0.0:
+                    v.co = v.co.lerp(loc + nor * min_gap, t)
+            push_out()
 
     # straight hem
     # bisect interpolates the source-vertex layer on the verts it creates, which gives meaningless indices; mark them as

@@ -81,7 +81,10 @@ for f in reports:
         n = r["mesh_checks"]["tee_vs_trousers_intersecting_pairs"]
         check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"tee-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
         sg = r["mesh_checks"]["tee"]["shoulder_gap"]
-        print(f"  info tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm, max {sg['max_cm']} cm (limit comes with task 3)")
+        check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
+              and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
+              f"tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
+              f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})")
 
     if need_garments:
         lm = r.get("garment_landmarks_vs_real", [])
