@@ -17,4 +17,5 @@ Joe sees himself in the app and can turn the avatar round.
 
 ## Done, awaiting sign-off (15 Nov 2026)
 Dress screen now loads Joe's body, tee and trousers from the pack (**744 KB**, well under 15 MB) with touch and mouse rotate and zoom; `?debug` shows FPS and pack size (about 60 fps on a desktop browser). The dev and preview servers serve `private/pack/joe/` at `/pack/joe/`; it is never copied into a build (`dist` has no `.glb`). `npm run check` passes. About 20 minutes of work.
-**Still needed from Joe:** frame rate on the Pixel 8 (`npm run dev`, open with `?debug`), and the visual sign-off (front and side, yes or no, notes here): _pending_.
+**Pixel 8 (15 Nov 2026, served over Wi-Fi with `npm run dev`, `?debug`):** 60 fps, pack 744 KB. Both performance criteria met.
+**Joe's visual sign-off** (front and side, yes or no, notes): _pending_.
