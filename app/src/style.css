@@ -107,3 +107,17 @@ button { font-family: inherit; }
 
 .hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }
 .stage-hint[hidden] { display: none; }
+
+.wardrobe { padding: 8px 12px; }
+.w-list { list-style: none; margin: 0; padding: 0; }
+.w-item { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.w-item:last-child { border-bottom: 0; }
+.w-wear { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
+.w-swatch { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line-strong); }
+.w-text { display: flex; flex-direction: column; min-width: 0; }
+.w-name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.w-sub { font-size: 12px; color: var(--muted); }
+.w-item > button:not(.w-wear) { min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--card); color: var(--ink); font-size: 13px; }
+.w-name-input { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; font: inherit; font-size: 15px; }
+.slot-save { align-self: flex-start; min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--card); color: var(--ink); font-size: 12px; }
+.slot-save:disabled { opacity: .5; }

@@ -6,8 +6,8 @@ Every open implementation decision across the roadmap tickets, by version. Tick 
 
 - ~~**V1.1-01** Favourite colours in the picker: Can favourites include colours from outside your season's palette?~~ Decided 15 Nov 2026: yes, palette colours are marked as such.
 - ~~**V1.1-01** Favourite colours in the picker: Is there a limit on the number of favourites?~~ Decided 15 Nov 2026: no limit; the picker shows the first 12 and a 'more' option.
-- **V1.1-02** Saved clothes library: Naming: required, or auto-named ('Navy tee') and editable? Recommendation: auto-named from the colour and garment, editable.
-- **V1.1-02** Saved clothes library: Where does the library live in the app's navigation? Check against the concept designs.
+- ~~**V1.1-02** Saved clothes library: Naming: required, or auto-named ('Navy tee') and editable?~~ Decided 15 Nov 2026: auto-named from the colour and garment, editable.
+- ~~**V1.1-02** Saved clothes library: Where does the library live in the app's navigation?~~ Decided 15 Nov 2026: a Wardrobe tab, as in the concept designs.
 - **V1.1-03** Preset outfits: What does 'preset' mean? (a) outfits you save yourself, (b) starter outfits that come with the app, or (c) both. This ticket assumes (a). Starter outfits would need content from you.
 - **V1.1-03** Preset outfits: Should applying an outfit replace everything on the avatar, or only the slots the outfit fills? Recommendation: replace everything.
 - **V1.1-04** Other t-shirt necklines: Which necklines? Suggested: V-neck and scoop. Others such as henley (buttons) or polo (collar) are new geometry and would move to v3.

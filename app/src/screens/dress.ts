@@ -9,6 +9,7 @@ import {
   saveFavourites,
   type Favourite,
 } from '../favourites';
+import { GARMENTS, loadItems, newItem, saveItems, type GarmentId } from '../wardrobe';
 
 interface Slot {
   name: string;
@@ -42,6 +43,7 @@ export function renderDress(el: HTMLElement): () => void {
               <input type="color" class="swatch" aria-label="${s.name} colour" value="${DEFAULT_COLOUR}">
               <button aria-label="Next ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&rsaquo;</button>
             </div>
+            <button type="button" class="slot-save" data-save="${s.name}">Save</button>
           </div>`,
         ).join('')}
       </div>
@@ -95,7 +97,8 @@ export function renderDress(el: HTMLElement): () => void {
     for (const [opt, g] of Object.entries(slot.garments)) viewer.setGarment(g, outfit[slot.name] === opt);
     const g = garmentOf(slot);
     const picker = pickerOf(slot);
-    picker.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
+    picker.disabled = !g;
+    el.querySelector<HTMLButtonElement>(`[data-save="${slot.name}"]`)!.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
     picker.value = (g && colours[g]) || DEFAULT_COLOUR;
     renderFavs();
   };
@@ -134,6 +137,16 @@ export function renderDress(el: HTMLElement): () => void {
       colours[g] = picker.value;
       viewer.setColour(g, picker.value); // applies straight away
       renderFavs();
+    });
+    el.querySelector<HTMLButtonElement>(`[data-save="${s.name}"]`)!.addEventListener('click', async (e) => {
+      const g = garmentOf(s) as GarmentId | undefined;
+      if (!g || !(g in GARMENTS)) return;
+      const btn = e.currentTarget as HTMLButtonElement;
+      const items = await loadItems();
+      const colour = picker.value.toLowerCase();
+      if (!items.some((i) => i.garment === g && i.colour === colour)) await saveItems([...items, newItem(g, colour)]);
+      btn.textContent = 'Saved';
+      setTimeout(() => (btn.textContent = 'Save'), 1500);
     });
     picker.addEventListener('change', () => void kvPut('colours', { ...colours }));
 

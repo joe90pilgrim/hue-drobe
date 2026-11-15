@@ -1,6 +1,7 @@
-export type Route = 'dress' | 'colour';
+export type Route = 'dress' | 'wardrobe' | 'colour';
 
 /** Maps a location hash such as "#/colour" to a screen. Anything unknown is the Dress screen. */
 export function routeFromHash(hash: string): Route {
-  return hash.replace('#/', '') === 'colour' ? 'colour' : 'dress';
+  const r = hash.replace('#/', '');
+  return r === 'colour' || r === 'wardrobe' ? r : 'dress';
 }
