@@ -133,12 +133,15 @@ def canonical_faces(g):
 
 
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
-              extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False):
+              extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
+              fork_z=None, fork_gap=0.0015):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
     shoulder joints plus 3 cm), fade the ease to min_gap where the body faces up and settle the cloth onto the body, so it
     rests on the shoulders instead of floating by the full ease (B23). Chest, bust and sleeves keep their ease.
+    fork_z (trousers): below this height (crotch plus 3 cm), a vertex whose source body vertex is on the left leg stays
+    at least fork_gap left of the centre plane, and likewise on the right, so the two leg shells cannot cross (B1).
     Returns (mesh, list of body vertex ids still covered)."""
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
@@ -203,6 +206,10 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     d2 = (v.co - sv.co).dot(sv.normal)
                     if d2 < min_gap:
                         v.co += sv.normal * (min_gap - d2)
+            if fork_z is not None and v.co.z < fork_z and 0 <= si < len(bm.verts):
+                sx = bm.verts[si].co.x
+                if abs(sx) > 0.005 and v.co.x * (1.0 if sx > 0 else -1.0) < fork_gap:
+                    v.co.x = fork_gap if sx > 0 else -fork_gap
             if extra_bvh is not None:
                 loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:

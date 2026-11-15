@@ -420,7 +420,7 @@ if RG:
 
     for it in range(9):
         tr_mesh, tr_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=ease_fn, min_gap=tr_gap, hem_z=tr_hem_z,
-                                             sleeve_t=None, top_z=tr_top_z)
+                                             sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
         gt = bmesh.new()
         gt.from_mesh(tr_mesh)
         got = {"hem": circ_loop(gt, tr_hem_z + 0.01, side=1), "hip": circ_loop(gt, hip_z),
@@ -439,7 +439,7 @@ if RG:
     tr_ease = ease_fn
 else:
     tr_mesh, tr_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=tr_ease, min_gap=tr_gap, hem_z=tr_hem_z,
-                                         sleeve_t=None, top_z=tr_top_z)
+                                         sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
 
 # --- tee (built over the trousers)
 tee_hem_z = zmin_f + 0.49 * H_f
