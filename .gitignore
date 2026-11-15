@@ -10,3 +10,4 @@ spike/out/
 app/test-results/
 app/playwright-report/
 pack/out/
+deploy/out/

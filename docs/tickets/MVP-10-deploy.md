@@ -17,3 +17,7 @@ Joe opens the app on his phone from anywhere, behind a password.
 - Opening the URL asks for the password; the wrong password gets nothing, including the avatar files.
 - Joe installs the app on the Pixel 8 from the live URL and it works offline afterwards.
 - No password or personal file appears in the repo.
+
+## Built, not yet deployed (15 Nov 2026)
+Added `deploy/`: a dependency-free Node server with basic auth, `set-password.mjs` (password to Secret Manager from a hidden prompt), `deploy.mjs` (build, add the pack from `private/`, `gcloud run deploy`) and a README. Tested locally in Chromium: no or wrong password gets 401 on every path including the avatar files; installability errors none; the service worker installs behind auth; with the server stopped, the app and all four avatar files load from cache. `npm run check` passes. `gcloud` and Docker are not on this machine, so the real deploy, the Pixel 8 install and the live offline check are still for Joe; the ticket stays open until then. About 25 minutes of work.
+Two traps fixed: the manifest link needs `crossorigin="use-credentials"`, and the service worker now caches the avatar pack (it was never cached before, so the avatar would not load offline).

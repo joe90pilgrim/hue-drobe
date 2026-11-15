@@ -11,4 +11,4 @@ npm run preview    # serve the built app (needed to test install and offline)
 npm run icons      # regenerate the placeholder icons in public/
 ```
 
-Install and offline use only work from a build (`preview`), not `dev`. On a phone they also need HTTPS or localhost; MVP-10 covers that.
+Install and offline use only work from a build (`preview`), not `dev`. On a phone they also need HTTPS or localhost; see `deploy/README.md` for the Cloud Run deploy.
