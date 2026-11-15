@@ -24,6 +24,20 @@ export async function kvGet<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+export async function kvDelete(key: string): Promise<void> {
+  try {
+    const db = await openDb();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction('kv', 'readwrite');
+      tx.objectStore('kv').delete(key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 /** Resolves once the write has committed, so a reload straight after will not lose it. */
 export async function kvPut(key: string, value: unknown): Promise<void> {
   try {
