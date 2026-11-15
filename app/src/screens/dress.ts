@@ -1,4 +1,5 @@
 import { createViewer } from '../viewer';
+import { kvGet, kvPut } from '../store';
 
 interface Slot {
   name: string;
@@ -13,36 +14,6 @@ const SLOTS: Slot[] = [
 
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
 const DEFAULT_COLOUR = '#d6d6d6';
-
-const DB = 'huedrobe';
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const r = indexedDB.open(DB, 1);
-    r.onupgradeneeded = () => r.result.createObjectStore('kv');
-    r.onsuccess = () => resolve(r.result);
-    r.onerror = () => reject(r.error);
-  });
-}
-async function kvGet<T>(key: string, fallback: T): Promise<T> {
-  try {
-    const db = await openDb();
-    return await new Promise((resolve) => {
-      const q = db.transaction('kv').objectStore('kv').get(key);
-      q.onsuccess = () => resolve((q.result as T) ?? fallback);
-      q.onerror = () => resolve(fallback);
-    });
-  } catch {
-    return fallback;
-  }
-}
-async function kvPut(key: string, value: unknown): Promise<void> {
-  try {
-    const db = await openDb();
-    db.transaction('kv', 'readwrite').objectStore('kv').put(value, key);
-  } catch {
-    /* storage unavailable: the choice just isn't remembered */
-  }
-}
 
 export function renderDress(el: HTMLElement): () => void {
   el.innerHTML = `

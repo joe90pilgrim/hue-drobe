@@ -15,3 +15,7 @@ Joe takes the quiz in the app and gets his season and general advice.
 ## Acceptance criteria
 - The end-to-end test completes the quiz and sees a result.
 - **Joe's visual sign-off** on the quiz and result screens, on phone and desktop.
+
+## Done (15 Nov 2026)
+Quiz flow in `app/src/screens/quiz.ts`: one question at a time with progress, Back and Next, then the season, its palette, the three advice texts and a Retake button. The answers are saved in IndexedDB (`store.ts`, shared with the Dress screen) and re-scored on return. `app/e2e/quiz.spec.ts` completes the quiz, checks Back, reloads and retakes; `npm run check` passes. Started 19:12.
+**Joe's visual sign-off:** pending, on phone and desktop.
