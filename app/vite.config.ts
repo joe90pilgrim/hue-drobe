@@ -1,4 +1,23 @@
+import { createReadStream, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
+
+// Dev and preview only: serves Joe's private avatar pack at /pack/joe/. It is never copied into a build.
+function servePrivatePack(): Plugin {
+  const root = fileURLToPath(new URL('../private/pack/joe/', import.meta.url));
+  const handler = (req: { url?: string }, res: any, next: () => void) => {
+    const m = /^\/pack\/joe\/(body|tee|trousers)\.glb$/.exec((req.url ?? '').split('?')[0]);
+    const file = m && root + m[1] + '.glb';
+    if (!file || !existsSync(file)) return next();
+    res.setHeader('Content-Type', 'model/gltf-binary');
+    createReadStream(file).pipe(res);
+  };
+  return {
+    name: 'huedrobe-private-pack',
+    configureServer: (s) => void s.middlewares.use(handler),
+    configurePreviewServer: (s) => void s.middlewares.use(handler),
+  };
+}
 
 // Writes dist/sw.js with the list of built files to precache, so the app opens offline.
 function precacheServiceWorker(): Plugin {
@@ -38,5 +57,5 @@ self.addEventListener('fetch', (e) => {
 
 export default defineConfig({
   base: './',
-  plugins: [precacheServiceWorker()],
+  plugins: [servePrivatePack(), precacheServiceWorker()],
 });

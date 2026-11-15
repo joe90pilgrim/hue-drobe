@@ -48,3 +48,6 @@ button { font-family: inherit; }
   .rail { flex-basis: 220px; }
   .quiz { max-width: 560px; }
 }
+
+.hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }
+.stage-hint[hidden] { display: none; }
