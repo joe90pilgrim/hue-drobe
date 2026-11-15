@@ -55,6 +55,23 @@ def body_bm(h):
     return bm
 
 
+def neckline_drop(x, y, neck):
+    """How far below the highest-point-shoulder height the crew neckline sits at (x, y): deepest at the front centre,
+    shallow at the back, zero at the shoulder ends. None if (x, y) is outside the neck opening."""
+    a, b = neck["a"], neck["b"]
+    if abs(x) >= a or abs(y - neck["cy"]) > b + 0.04:
+        return None
+    u = (y - neck["cy"]) * neck["front"] / b
+    t = max(0.0, min(1.0, (u + 1.0) / 2.0))
+    t = t * t * (3 - 2 * t)
+    return (neck["drop_back"] + (neck["drop_front"] - neck["drop_back"]) * t) * math.sqrt(1.0 - (x / a) ** 2)
+
+
+def in_neckline(p, neck, margin=0.0):
+    d = neckline_drop(p.x, p.y, neck)
+    return d is not None and p.z > neck["z"] - d - margin
+
+
 def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.95):
     """Choose body faces forming a short-sleeve tee on the reference body. Returns the set of face indices."""
     j = joint_positions(ref_h, JOINTS)
@@ -98,11 +115,23 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
     extra_bvh = None
+    extra_verts = []
     if extra_mesh is not None:  # an inner garment the new one must sit over
         eb = bmesh.new()
         eb.from_mesh(extra_mesh)
+        # Fade the inner garment's top rim into the body surface, so its waistband edge does not push bumps into the outer garment
+        zt = max(v.co.z for v in eb.verts)
+        for v in eb.verts:
+            tt = (v.co.z - (zt - 0.05)) / 0.05
+            if tt > 0.0:
+                tt = min(1.0, tt)
+                tt = tt * tt * (3 - 2 * tt)
+                loc_b = body_bvh.find_nearest(v.co)[0]
+                if loc_b is not None:
+                    v.co = v.co.lerp(loc_b, tt)
         eb.normal_update()
         extra_bvh = BVHTree.FromBMesh(eb)
+        extra_verts = [v.co.copy() for v in eb.verts]
     g = bmesh.new()
     layer = g.verts.layers.int.new("bodyidx")
     vmap = {}
@@ -153,12 +182,8 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             v.co = c
         push_out()
 
-    if neck is not None:  # crew neckline: remove shell inside an ellipse around the neck
-        kill = []
-        for f in g.faces:
-            c = f.calc_center_median()
-            if c.z > neck["z"] - 0.12 and ((c.x - neck["cx"]) / neck["a"]) ** 2 + ((c.y - neck["cy"]) / neck["b"]) ** 2 < 1.0:
-                kill.append(f)
+    if neck is not None:  # crew neckline: low at the front, high at the back
+        kill = [f for f in g.faces if in_neckline(f.calc_center_median(), neck)]
         bmesh.ops.delete(g, geom=kill, context="FACES_ONLY")
     # smooth the open boundary (neckline) a few times to remove stair-steps
     for it in range(6):
@@ -188,11 +213,27 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         a, b = segs[key]
         d = (b - a).normalized()
         pc = a + (b - a) * sleeve_t
-        geom = list(g.verts) + list(g.edges) + list(g.faces)
-        bmesh.ops.bisect_plane(g, geom=geom, plane_co=pc, plane_no=d)
-        kill = [v for v in g.verts if _classify(v.co, segs, radius) in (key, "lfo" if side == "l" else "rfo")
-                and (v.co - pc).dot(d) > 1e-4]
-        bmesh.ops.delete(g, geom=kill, context="VERTS")
+        # No plane bisect (it leaves sliver triangles that read as frayed edges): remove whole arm faces beyond the cut,
+        # then lay the new open edge flat on the cut plane.
+        arm = (key, "lfo" if side == "l" else "rfo")
+        kill = [f for f in g.faces if _classify(f.calc_center_median(), segs, radius) in arm
+                and (f.calc_center_median() - pc).dot(d) > 0.0]
+        bmesh.ops.delete(g, geom=kill, context="FACES")
+        loose = [v for v in g.verts if not v.link_faces]
+        bmesh.ops.delete(g, geom=loose, context="VERTS")
+        ring = [v for v in g.verts if v.is_boundary and _seg_dist(v.co, a, b + d * 0.25)[0] < 0.09
+                and abs((v.co - pc).dot(d)) < 0.03]
+        for v in ring:
+            v.co -= d * (v.co - pc).dot(d)
+        # a few passes of smoothing along the ring itself, then re-flatten, so the edge is a clean loop
+        for _ in range(4):
+            new_co = {}
+            for v in ring:
+                nb = [e.other_vert(v) for e in v.link_edges if e.is_boundary and e.other_vert(v) in ring]
+                if len(nb) == 2:
+                    new_co[v] = v.co.lerp((nb[0].co + nb[1].co) / 2, 0.5)
+            for v, c in new_co.items():
+                v.co = c - d * (c - pc).dot(d)
     if extend_hem_to is not None and hem_z is not None and extend_hem_to < hem_z - 1e-4:
         # hanging tube below the crotch: extrude the hem loop straight down, then keep it clear of the body and trousers
         edges = [e for e in g.edges if e.is_boundary and all(abs(v.co.z - hem_z) < 3e-4 for v in e.verts)]
@@ -202,6 +243,28 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                 x.co.z = extend_hem_to
         bmesh.ops.recalc_face_normals(g, faces=list(g.faces))
         push_out()
+    if extra_bvh is not None:
+        # inner garment poking through the outer one: push the nearest outer vertices out until it is covered with a margin
+        g_floor = min(v.co.z for v in g.verts) + 0.03  # below this the outer hem edge is the nearest cloth, which says nothing
+        for _ in range(12):
+            g.normal_update()
+            g.faces.ensure_lookup_table()
+            outer = BVHTree.FromBMesh(g)
+            moved = 0
+            for p in extra_verts:
+                if p.z < g_floor:
+                    continue
+                loc3, nor3, fi3, d3 = outer.find_nearest(p)
+                if loc3 is None or d3 > 0.05:
+                    continue
+                s_ = (p - loc3).dot(nor3)
+                if s_ > -0.0015:
+                    need = s_ + 0.003
+                    for fv in g.faces[fi3].verts:
+                        fv.co += nor3 * need * 0.6
+                    moved += 1
+            if not moved:
+                break
     loose = [v for v in g.verts if not v.link_faces]
     bmesh.ops.delete(g, geom=loose, context="VERTS")
     # orientation guard: recalc_face_normals can flip an open mesh as a whole, so check the cloth faces point away from the body

@@ -13,7 +13,9 @@ scene.background = new THREE.Color(0x1b1b1f);
 const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 0.1, 50);
 const view = new URLSearchParams(location.search).get('view');
 const views = { front: [0, 1.0, 4, 0, 0.9, 0], side: [4, 1.0, 0, 0, 0.9, 0], back: [0, 1.0, -4, 0, 0.9, 0],
-                below: [0.0, 0.05, 1.6, 0, 0.85, 0], crotch: [0.0, 0.2, 1.1, 0, 0.82, 0] };
+                below: [0.0, 0.05, 1.6, 0, 0.85, 0], crotch: [0.0, 0.2, 1.1, 0, 0.82, 0],
+                torso: [0, 1.15, 1.7, 0, 1.05, 0], torsoback: [0, 1.15, -1.7, 0, 1.05, 0],
+                torsoside: [1.7, 1.15, 0, 0, 1.05, 0], neckback: [0, 1.75, -1.1, 0, 1.4, 0], neckfront: [0, 1.75, 1.1, 0, 1.4, 0], hipback: [0, 1.0, -1.4, 0, 0.9, 0], hipfront: [0, 1.0, 1.4, 0, 0.9, 0], sleeve: [0.75, 1.3, 0.55, 0.3, 1.3, 0] };
 const v0 = views[view] || views.front;
 camera.position.set(v0[0], v0[1], v0[2]);
 const controls = new OrbitControls(camera, renderer.domElement);
@@ -34,7 +36,12 @@ const load = url => fetch(url).then(r => r.ok ? r.arrayBuffer() : null).then(buf
   modelBytes += buf.byteLength;
   loader.parse(buf, '', g => scene.add(g.scene));
 });
-if (q) { load('/models/personal/' + q + '.glb'); load('/models/personal/' + q + '_tee.glb'); load('/models/personal/' + q + '_trousers.glb'); }
+const hide = (new URLSearchParams(location.search).get('hide') || '').split(',');
+if (q) {
+  load('/models/personal/' + q + '.glb');
+  if (!hide.includes('tee')) load('/models/personal/' + q + '_tee.glb');
+  if (!hide.includes('trousers')) load('/models/personal/' + q + '_trousers.glb');
+}
 else load('/models/test_body.glb');
 
 let frames = 0, last = performance.now(), fps = 0, worstMs = 0, prev = performance.now();

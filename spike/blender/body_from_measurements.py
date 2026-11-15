@@ -303,7 +303,15 @@ H_f = max(v.co.z for v in body_final.verts) - zmin_f
 crotch_z = zmin_f + garment.crotch_height_cm(body_final, H_f) / 100.0
 # highest shoulder point estimate: top of the trapezius line, 6-14 cm either side of the centre line, upper torso
 _nz = joints_final["joint-neck"].z
-hps_z = max(v.co.z for v in body_final.verts if 0.06 < abs(v.co.x) < 0.14 and _nz - 0.12 < v.co.z < _nz + 0.02)
+_nw = ((G or {}).get("tee", {}).get("neckline_width_cm", 20.0)) / 200.0
+hps_z = max(v.co.z for v in body_final.verts if _nw - 0.012 < abs(v.co.x) < _nw + 0.012 and _nz - 0.12 < v.co.z < _nz + 0.05)
+
+
+# MPFB bodies face -Y. Check with the feet: toes extend further forward of the ankle than the heel does behind it.
+_ank = (joints_final["joint-l-ankle"].y + joints_final["joint-r-ankle"].y) / 2
+_feet = [v.co.y for v in body_final.verts if v.co.z < zmin_f + 0.05]
+FRONT = -1.0 if (min(_feet) - _ank) < -(max(_feet) - _ank) else 1.0
+print("FRONT_SIGN", FRONT)
 
 
 def circ_loop(bm_, z, side=None):
@@ -336,6 +344,18 @@ def circ_loop(bm_, z, side=None):
 
 
 body_chest_circ = circ_loop(body_final, zmin_f + marks["chest_cm"] * H_f) if "chest_cm" in marks else None
+def tee_chest_circ(gt):
+    """Chest circumference of the tee. If the section at the chest height runs through the armpit web the torso and sleeve loops
+    merge into one (reads about 1.7x too large), so step down a centimetre at a time until the loop is torso-only."""
+    z0 = zmin_f + marks["chest_cm"] * H_f
+    c = float("nan")
+    for k in range(0, 6):
+        c = circ_loop(gt, z0 - 0.01 * k)
+        if not math.isnan(c) and c < 1.3 * body_chest_circ:
+            return c
+    return c
+
+
 TG = (G or {}).get("tee")
 RG = (G or {}).get("trousers")
 two_pi = 2 * math.pi
@@ -394,9 +414,12 @@ tee_sleeve_t = 0.55
 tee_ease = 0.022
 tee_gap = 0.006
 neck_w = (TG or {}).get("neckline_width_cm", 20.0) / 100.0
-neck = {"z": joints_final["joint-neck"].z, "cx": 0.0, "cy": joints_final["joint-neck"].y, "a": neck_w / 2, "b": 0.085}
+neck = {"z": hps_z, "cx": 0.0, "cy": joints_final["joint-neck"].y, "a": neck_w / 2, "b": 0.085, "front": FRONT,
+        "drop_front": 0.075, "drop_back": 0.02}
 if TG:
     real_hem = hps_z - TG["length_cm"] / 100.0
+    if "worn_hem_height_cm" in TG:  # hem height as worn, read off a photo; overrides the flat length
+        real_hem = zmin_f + TG["worn_hem_height_cm"] / 100.0
     tee_hem_z = max(real_hem, crotch_z + 0.05)  # shell stops 5 cm above the crotch, then hangs straight down
     tee_extend = real_hem if real_hem < tee_hem_z - 1e-4 else None
     arm_len = (joints_final["joint-l-elbow"] - joints_final["joint-l-shoulder"]).length
@@ -408,7 +431,7 @@ if TG:
                                            sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck)
         gt = bmesh.new()
         gt.from_mesh(tee_mesh)
-        got = circ_loop(gt, zmin_f + marks["chest_cm"] * H_f)
+        got = tee_chest_circ(gt)
         gt.free()
         got_sleeve = garment.landmarks(body_final, tee_faces, vids, joints_final)["sleeve_end_from_shoulder_cm"]
         print("CAL tee", it, round(got, 1), TG["chest_circ_cm"], "sleeve", got_sleeve, TG["sleeve_cm"])
@@ -427,7 +450,7 @@ else:
 
 # --- reports
 def _in_neck_hole(p):
-    return p.z > neck["z"] - 0.12 and (p.x / (neck["a"] + 0.03)) ** 2 + ((p.y - neck["cy"]) / (neck["b"] + 0.03)) ** 2 < 1.0
+    return garment.in_neckline(p, {**neck, "a": neck["a"] + 0.03, "b": neck["b"] + 0.03}, margin=0.03)
 
 
 tee_report = {"template_faces": len(tee_faces), "ease_cm": round(tee_ease * 100, 2),
@@ -443,7 +466,7 @@ tee_report["calibration"] = tee_cal
 tee_report["hem_height_from_hps_cm"] = round((hps_z - gz_min_tee) * 100, 1)
 _top = [v for v in gtee.verts if v.is_boundary and v.co.z > joints_final["joint-neck"].z - 0.10 and abs(v.co.x) < 0.2]
 tee_report["neckline_width_cm"] = round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None
-tee_report["chest_circ_cm"] = round(circ_loop(gtee, zmin_f + marks["chest_cm"] * H_f), 1) if "chest_cm" in marks else None
+tee_report["chest_circ_cm"] = round(tee_chest_circ(gtee), 1) if "chest_cm" in marks else None
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
@@ -478,7 +501,10 @@ def add(g, k, target, got):
 
 if TG:
     add("tee", "chest_circ_cm", TG["chest_circ_cm"], tee_report["chest_circ_cm"])
-    add("tee", "length_cm (shoulder to hem)", TG["length_cm"], tee_report["hem_height_from_hps_cm"])
+    if "worn_hem_height_cm" in TG:
+        add("tee", "worn_hem_height_cm (from photo)", TG["worn_hem_height_cm"], round((gz_min_tee - zmin_f) * 100, 1))
+    else:
+        add("tee", "length_cm (shoulder to hem)", TG["length_cm"], tee_report["hem_height_from_hps_cm"])
     add("tee", "sleeve_cm", TG["sleeve_cm"], tee_report["sleeve_end_from_shoulder_cm"])
     add("tee", "neckline_width_cm", TG["neckline_width_cm"], tee_report["neckline_width_cm"])
 if RG:
@@ -494,6 +520,12 @@ os.makedirs(out_dir, exist_ok=True)
 json.dump({"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra},
           open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 
+def _lin(rgb):
+    """sRGB 0-255 to the linear RGBA that glTF/Blender expect."""
+    f = lambda c: (c / 255.0) / 12.92 if c / 255.0 <= 0.04045 else (((c / 255.0) + 0.055) / 1.055) ** 2.4
+    return (f(rgb[0]), f(rgb[1]), f(rgb[2]), 1)
+
+
 # export baked body only (no helpers, no shape keys)
 e = h.evaluated_get(bpy.context.evaluated_depsgraph_get())
 mesh = bpy.data.meshes.new_from_object(e)
@@ -506,7 +538,7 @@ glb = os.path.join(out_dir, name + ".glb")
 bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_apply=False)
 tee_ob = bpy.data.objects.new(name + "_tee", tee_mesh)
 mat = bpy.data.materials.new("tee"); mat.use_nodes = True
-mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.85, 0.2, 0.25, 1)
+mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((TG or {}).get("colour_srgb", [217, 51, 64]))
 tee_mesh.materials.append(mat)
 bpy.context.scene.collection.objects.link(tee_ob)
 bpy.ops.object.select_all(action="DESELECT")
@@ -515,7 +547,7 @@ bpy.context.view_layer.objects.active = tee_ob
 bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tee.glb"), export_format="GLB", use_selection=True)
 tr_ob = bpy.data.objects.new(name + "_trousers", tr_mesh)
 mat2 = bpy.data.materials.new("trousers"); mat2.use_nodes = True
-mat2.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.1, 0.15, 0.35, 1)
+mat2.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((RG or {}).get("colour_srgb", [58, 83, 140]))
 tr_mesh.materials.append(mat2)
 bpy.context.scene.collection.objects.link(tr_ob)
 bpy.ops.object.select_all(action="DESELECT")
