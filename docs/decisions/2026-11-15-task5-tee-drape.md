@@ -55,3 +55,27 @@ Visible defects: nipples still show on synthetic_medium's front (B8), and a soft
 ![synthetic_medium front](img/2026-11-15-task5-torso-synthetic_medium.jpg)
 ![synthetic_female_large side](img/2026-11-15-task5-torsoside-synthetic_female_large.jpg)
 ![synthetic_female_large back](img/2026-11-15-task5-torsoback-synthetic_female_large.jpg)
+
+## Update: Joe's real hem (15:30, end of the time box)
+
+Joe measured his tee's hem at 47 cm flat, so 94 cm round (added to `private/garments_joe.json`). That is smaller than his jeans at the height the hem sits on (97.9 cm at the jeans' hip line), so the real tee must stretch about 4 to 8% over them. Cotton jersey does that easily; the simulated cloth resists it.
+
+| Joe, `--drape` | Tension 15 (committed) | Tension 5 (tried, reverted) |
+| --- | --- | --- |
+| Hem circumference vs garment (94.5 at that height) | 102.3 (+7.7) | 103.7 (+9.1) |
+| Waist vs garment | -0.1 | 0.0 |
+| Tee self-intersecting pairs | 17 (at 120 cm) | 0 |
+| Body through tee, tee through trousers | 0, 0 | 0, 0 |
+| Shoulder gap, worst band mean / max | 0.43 / 0.59 | 0.46 / 0.62 |
+| Chest, length, collar bottom to hem | -1.2, -0.8, -1.8 | -1.7, +0.8, -0.4 |
+| Largest vertex difference between two runs | 2.9 cm | 1.9 cm |
+
+So with the real hem, Joe's tee fails the hem exit number and, at tension 15, gains 17 self-intersections and loses repeatability. The model's hem reads close to the jeans' girth plus clearance, which is what a stretched real hem would also read; the exit number compares it with the unstretched garment.
+
+### Decisions for Joe
+
+1. **Hem exit number:** when the hem sits on something larger than the garment's hem, compare against the larger of the two (the stretched size), or keep the unstretched figure and treat this as a fail?
+2. **Stretch:** model knit stretch (softer tension, possibly direction-dependent, which Blender cloth does not offer), or accept that non-stretch-modelled tees fail over larger jeans (B4)?
+3. **Repeatability tolerance**, now that a hem under strain varies by up to 2.9 cm between runs.
+
+Still outstanding: the A-pose side photo (silhouette exit number) and Joe's verdict by eye.

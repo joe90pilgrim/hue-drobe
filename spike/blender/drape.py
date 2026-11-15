@@ -15,6 +15,7 @@ from mathutils import Vector
 
 FRAMES = 60          # 2.5 s at 24 fps: enough for the cloth to settle
 QUALITY = 8          # solver steps per frame
+TENSION = 15         # 5 tried on Joe (94 cm hem over 98 cm jeans): removed 17 self-intersections, hem still +9.1; untested on synthetics
 BENDING = 0.5        # 0.2 was tried: shoulder gap unchanged, 2 self-intersections on synthetic_small
 COLLISION_DIST = 0.002
 
@@ -114,7 +115,7 @@ def drape_tee(tee_mesh, body_bm, trousers_mesh, chest_z, hem_z, chest_circ_cm, h
     cs = mod.settings
     cs.quality = QUALITY
     cs.mass = 0.15                 # kg per vertex group default units: light cotton jersey
-    cs.tension_stiffness = 15
+    cs.tension_stiffness = TENSION
     cs.compression_stiffness = 15
     cs.shear_stiffness = 5
     cs.bending_stiffness = BENDING
