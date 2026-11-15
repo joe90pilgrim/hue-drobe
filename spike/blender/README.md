@@ -19,6 +19,10 @@ Rebuild every fixture (and, with `--private`, Joe and Beth into `private/out`) a
 ```
 python spike/build_all.py --jobs 4
 ```
+Check two builds of the same inputs are identical (copy `spike/out` somewhere first, then rebuild):
+```
+python spike/check_repeatable.py <copy_of_first_build> spike/out
+```
 Mesh analysis (pass the `hps_height_cm_estimate` value from the report; `spike/out` is git-ignored):
 ```
 & "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --python spike/blender/analyse_meshes.py -- spike/out synthetic_medium 149.5 spike/out

@@ -31,6 +31,7 @@ def load(fn):
         me.transform(o.matrix_world)
         bm.from_mesh(me)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bm.verts.index_update(); bm.edges.index_update(); bm.faces.index_update()  # remove_doubles leaves indices stale
     bm.verts.ensure_lookup_table(); bm.faces.ensure_lookup_table(); bm.normal_update()
     return bm
 

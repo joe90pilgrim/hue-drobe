@@ -22,6 +22,9 @@ Trousers are 1 piece with 3 openings on every body. Produced by `python spike/bu
 
 ## synthetic_large is not repeatable
 
+**Fixed:** see `2026-11-15-repeatable-builds.md`, which also has the current figures for the table above.
+
+
 The tee chest calibration reads about 114 cm, then `nan`, then about 139 cm (torso and sleeve loops merged) on different iterations. Two solo runs with the same inputs gave different sequences from iteration 3 onwards. One of the four builds today converged; the other three did not. When it fails, the exported tee is torn (one boundary loop 1,907 cm long). Likely cause, unverified: iteration order over Python sets of mesh elements in `garment.py`. This needs fixing before task 5's "same result from two consecutive builds" can pass.
 
 ## What changed

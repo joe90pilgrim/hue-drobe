@@ -34,6 +34,8 @@ def load_glb(path):
 def merged(bm):
     b = bm.copy()
     bmesh.ops.remove_doubles(b, verts=b.verts, dist=1e-6)
+    # remove_doubles leaves stored indices stale; BVH overlap pairs and the piece search both rely on them
+    b.verts.index_update(); b.edges.index_update(); b.faces.index_update()
     b.verts.ensure_lookup_table(); b.faces.ensure_lookup_table(); b.normal_update()
     return b
 

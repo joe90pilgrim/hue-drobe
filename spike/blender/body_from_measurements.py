@@ -468,7 +468,8 @@ if TG:
         got = tee_chest_circ(gt)
         gt.free()
         got_sleeve = garment.landmarks(body_final, tee_faces, vids, joints_final)["sleeve_end_from_shoulder_cm"]
-        print("CAL tee", it, round(got, 1), TG["chest_circ_cm"], "sleeve", got_sleeve, TG["sleeve_cm"])
+        print("CAL tee", it, round(got, 1), TG["chest_circ_cm"], "sleeve", got_sleeve, TG["sleeve_cm"], "ease", repr(tee_ease), "sleeve_t", repr(tee_sleeve_t),
+              "mesh", len(tee_mesh.vertices), round(sum(v.co.x * 3.1 + v.co.y * 1.7 + v.co.z for v in tee_mesh.vertices), 9))
         tee_cal = {"converged": abs(got - TG["chest_circ_cm"]) < 0.5 and abs(got_sleeve - TG["sleeve_cm"]) < 0.7,
                    "ease_at_floor": ["chest"] if tee_ease <= 0.0031 else [],
                    "residual_cm": {"chest": round(got - TG["chest_circ_cm"], 2), "sleeve": round(got_sleeve - TG["sleeve_cm"], 2)}}

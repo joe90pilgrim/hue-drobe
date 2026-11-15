@@ -107,6 +107,31 @@ def _classify(co, segs, radius):
     return best
 
 
+def nearest(tree, p):
+    """BVHTree.find_nearest with a fixed tie-break: when a point is equally near two faces (on a shared edge) take the one
+    with the lowest index, so the normal used does not depend on how the tree happens to be traversed. Together with
+    canonical_faces this makes the answer depend on the geometry alone."""
+    hit = tree.find_nearest(p)
+    if hit[0] is None:
+        return hit
+    near = tree.find_nearest_range(p, hit[3] + 1e-7)
+    return min(near, key=lambda h: h[2]) if near else hit
+
+
+def canonical_faces(g):
+    """Put the faces of g in a fixed geometric order and refresh all indices. bmesh cut and delete operations can leave
+    faces in an order that changes from run to run; face indices then differ, so BVH tie-breaks and the exported mesh
+    differ too, even when every vertex position is identical."""
+    g.faces.index_update()
+    order = sorted(g.faces, key=lambda f: (tuple(f.calc_center_median()), len(f.verts)))
+    rank = [0] * len(order)
+    for i, f in enumerate(order):
+        rank[f.index] = i
+    g.faces.sort(key=lambda f: rank[f.index])  # bmesh sort keys must be numbers
+    g.verts.index_update(); g.edges.index_update(); g.faces.index_update()
+    g.verts.ensure_lookup_table(); g.faces.ensure_lookup_table()
+
+
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
@@ -126,7 +151,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             if tt > 0.0:
                 tt = min(1.0, tt)
                 tt = tt * tt * (3 - 2 * tt)
-                loc_b = body_bvh.find_nearest(v.co)[0]
+                loc_b = nearest(body_bvh, v.co)[0]
                 if loc_b is not None:
                     v.co = v.co.lerp(loc_b, tt)
         eb.normal_update()
@@ -152,7 +177,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
 
     def push_out():
         for v in g.verts:
-            loc, nor, fi, dist = body_bvh.find_nearest(v.co)
+            loc, nor, fi, dist = nearest(body_bvh, v.co)
             if loc is None:
                 continue
             d = (v.co - loc).dot(nor)
@@ -167,7 +192,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     if d2 < min_gap:
                         v.co += sv.normal * (min_gap - d2)
             if extra_bvh is not None:
-                loc2, nor2, fi2, dist2 = extra_bvh.find_nearest(v.co)
+                loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
                     v.co += nor2 * (extra_gap - (v.co - loc2).dot(nor2))
 
@@ -198,12 +223,20 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     push_out()
 
     # straight hem
+    # bisect interpolates the source-vertex layer on the verts it creates, which gives meaningless indices; mark them as
+    # having no source vertex (0) so push_out and the covered-vertex list below ignore them
     if hem_z is not None:
         geom = list(g.verts) + list(g.edges) + list(g.faces)
-        bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, hem_z), plane_no=(0, 0, 1), clear_inner=True)
+        res = bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, hem_z), plane_no=(0, 0, 1), clear_inner=True)
+        for x in res["geom_cut"]:
+            if isinstance(x, bmesh.types.BMVert) and x.is_valid:
+                x[layer] = 0
     if top_z is not None:
         geom = list(g.verts) + list(g.edges) + list(g.faces)
-        bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, top_z), plane_no=(0, 0, 1), clear_outer=True)
+        res = bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, top_z), plane_no=(0, 0, 1), clear_outer=True)
+        for x in res["geom_cut"]:
+            if isinstance(x, bmesh.types.BMVert) and x.is_valid:
+                x[layer] = 0
     # straight sleeve ends
     segs = {"torso": (joints["joint-pelvis"], joints["joint-neck"]), "head": (joints["joint-neck"], joints["joint-head"]),
             "lup": (joints["joint-l-shoulder"], joints["joint-l-elbow"]), "rup": (joints["joint-r-shoulder"], joints["joint-r-elbow"]),
@@ -248,13 +281,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         g_floor = min(v.co.z for v in g.verts) + 0.03  # below this the outer hem edge is the nearest cloth, which says nothing
         for _ in range(12):
             g.normal_update()
-            g.faces.ensure_lookup_table()
+            # the hem extrude above creates faces in an order that varies between runs, and BVHTree.FromBMesh returns each
+            # face's stored index, which the deletes and cuts leave stale; fix both before building the tree
+            canonical_faces(g)
             outer = BVHTree.FromBMesh(g)
             moved = 0
             for p in extra_verts:
                 if p.z < g_floor:
                     continue
-                loc3, nor3, fi3, d3 = outer.find_nearest(p)
+                loc3, nor3, fi3, d3 = nearest(outer, p)
                 if loc3 is None or d3 > 0.05:
                     continue
                 s_ = (p - loc3).dot(nor3)
@@ -272,7 +307,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     votes = 0
     for f in g.faces:
         c = f.calc_center_median()
-        loc, nor, fi, dist = body_bvh.find_nearest(c)
+        loc, nor, fi, dist = nearest(body_bvh, c)
         if loc is not None:
             votes += 1 if (c - loc).dot(f.normal) > 0 else -1
     if votes < 0:
@@ -284,6 +319,7 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         i = v[layer] - 1
         if 0 <= i < len(bm.verts) and (bm.verts[i].co - v.co).length < 0.06:
             vids.append(i)
+    canonical_faces(g)
     me = bpy.data.meshes.new("garment")
     g.to_mesh(me)
     g.free()
