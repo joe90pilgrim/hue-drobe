@@ -1,7 +1,8 @@
 """Rebuild every synthetic body in spike/fixtures (with its garments file) into spike/out, then run check_reports.py.
 
-Usage: python spike/build_all.py [--jobs N] [--private]
+Usage: python spike/build_all.py [--jobs N] [--private] [--drape]
   --private  also build Joe and Beth from private/ into private/out (local only, never committed)
+  --drape    settle the tee with Blender cloth (task 5, drape.py) instead of keeping the offset shell
 Blender is found from the BLENDER environment variable, else the default Windows install path for Blender 5.3.
 Each build's log goes to <out>/<name>_build.log. Exit code is check_reports.py's.
 """
@@ -33,6 +34,9 @@ def build(b):
     report = out / f"{name}_report.json"
     report.unlink(missing_ok=True)  # Blender exits 0 even when the script raises, so a missing report is the failure signal
     cmd = [blender, "--background", "--python", str(script), "--", str(m), str(out), name] + ([str(gar)] if gar else [])
+    if "--drape" in sys.argv:
+        cmd += ["--drape"]
+        cmd[1:1] = ["--threads", "1"]  # the cloth solver differs by up to 2.9 cm between multi-threaded runs; 0.4 cm on one thread
     with open(out / f"{name}_build.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=root).returncode
     if rc == 0 and not report.exists():

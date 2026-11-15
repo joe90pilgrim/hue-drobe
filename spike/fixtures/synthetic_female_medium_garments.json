@@ -1,7 +1,8 @@
 {
-  "_note": "Synthetic garment fixture for the female medium body.",
+  "_note": "Synthetic garment fixture for the female medium body. Tee hem_circ_cm = max(chest, trousers hip + 6): a tee must fit over the hips and trousers it hangs over (task 5, 2026-11-15).",
   "tee": {
     "chest_circ_cm": 96,
+    "hem_circ_cm": 110,
     "length_cm": 62,
     "sleeve_cm": 18,
     "neckline_width_cm": 19

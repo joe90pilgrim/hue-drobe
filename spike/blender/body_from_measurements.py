@@ -14,6 +14,8 @@ from bl_ext.user_default.mpfb.services.targetservice import TargetService
 from bl_ext.user_default.mpfb.entities.objectproperties import HumanObjectProperties
 
 argv = sys.argv[sys.argv.index("--") + 1:]
+DRAPE = "--drape" in argv  # task 5: settle the tee with Blender cloth (drape.py) instead of keeping the offset shell
+argv = [a for a in argv if not a.startswith("--")]
 meas_path, out_dir, name = argv[0], argv[1], argv[2]
 G = json.load(open(argv[3])) if len(argv) > 3 else None  # optional flat garment measurements
 M = json.load(open(meas_path))
@@ -382,12 +384,16 @@ def tee_chest_circ(gt):
     """Chest circumference of the tee. If the section at the chest height runs through the armpit web the torso and sleeve loops
     merge into one (reads about 1.7x too large), so step down a centimetre at a time until the loop is torso-only."""
     z0 = zmin_f + marks["chest_cm"] * H_f
-    c = float("nan")
-    for k in range(0, 12):
+    # a draped tee's armpit can hang below the body's chest line, and right at the armpit fold the section can be a
+    # partial loop, so also require the reading 1 cm lower to agree within 2% (a stable torso loop, as pit to pit is read)
+    for k in range(0, 15):
         c = circ_loop(gt, z0 - 0.01 * k)
-        if not math.isnan(c) and c < 1.3 * body_chest_circ:
+        if math.isnan(c) or c >= 1.3 * body_chest_circ:
+            continue
+        c2 = circ_loop(gt, z0 - 0.01 * (k + 1))
+        if not math.isnan(c2) and abs(c2 - c) <= 0.02 * c:
             return c
-    return float("nan")  # merged at every height tried: no usable reading
+    return float("nan")  # merged or unstable at every height tried: no usable reading
 
 
 TG = (G or {}).get("tee")
@@ -495,6 +501,16 @@ else:
     tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
                                        sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck, settle_shoulders=True)
 
+# --- task 5: cloth drape (optional)
+drape_info = None
+if DRAPE and TG:
+    import drape
+    _chest_z = zmin_f + marks.get("chest_cm", 0.72) * H_f
+    _hem_z = tee_extend if tee_extend else tee_hem_z
+    tee_mesh, drape_info = drape.drape_tee(tee_mesh, body_final, tr_mesh, _chest_z, _hem_z,
+                                           TG["chest_circ_cm"], TG.get("hem_circ_cm", TG["chest_circ_cm"]))
+    print("DRAPE", drape_info)
+
 # --- reports
 def _in_neck_hole(p):
     return garment.in_neckline(p, {**neck, "a": neck["a"] + 0.03, "b": neck["b"] + 0.03}, margin=0.03)
@@ -516,6 +532,25 @@ _nb = [v.co.z for v in gtee.verts if v.is_boundary and abs(v.co.x) < 0.03 and (v
 tee_report["front_neck_bottom_to_hem_cm"] = round((min(_nb) - gz_min_tee) * 100, 1) if _nb else None
 tee_report["neckline_width_cm"] = round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None
 tee_report["chest_circ_cm"] = round(tee_chest_circ(gtee), 1) if "chest_cm" in marks else None
+tee_report["drape"] = drape_info
+if TG:
+    # task 5 exit check: tee circumference (path length round the section, folds included) against the garment's own,
+    # straight from chest to hem, at the waist and 2 cm above the hem
+    _cz = zmin_f + marks.get("chest_cm", 0.72) * H_f
+    _hz = gz_min_tee
+    _hc = TG.get("hem_circ_cm")
+    def _garment_circ(z):
+        if _hc is None:
+            return None
+        t = min(1.0, max(0.0, (_cz - z) / max(0.01, _cz - _hz)))
+        return TG["chest_circ_cm"] + (_hc - TG["chest_circ_cm"]) * t
+    tee_report["circ_vs_garment_cm"] = {}
+    for _lbl, _z in (("waist", zmin_f + marks.get("waist_cm", 0.62) * H_f), ("hem", _hz + 0.02)):
+        _got = circ_loop(gtee, _z)
+        _want = _garment_circ(_z)
+        tee_report["circ_vs_garment_cm"][_lbl] = {"height_cm": round((_z - zmin_f) * 100, 1), "tee": round(_got, 1),
+                                                  "garment": None if _want is None else round(_want, 1),
+                                                  "error": None if (_want is None or math.isnan(_got)) else round(_got - _want, 1)}
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),

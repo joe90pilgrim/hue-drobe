@@ -8,6 +8,7 @@ Headless Blender scripts. Tested with Blender 5.3.0 and MPFB 2.0.18.
 | `garment.py` | Garment templates as offset shells of the body mesh, plus clipping and landmark checks. Imported by the script above. |
 | `mesh_checks.py` | Garment pieces and openings, intersecting face pairs (body with garment, garment with itself, tee with trousers), cloth-to-body clearance and shoulder gap. Run by the build into `<name>_report.json` under `mesh_checks`; `check_reports.py` fails the build on the limits in `tolerances.json` (`garment_mesh`). |
 | `analyse_meshes.py` | Read-only analysis of the exported GLBs: the same mesh checks plus centre-line profile, crotch ray test and circumference by height. Writes `<name>_analysis.json`. Analysis only; it does not fail the build. |
+| `drape.py` | Task 5: settles the tee with Blender cloth under gravity onto the body and trousers. The rest shape is the shell with each torso ring below the chest resized to the garment's own circumference (chest down to `hem_circ_cm`). Used when the build is given `--drape`. |
 | `export_test.py`, `mpfb_probe*.py` | Block 0 and Block 1 probes. Safe to ignore. |
 
 ## Run (PowerShell)
@@ -22,6 +23,11 @@ python spike/build_all.py --jobs 4
 Check two builds of the same inputs are identical (copy `spike/out` somewhere first, then rebuild):
 ```
 python spike/check_repeatable.py <copy_of_first_build> spike/out
+```
+Drape the tee with cloth (task 5); drape builds run Blender on one thread and are compared within a tolerance in cm, because the cloth solver is not bit-for-bit repeatable:
+```
+python spike/build_all.py --drape --jobs 4
+python spike/check_repeatable.py <copy_of_first_build> spike/out --tol 1.0
 ```
 Mesh analysis (pass the `hps_height_cm_estimate` value from the report; `spike/out` is git-ignored):
 ```

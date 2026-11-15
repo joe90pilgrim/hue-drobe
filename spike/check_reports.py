@@ -86,6 +86,12 @@ for f in reports:
               f"tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
               f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})")
 
+    for lbl, cg in (r.get("tee", {}).get("circ_vs_garment_cm") or {}).items():
+        if cg.get("error") is None:
+            print(f"  info tee circumference at {lbl} ({cg['height_cm']} cm): {cg['tee']} cm, no garment value (hem_circ_cm missing)")
+        else:
+            check(abs(cg["error"]) <= tol["garment_landmark_cm"], f"tee circumference at {lbl} ({cg['height_cm']} cm): tee {cg['tee']} garment {cg['garment']} (error {cg['error']:+.1f}, tol {tol['garment_landmark_cm']})")
+
     if need_garments:
         lm = r.get("garment_landmarks_vs_real", [])
         if not lm:
