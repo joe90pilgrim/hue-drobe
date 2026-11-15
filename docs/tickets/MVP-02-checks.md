@@ -14,3 +14,7 @@ One command that tells us the app still works, cheap enough to run before every 
 ## Acceptance criteria
 - `npm run check` passes on a clean clone without the `private/` folder.
 - A deliberately broken tolerance makes it fail.
+
+## Done (15 Nov 2026)
+`npm run check` (repo root or `app/`) runs type check, Vitest (4 tests), `spike/check_reports.py` on six synthetic reports now committed in `spike/fixtures/reports/`, and one Playwright test at 412 x 915. Passes on a clean clone with no `private/` folder (about 25 seconds); a broken tolerance makes it exit 1. Tolerances stay in `spike/tolerances.json`.
+Three known spike misses (two B4 trouser calibrations, one 0.01 cm shoulder gap) are listed in `spike/known_exceptions.json` and print as KNOWN; Joe chose this over loosening tolerances. The checks read committed reports, so they do not rebuild bodies (that needs Blender). New dev dependencies: Vitest 2.1.8 (MIT), @playwright/test 1.49.1 (Apache-2.0), @types/node.
