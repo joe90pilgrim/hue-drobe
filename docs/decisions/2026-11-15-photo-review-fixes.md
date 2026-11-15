@@ -20,6 +20,12 @@ Also fixed: the tee chest measurement sometimes read about 1.7 times too large, 
 - Joe: tee chest and trousers waist sit at their ease floor (the real items are smaller than the body plus 3 mm; stretch is not modelled), so calibration reports "not converged".
 - Beth has no garment measurements, so there is no landmark comparison for her.
 
-## Open question
+## Inside leg (added later on 2026-11-15)
 
-The body's crotch is at 83.7 cm above the floor, and the jeans inseam of 72 cm puts the jeans hem at 11.7 cm. Joe's jeans reach the floor in the photo, so the body's leg length may be about 5 to 6 cm short or the jeans fork sits lower than the body crotch. Needs an inside-leg measurement.
+The body's crotch was 83.7 cm above the floor, so its legs were about 5.7 cm too long. Joe measured his inside leg to the floor at 78 cm. `inside_leg_cm` is now a measurement the body solver hits, using the MPFB upper and lower leg height targets and re-solving height after each step. Result: 78.71 cm (error +0.71, tolerance 1.5). The leg-length control is at -0.94 of its -1 limit, so there is little headroom for anyone with a larger gap.
+
+Side effects, all measured on Joe's body:
+- The jeans hem is now 6.7 cm above the floor (inseam 72 cm), which matches the photo.
+- The tee hem (photo, 83 cm) now sits about 4 cm above the crotch, so the jeans fork shows below it, as in the photo.
+- The jeans leg opening reads 35.5 cm against 32 cm, and cannot get smaller: the body is already that wide at 7.7 cm above the floor (heel and instep) and the ease is at its floor. Previously it passed only because the hem was wrongly 5 cm higher. Needs a look at how the leg opening is measured near the foot.
+- The trousers template now runs to the sole (`hem_frac=0.0`); the hem plane trims it. Otherwise the shell stopped above the new hem.

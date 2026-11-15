@@ -135,6 +135,35 @@ set_height_macro(h, 0.5)
 hv = bisect(lambda v: (set_height_macro(h, v), height_cm(eval_bm(h)))[1], M["height_cm"], 0.0, 1.0, 0.05, 16)
 set_height_macro(h, hv)
 
+# 1b. inside leg (crotch height above the floor): leg-length targets, then re-solve height, because the two interact
+if "inside_leg_cm" in M:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import garment as _g0
+    for _stem in ("upperlegs-height", "lowerlegs-height"):
+        for _sfx in ("-decr", "-incr"):
+            TargetService.load_target(h, TargetService.target_full_path(_stem + _sfx), weight=0.0, name=_stem + _sfx)
+
+    def _crotch_h(v):
+        set_signed(h, "upperlegs-height", v)
+        set_signed(h, "lowerlegs-height", v)
+        b = eval_bm(h)
+        c = _g0.crotch_height_cm(b, height_cm(b) / 100.0)
+        b.free()
+        return c
+    _leg_v = 0.0
+    for _round in range(4):
+        _leg_v = bisect(_crotch_h, M["inside_leg_cm"], -1.0, 1.0, 0.25, 9)
+        set_signed(h, "upperlegs-height", _leg_v)
+        set_signed(h, "lowerlegs-height", _leg_v)
+        hv = bisect(lambda v: (set_height_macro(h, v), height_cm(eval_bm(h)))[1], M["height_cm"], 0.0, 1.0, 0.05, 16)
+        set_height_macro(h, hv)
+        _b = eval_bm(h)
+        _err = _g0.crotch_height_cm(_b, height_cm(_b) / 100.0) - M["inside_leg_cm"]
+        _b.free()
+        print("LEGS round", _round, "leg_v", round(_leg_v, 3), "crotch error cm", round(_err, 2))
+        if abs(_err) < 0.4:
+            break
+
 # 2. landmarks, then circumferences
 bm = eval_bm(h)
 hgt_m = height_cm(bm) / 100.0
@@ -282,6 +311,11 @@ hgt = height_cm(bm)
 zmin = min(v.co.z for v in bm.verts)
 results = [{"measure": "height_cm", "target": M["height_cm"], "achieved": round(hgt, 2),
             "error": round(hgt - M["height_cm"], 2), "tolerance": TOL["length_cm"], "real_measurement": "height_cm" in real}]
+if "inside_leg_cm" in M:
+    import garment as _g1
+    _il = _g1.crotch_height_cm(bm, hgt / 100.0)
+    results.append({"measure": "inside_leg_cm", "target": M["inside_leg_cm"], "achieved": round(_il, 2),
+                    "error": round(_il - M["inside_leg_cm"], 2), "tolerance": TOL["length_cm"], "real_measurement": "inside_leg_cm" in real})
 for key in TORSO:
     if key in M:
         c = circ_cm(bm, zmin + marks[key] * hgt / 100.0)
@@ -295,7 +329,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import garment
 ref = HumanService.create_human(scale=0.1)
 tee_faces = garment.define_tee(ref, collar_drop=-0.04)
-tr_faces = garment.define_trousers(ref)
+tr_faces = garment.define_trousers(ref, hem_frac=0.0)  # extend to the sole; the hem plane cuts it where the real jeans end
 body_final = garment.body_bm(h)
 joints_final = garment.joint_positions(h, garment.JOINTS + ["joint-l-ankle", "joint-r-ankle"])
 zmin_f = min(v.co.z for v in body_final.verts)
