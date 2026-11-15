@@ -83,3 +83,4 @@ Ideas are numbered in the order they were raised, not by priority. New ideas get
 14. Ask Gemini for advice (6)
 15. Upload a photo to find the nearest item in the library (4)
 16. Individual logins (2)
+17. Starter outfits that come with the app, as well as saved ones (unassigned, to consider later)

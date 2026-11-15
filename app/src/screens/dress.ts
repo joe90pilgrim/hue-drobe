@@ -9,7 +9,8 @@ import {
   saveFavourites,
   type Favourite,
 } from '../favourites';
-import { GARMENTS, loadItems, newItem, saveItems, type GarmentId } from '../wardrobe';
+import { GARMENTS, ensureItem, loadItems, newItem, saveItems, type GarmentId } from '../wardrobe';
+import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
 
 interface Slot {
   name: string;
@@ -46,11 +47,13 @@ export function renderDress(el: HTMLElement): () => void {
             <button type="button" class="slot-save" data-save="${s.name}">Save</button>
           </div>`,
         ).join('')}
+        <button type="button" class="slot-save outfit-save" id="save-outfit">Save outfit</button>
       </div>
     </div>`;
 
   const stage = el.querySelector<HTMLElement>('#stage')!;
   const hint = stage.querySelector<HTMLElement>('.stage-hint')!;
+  const outfitBtn = el.querySelector<HTMLButtonElement>('#save-outfit')!;
   const viewer = createViewer(stage, (msg) => {
     hint.textContent = msg ?? '';
     hint.hidden = msg === null;
@@ -100,6 +103,7 @@ export function renderDress(el: HTMLElement): () => void {
     picker.disabled = !g;
     el.querySelector<HTMLButtonElement>(`[data-save="${slot.name}"]`)!.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
     picker.value = (g && colours[g]) || DEFAULT_COLOUR;
+    outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
     renderFavs();
   };
   SLOTS.forEach(apply);
@@ -187,6 +191,24 @@ export function renderDress(el: HTMLElement): () => void {
       renderFavs();
     });
   }
+  // Saves the look as shown: each garment on the avatar in the colour the picker shows, added to the library if new.
+  outfitBtn.addEventListener('click', async () => {
+    let items = await loadItems();
+    const look: OutfitLook = {};
+    for (const s of SLOTS) {
+      const g = garmentOf(s) as GarmentId | undefined;
+      if (!g) continue;
+      const r = ensureItem(items, g, pickerOf(s).value);
+      items = r.list;
+      if (s.name === 'Top') look.top = r.item;
+      else look.bottom = r.item;
+    }
+    if (!look.top && !look.bottom) return;
+    await saveItems(items);
+    await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
+    outfitBtn.textContent = 'Outfit saved';
+    setTimeout(() => (outfitBtn.textContent = 'Save outfit'), 1500);
+  });
   return () => {
     gone = true;
     viewer.dispose();

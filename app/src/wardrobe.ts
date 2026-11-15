@@ -98,6 +98,15 @@ export function newItem(garment: GarmentId, colour: string, now = Date.now()): S
   return { v: 1, id, garment, colour: hex, name: autoName(garment, hex), savedAt: now };
 }
 
+/** The saved item for a garment in a colour. Adds it to the list if it is not there yet, so one colour is saved once. */
+export function ensureItem(list: SavedItem[], garment: GarmentId, colour: string, now = Date.now()): { list: SavedItem[]; item: SavedItem } {
+  const hex = colour.toLowerCase();
+  const found = list.find((i) => i.garment === garment && i.colour === hex);
+  if (found) return { list, item: found };
+  const item = newItem(garment, hex, now);
+  return { list: [...list, item], item };
+}
+
 export function renameItem(list: SavedItem[], id: string, name: string): SavedItem[] {
   return list.map((i) => (i.id === id ? { ...i, name: cleanName(name, autoName(i.garment, i.colour)) } : i));
 }
