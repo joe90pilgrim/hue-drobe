@@ -155,6 +155,44 @@ describe('scoreQuiz', () => {
     expect(result.season.family).toBe('Spring');
   });
 
+  it('flags a borderline result when the runner-up is within 15% of the best distance, and not otherwise', () => {
+    const season = (id: string, warmth: number) => ({
+      ...quiz.seasons[0],
+      id,
+      target: { warmth, value: 1, chroma: 1 },
+    });
+    const q = {
+      version: 1,
+      questions: [{ id: 'q', text: 'q', answers: [{ id: 'a', label: 'a', scores: { warmth: 1, value: 1, chroma: 1 } }] }],
+      seasons: [season('x', 0.9), season('y', 0.7), season('z', -1)],
+    };
+    // Traits are warmth 1: distance 0.1 to x and 0.3 to y, so y is not close.
+    expect(scoreQuiz({ q: 'a' }, q).borderline).toBe(false);
+    // Distances 0.1 and 0.113 (13% further): close.
+    q.seasons = [season('x', 0.9), season('y', 0.887), season('z', -1)];
+    expect(scoreQuiz({ q: 'a' }, q).borderline).toBe(true);
+    // Distances 0.1 and 0.118 (18% further): not close.
+    q.seasons = [season('x', 0.9), season('y', 0.882), season('z', -1)];
+    expect(scoreQuiz({ q: 'a' }, q).borderline).toBe(false);
+  });
+
+  it('does not flag the clear-cut Summer answers as borderline', () => {
+    const result = pick({
+      'wrist-veins': 'blue',
+      metal: 'silver',
+      'skin-depth': 'very-fair',
+      'skin-tone': 'pink',
+      'hair-depth': 'light-brown',
+      'hair-tone': 'ash',
+      'eye-colour': 'light-blue',
+      'eye-clarity': 'soft',
+      contrast: 'low',
+      sun: 'burn',
+      compliments: 'pastel',
+    });
+    expect(result.borderline).toBe(false);
+  });
+
   it('returns a runner-up that differs from the result, and a confidence from 0 to 1', () => {
     const result = pick({});
     expect(result.runnerUp.id).not.toBe(result.season.id);

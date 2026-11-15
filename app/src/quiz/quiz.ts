@@ -41,7 +41,12 @@ export interface QuizResult {
   runnerUp: Season;
   /** 0 to 1. How much closer the best season is than the runner-up. Low means a borderline result. */
   confidence: number;
+  /** True when the runner-up is nearly as close as the best season, so the result screen mentions it. */
+  borderline: boolean;
 }
+
+/** The runner-up counts as a close second when its distance is within this share of the best season's. */
+export const CLOSE_SECOND_MARGIN = 0.15;
 
 /** The most a trait can move: the sum, over questions, of that trait's largest absolute score. */
 export function traitRange(q: QuizData = quiz): TraitScores {
@@ -82,5 +87,11 @@ export function scoreQuiz(answers: Record<string, string>, q: QuizData = quiz): 
   const [best, second] = rankSeasons(traits, q);
   const d1 = Math.sqrt(best.d2);
   const d2 = Math.sqrt(second.d2);
-  return { traits, season: best.season, runnerUp: second.season, confidence: d1 + d2 === 0 ? 1 : (d2 - d1) / (d1 + d2) };
+  return {
+    traits,
+    season: best.season,
+    runnerUp: second.season,
+    confidence: d1 + d2 === 0 ? 1 : (d2 - d1) / (d1 + d2),
+    borderline: d2 <= d1 * (1 + CLOSE_SECOND_MARGIN),
+  };
 }

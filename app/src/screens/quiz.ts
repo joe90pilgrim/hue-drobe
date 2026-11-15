@@ -1,4 +1,4 @@
-import { quiz, scoreQuiz } from '../quiz/quiz';
+import { quiz, scoreQuiz, type Season } from '../quiz/quiz';
 import { kvGet, kvPut } from '../store';
 import { addFavourite, hasFavourite, loadFavourites, removeFavourite, saveFavourites, type Favourite } from '../favourites';
 
@@ -75,15 +75,8 @@ export function renderQuiz(el: HTMLElement): () => void {
       </div>`;
   }
 
-  function showResult(answers: Answers) {
-    current = -1;
-    const { season: s } = scoreQuiz(answers);
-    card.innerHTML = `
-      <p class="eyebrow">Your season</p>
-      <h2 class="season">${esc(s.name)}</h2>
-      <p>${esc(s.description)}</p>
-      <h3>Your palette</h3>
-      <ul class="palette">
+  function paletteHtml(s: Season): string {
+    return `<ul class="palette">
         ${s.palette
           .map(
             (hex) => `<li class="palette-item">
@@ -92,7 +85,35 @@ export function renderQuiz(el: HTMLElement): () => void {
         </li>`,
           )
           .join('')}
-      </ul>
+      </ul>`;
+  }
+
+  function showResult(answers: Answers) {
+    current = -1;
+    const { season: s, runnerUp: r, borderline } = scoreQuiz(answers);
+    const second = borderline
+      ? `<div class="close-second">
+        <p id="close-second-line">You are also close to <strong>${esc(r.name)}</strong>.</p>
+        <button type="button" class="secondary" data-action="toggle-second" aria-expanded="false" aria-controls="close-second-detail">See this palette</button>
+        <div id="close-second-detail" hidden>
+          <p>${esc(r.description)}</p>
+          ${paletteHtml(r)}
+          <h4>Colours that flatter</h4>
+          <p>${esc(r.advice.flatters)}</p>
+          <h4>Neutrals</h4>
+          <p>${esc(r.advice.neutrals)}</p>
+          <h4>Colours to approach with care</h4>
+          <p>${esc(r.advice.careWith)}</p>
+        </div>
+      </div>`
+      : '';
+    card.innerHTML = `
+      <p class="eyebrow">Your season</p>
+      <h2 class="season">${esc(s.name)}</h2>
+      ${second}
+      <p>${esc(s.description)}</p>
+      <h3>Your palette</h3>
+      ${paletteHtml(s)}
       <h3>Colours that flatter you</h3>
       <p>${esc(s.advice.flatters)}</p>
       <h3>Neutrals</h3>
@@ -129,6 +150,13 @@ export function renderQuiz(el: HTMLElement): () => void {
     if (action === 'start' || action === 'retake') {
       draft = {};
       showQuestion(0);
+    } else if (action === 'toggle-second') {
+      const btn = target.closest<HTMLButtonElement>('[data-action]')!;
+      const detail = card.querySelector<HTMLElement>('#close-second-detail')!;
+      const open = detail.hidden;
+      detail.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? 'Hide this palette' : 'See this palette';
     } else if (action === 'back') {
       if (current > 0) showQuestion(current - 1);
       else if (saved) showResult(saved);
