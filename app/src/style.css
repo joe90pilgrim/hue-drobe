@@ -1,6 +1,6 @@
 :root {
   --bg: #f4f2ee; --panel: #ece8e1; --card: #fff; --line: #e4e0d8; --line-strong: #dcd7ce;
-  --ink: #1d1c1a; --muted: #5e5a53; --accent: #3e5c4e;
+  --ink: #1d1c1a; --muted: #5e5a53; --accent: #3e5c4e; --accent-deep: #334e41;
   --font: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 * { box-sizing: border-box; }
@@ -73,6 +73,19 @@ button { font-family: inherit; }
   .main { padding: 0 32px 24px; max-width: 960px; width: 100%; margin: 0 auto; }
   .rail { flex-basis: 220px; }
   .quiz { max-width: 560px; }
+}
+
+/* Pointer hover, only where a fine pointer can hover (desktop and laptop), so a tap on the phone leaves no stuck highlight. */
+@media (hover: hover) and (pointer: fine) {
+  button, .nav-item, .swatch { cursor: pointer; transition: background-color .12s, border-color .12s, color .12s, box-shadow .12s; }
+  button:disabled, .swatch:disabled { cursor: default; }
+
+  .nav-item:hover:not(.active) { color: var(--ink); }
+  .slot-controls button:hover:not(:disabled) { background: var(--panel); }
+  .swatch:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--card), 0 0 0 3px var(--accent); }
+  .primary:hover:not(:disabled) { background: var(--accent-deep); }
+  .secondary:hover:not(:disabled) { border-color: var(--accent); background: var(--bg); }
+  .answer:hover:not([aria-checked="true"]) { border-color: var(--accent); background: #f6f8f7; }
 }
 
 .hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }
