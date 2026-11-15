@@ -1,0 +1,44 @@
+"""Unit tests for pack/fit.py on a small fixed fixture. Run: python -m unittest discover -s pack"""
+import json, pathlib, unittest
+
+import fit
+
+HERE = pathlib.Path(__file__).resolve().parent
+CFG = json.load(open(HERE / "fit_config.json"))
+BODY = {"height_cm": 170, "chest_cm": 100, "waist_cm": 80, "hips_cm": 100, "inside_leg_cm": 80}
+
+
+class DefaultGarments(unittest.TestCase):
+    def test_known_values(self):
+        g = fit.default_garments(BODY, CFG)
+        self.assertEqual(g["tee"]["chest_circ_cm"], 108.0)
+        self.assertNotIn("hem_circ_cm", g["tee"])
+        self.assertEqual(g["tee"]["length_cm"], 66.3)
+        self.assertEqual(g["trousers"]["waist_circ_cm"], 91.0)  # 80 + 0.4 * (100 - 80) + 3
+        self.assertEqual(g["trousers"]["hip_circ_cm"], 103.0)
+        self.assertEqual(g["trousers"]["inseam_cm"], 76.0)
+        self.assertEqual(g["trousers"]["leg_opening_circ_cm"], 41.2)
+
+    def test_ease_is_positive(self):
+        g = fit.default_garments(BODY, CFG)
+        self.assertGreater(g["tee"]["chest_circ_cm"], BODY["chest_cm"])
+        self.assertGreater(g["trousers"]["waist_circ_cm"], BODY["waist_cm"])
+        self.assertGreater(g["trousers"]["hip_circ_cm"], BODY["hips_cm"])
+
+    def test_inside_leg_falls_back_to_height_fraction(self):
+        body = {k: v for k, v in BODY.items() if k != "inside_leg_cm"}
+        g = fit.default_garments(body, CFG)
+        self.assertEqual(g["trousers"]["inseam_cm"], round(0.45 * 170 - 4, 1))
+
+    def test_neutral_colour_on_both(self):
+        g = fit.default_garments(BODY, CFG)
+        self.assertEqual(g["tee"]["colour_srgb"], CFG["colour_srgb"])
+        self.assertEqual(g["trousers"]["colour_srgb"], CFG["colour_srgb"])
+
+    def test_missing_measurement_is_an_error(self):
+        with self.assertRaises(KeyError):
+            fit.default_garments({"height_cm": 170}, CFG)
+
+
+if __name__ == "__main__":
+    unittest.main()

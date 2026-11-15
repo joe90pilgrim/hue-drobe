@@ -1,13 +1,23 @@
-// Runs the spike's asset checks (spike/check_reports.py) on the committed synthetic reports.
-// Tolerances come from spike/tolerances.json. Needs Python 3 but not Blender.
+// Runs the Python-side checks that need no Blender:
+//  1. the spike's asset checks (spike/check_reports.py) on the committed synthetic reports; tolerances come from spike/tolerances.json
+//  2. the avatar pack's unit tests (pack/test_fit.py, default-fit garment sizes)
+// Needs Python 3.
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('../../spike/check_reports.py', import.meta.url));
 const folder = fileURLToPath(new URL('../../spike/fixtures/reports', import.meta.url));
-for (const py of ['python', 'py', 'python3']) {
-  const r = spawnSync(py, [script, folder], { stdio: 'inherit' });
-  if (!r.error) process.exit(r.status ?? 1);
+const packDir = fileURLToPath(new URL('../../pack', import.meta.url));
+
+function runPython(args) {
+  for (const py of ['python', 'py', 'python3']) {
+    const r = spawnSync(py, args, { stdio: 'inherit' });
+    if (!r.error) return r.status ?? 1;
+  }
+  console.error('Python 3 not found (tried python, py, python3).');
+  return 1;
 }
-console.error('Python 3 not found (tried python, py, python3).');
-process.exit(1);
+
+const reports = runPython([script, folder]);
+const packTests = runPython(['-m', 'unittest', 'discover', '-s', packDir]);
+process.exit(reports || packTests);

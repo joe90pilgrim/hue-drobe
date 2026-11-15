@@ -17,3 +17,7 @@ One command that builds Joe's avatar and his MVP garments, ready for the app.
 - The command runs cleanly and every check passes for Joe and the six synthetic bodies.
 - `git status` shows no personal files after a build.
 - Total pack size for Joe is recorded in this ticket.
+
+## Done (15 Nov 2026)
+`python pack/build_pack.py --private` builds Joe and the six synthetic bodies with default-fit garments; every check passes on all seven (no known exceptions needed), and Joe's pack in `private/pack/joe/` is **744 KB** (body 626 KB, tee 71 KB, trousers 64 KB), repeatable byte for byte. `git status` shows no personal files; about 25 minutes of work.
+Decisions and the trade-offs in fit (eases limited by the widest synthetic body, no tee hem circumference so the drape-era tee circumference check is skipped, Microsoft Store `python` alias hides MPFB) are in `docs/decisions/2026-11-15-avatar-pack-build.md`. Run it with the interpreter's full path if the alias fails (`pack/README.md`).

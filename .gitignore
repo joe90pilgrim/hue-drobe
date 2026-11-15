@@ -9,3 +9,4 @@ spike/vite.log
 spike/out/
 app/test-results/
 app/playwright-report/
+pack/out/

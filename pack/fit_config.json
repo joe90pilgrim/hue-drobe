@@ -1,0 +1,23 @@
+{
+  "_note": "Default fit per garment type for the avatar pack (MVP-03). Every garment size is derived from the wearer's own tape measurements plus the ease and proportions below, so no real-item flat measurements are needed. Changing a value is a reviewed edit: rebuild and run the checks. All lengths in cm unless a name says 'fraction'.",
+  "colour_srgb": [214, 214, 214],
+  "_colour_note": "Neutral light grey, sRGB 0-255. The app sets the colour (MVP-06); a light base multiplies cleanly if the app tints the material instead of replacing it.",
+  "tee": {
+    "_note": "Regular-fit crew-neck tee.",
+    "chest_ease_cm": 8,
+    "length_fraction_of_height": 0.39,
+    "sleeve_fraction_of_height": 0.12,
+    "neckline_width_fraction_of_height": 0.125,
+    "neckline_drop_front_cm": 6
+  },
+  "trousers": {
+    "_note": "Regular-fit straight trousers, hem just above the floor.",
+    "waist_towards_hips_fraction": 0.4,
+    "waist_ease_cm": 3,
+    "hip_ease_cm": 3,
+    "rise_fraction_of_height": 0.145,
+    "hem_above_floor_cm": 4,
+    "inside_leg_fraction_of_height": 0.45,
+    "leg_opening_fraction_of_hip": 0.40
+  }
+}
