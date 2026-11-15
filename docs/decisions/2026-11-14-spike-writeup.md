@@ -36,7 +36,7 @@ Tolerances are in `spike/tolerances.json`. Check with `python spike/check_report
 | Tee landmarks vs real tee (chest circ, length, sleeve, neckline) | 2 cm | +1.1, 0.0, -0.7, +0.3 | Pass |
 | Jeans landmarks vs real jeans (waist, hip, rise, inseam, leg opening) | 2 cm | +1.3, 0.0, 0.0, 0.0, -0.1 | Pass |
 | No body showing through cloth | 0.5% of points, 1 cm deep | jeans 3.9% (worst 3.6 cm, crotch); tee 0.69% (worst 0.5 cm, neckline); synthetic sizes 0% | **Fail** (Joe only) |
-| In-between sizes plausible | no tearing or stretching | not tested | Not tested |
+| In-between sizes plausible | no tearing or stretching | withdrawn 2026-11-15 (runtime blending dropped by decision) | Withdrawn |
 | Phone: at least 30 fps, under 15 MB | 30 fps, 15 MB | Pixel 8: 60 fps (readout on the placeholder figure and earlier garments); body plus tee plus trousers about 750 KB | Pass for frame rate on early garments; load size pass; not re-measured on the final models |
 | Recognisability ("looks like me") | each person says yes | Joe judged the earlier body "realistic"; not compared with photos | Not tested |
 | Honor 200 Pro | n/a | not tested | Not tested |

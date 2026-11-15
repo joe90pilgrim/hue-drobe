@@ -29,8 +29,8 @@ Status: **open** = fails a tolerance or is visibly wrong; **unverified** = no me
 | --- | --- | --- | --- |
 | B10 | unverified | Joe's likeness to his photos from the front and side | Joe to compare `?view=front` and `?view=side` with the photos. Front comparison done; side not yet. |
 | B11 | unverified | Frame rate and download size on the real phone | Needs a reading on Joe's phone. The pane reading (about 8 fps early on, 57 to 60 later) is a desktop browser and does not count. Model size is about 740 KB. |
-| B12 | unverified | Loose clothing (skirt or dress) | Not attempted. The offset-shell method may not suit it. |
-| B13 | unverified | Blended in-between sizes | Pass criterion 5 has no recorded result in this log's builds. |
+| B12 | deferred | Loose clothing (skirt or dress) | Not attempted. Milestone 1 scope is close-fitting garments only (confirmed 2026-11-15). Dress and jumper move out until a cloth-simulation test from a hung shell succeeds. |
+| B13 | closed | Blended in-between sizes | Withdrawn by decision on 2026-11-15, not passed. Garments are fitted per person offline. See `docs/decisions/2026-11-14-decisions-to-confirm.md`. |
 | B14 | unverified | Beth's body against her real measurements | Needs her tape measurements. |
 
 ## Gaps in the test set-up (CLAUDE.md asks for these)
