@@ -51,3 +51,6 @@ Belly-button bumps, frayed sleeves, tee covering the crotch, marks on the buttoc
 | ID | Status | Problem | Next step |
 | --- | --- | --- | --- |
 | B19 | fixed, not retested on the phone | On Joe's phone the `?view=` URL parameter did not seem to work. In a phone-sized desktop window it does work, so the likely cause is that the Joe, Beth and test buttons dropped the `view` setting. | Buttons now keep `m`, `view` and `hide`, and Front, Side and Back buttons were added. Joe to confirm on the phone. |
+
+| B20 | fixed | The tee chest reading flipped between iterations on the large synthetic body (read 210.9 cm once) because the torso and sleeve loops stayed merged for more than 5 cm below the chest, which made calibration oscillate and fail | Reading now steps down up to 12 cm, returns no value if still merged, and calibration then keeps its ease and runs 8 rounds. Tee chest now converges on every body. |
+| B21 | open | Female presets (small 158 cm, medium 165, large 172) added as synthetic fixtures so Beth's side can be tried without her measurements | Large preset: tee clipping 1.15% (worst of all bodies), trousers calibration hip -1.1 and waist +1.8 (not converged). Viewer buttons F small, F medium, F large. Real Beth data still needed (B5, B14). |

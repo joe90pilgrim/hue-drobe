@@ -18,6 +18,7 @@ const hud = document.getElementById('hud');
   const pick = document.getElementById('pick');
   pick.replaceChildren(
     link('test', 'm', ''), link('Joe', 'm', 'joe'), link('Beth', 'm', 'beth'),
+    link('F small', 'm', 'preset_female_small'), link('F medium', 'm', 'preset_female_medium'), link('F large', 'm', 'preset_female_large'),
     link('Front', 'view', 'front'), link('Side', 'view', 'side'), link('Back', 'view', 'back'));
 }
 const renderer = new THREE.WebGLRenderer({ antialias: true });

@@ -383,11 +383,11 @@ def tee_chest_circ(gt):
     merge into one (reads about 1.7x too large), so step down a centimetre at a time until the loop is torso-only."""
     z0 = zmin_f + marks["chest_cm"] * H_f
     c = float("nan")
-    for k in range(0, 6):
+    for k in range(0, 12):
         c = circ_loop(gt, z0 - 0.01 * k)
         if not math.isnan(c) and c < 1.3 * body_chest_circ:
             return c
-    return c
+    return float("nan")  # merged at every height tried: no usable reading
 
 
 TG = (G or {}).get("tee")
@@ -460,7 +460,7 @@ if TG:
     tee_sleeve_t = min(0.95, TG["sleeve_cm"] / 100.0 / arm_len)
     tee_gap = 0.003
     tee_ease = 0.005
-    for it in range(5):
+    for it in range(8):
         tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
                                            sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck)
         gt = bmesh.new()
@@ -477,7 +477,8 @@ if TG:
             break
         if not sleeve_ok:
             tee_sleeve_t = min(0.95, max(0.2, tee_sleeve_t + (TG["sleeve_cm"] - got_sleeve) / 100.0 / arm_len))
-        tee_ease = min(0.06, max(0.003, tee_ease + (TG["chest_circ_cm"] - got) / two_pi / 100.0))
+        if not math.isnan(got):  # no usable reading this round: keep the ease as it is
+            tee_ease = min(0.06, max(0.003, tee_ease + (TG["chest_circ_cm"] - got) / two_pi / 100.0))
 else:
     tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
                                        sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck)

@@ -1,0 +1,14 @@
+{
+  "_note": "Synthetic fixture, not a real person. All values are targets.",
+  "sex_base": "female",
+  "real": [
+    "height_cm",
+    "waist_cm",
+    "hips_cm",
+    "chest_cm"
+  ],
+  "height_cm": 158,
+  "chest_cm": 84,
+  "waist_cm": 66,
+  "hips_cm": 90
+}

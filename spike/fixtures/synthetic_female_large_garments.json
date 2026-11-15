@@ -1,0 +1,16 @@
+{
+  "_note": "Synthetic garment fixture for the female large body.",
+  "tee": {
+    "chest_circ_cm": 108,
+    "length_cm": 66,
+    "sleeve_cm": 19,
+    "neckline_width_cm": 20
+  },
+  "trousers": {
+    "waist_circ_cm": 98,
+    "hip_circ_cm": 118,
+    "rise_cm": 26,
+    "inseam_cm": 70,
+    "leg_opening_circ_cm": 36
+  }
+}
