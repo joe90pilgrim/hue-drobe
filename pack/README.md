@@ -9,6 +9,8 @@ It wraps the spike's Blender scripts (`spike/blender/`) and checker (`spike/chec
 | `fit_config.json` | The default fit: ease and proportions per garment type, and the neutral garment colour. One place to change a fit. |
 | `fit.py` | Turns a body's measurements and the config into garment sizes. No Blender needed. |
 | `test_fit.py` | Unit tests for `fit.py`; run by `npm run check`. |
+| `test_reports.py` | Fails if the committed reports in `reports/` were not built from the current `fit_config.json`; run by `npm run check`. |
+| `reports/` | The six synthetic bodies' reports, built by `build_pack.py` from `fit_config.json`. `npm run check` validates these, so it checks the garments the app ships. |
 
 ## Run (PowerShell)
 
@@ -20,6 +22,12 @@ Joe as well, from `private/measurements_joe.json`. If every check passes, his pa
 ```
 python pack/build_pack.py --private
 ```
+Try a different fit without editing the committed file: `python pack/build_pack.py --config path/to/my_fit.json --only synthetic_large`.
+After changing `fit_config.json` itself, refresh the committed reports (all six bodies, committed config only), then commit them with the config:
+```
+python pack/build_pack.py --reports-to pack/reports
+```
+`npm run check` fails until you do, because each report carries the SHA-256 of the config it was built from.
 Try a change on one body first: `python pack/build_pack.py --only synthetic_medium` (or `--only joe --private`).
 About 40 seconds for one body, about 2 minutes for all seven (`--jobs 4`). The exit code is 0 only if every build and check passed.
 

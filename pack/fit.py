@@ -5,6 +5,14 @@ spike's fitting and checks run unchanged. The ease values and proportions live i
 """
 
 
+import hashlib, json
+
+
+def config_hash(cfg):
+    """SHA-256 of the fit config's content (key order and whitespace do not matter). Stamped into every report by build_pack.py."""
+    return hashlib.sha256(json.dumps(cfg, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
 def _r(x):
     return round(x, 1)
 

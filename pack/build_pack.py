@@ -1,11 +1,14 @@
 """Build the avatar pack: bodies plus default-fit garments, checked against the spike's tolerances.
 
-Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N]
+Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build Joe from private/measurements_joe.json into private/pack, check him, and write his pack
              (private/pack/joe/: body.glb, tee.glb, trousers.glb, sweatshirt.glb, manifest.json). The pack is written only if every check passes.
   --only     build just one body (a fixture name such as synthetic_medium, or 'joe'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3)
+  --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
+  --reports-to  after every check passes, copy the synthetic bodies' reports to DIR (use pack/reports to refresh the ones `npm run check`
+             validates). Each report is stamped with the SHA-256 of the fit config it was built from.
 Blender is found from the BLENDER environment variable, else the default Windows install path for Blender 5.3.
 Garment sizes come from pack/fit_config.json and the body's own measurements (pack/fit.py). Exit code 0 only if every build and check passed.
 """
@@ -21,7 +24,8 @@ BLENDER = os.environ.get("BLENDER", r"C:\Program Files\Blender Foundation\Blende
 SCRIPT = ROOT / "spike" / "blender" / "body_from_measurements.py"
 CHECKER = ROOT / "spike" / "check_reports.py"
 TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
-CFG = json.load(open(HERE / "fit_config.json"))
+DEFAULT_CONFIG = HERE / "fit_config.json"
+CFG = json.load(open(DEFAULT_CONFIG))  # replaced in main() when --config is given
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb"}
 
 
@@ -63,6 +67,10 @@ def build(job):
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT).returncode
     if rc == 0 and not report.exists():
         rc = 1
+    if rc == 0:
+        data = json.load(open(report))
+        data["fit_config_sha256"] = config_hash(CFG)
+        json.dump(data, open(report, "w"), indent=2)
     print(f"{name}: {'built' if rc == 0 else 'BUILD FAILED, see ' + str(out / (name + '_build.log'))}", flush=True)
     return rc
 
@@ -71,6 +79,11 @@ def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
     return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt"]).returncode
+
+
+def config_hash(cfg):
+    """SHA-256 of the config's content (key order and whitespace do not matter). fit.config_hash is the same function."""
+    return fit.config_hash(cfg)
 
 
 def blender_version():
@@ -111,7 +124,11 @@ def write_pack(name, build_dir, pack_dir):
 
 
 def main():
+    global CFG
     only, jobs = arg("--only"), int(arg("--jobs", 3))
+    if arg("--config"):
+        CFG = json.load(open(arg("--config")))
+        print(f"Using fit config {arg('--config')} (sha256 {config_hash(CFG)[:12]})")
     synthetic = [(m, ROOT / "pack" / "out", m.stem) for m in sorted((ROOT / "spike" / "fixtures").glob("*.json"))
                  if not m.stem.endswith("_garments")]
     joe = (ROOT / "private" / "measurements_joe.json", ROOT / "private" / "pack" / "build", "joe")
@@ -143,6 +160,19 @@ def main():
     if rc:
         print("\nChecks failed: no pack written")
         return rc
+    if arg("--reports-to"):
+        dest = pathlib.Path(arg("--reports-to"))
+        if only:
+            print("--reports-to ignored with --only: a partial set of reports would fail the staleness test")
+        elif arg("--config"):
+            print("--reports-to ignored with --config: committed reports must come from the committed pack/fit_config.json")
+        else:
+            dest.mkdir(parents=True, exist_ok=True)
+            for old in dest.glob("*_report.json"):
+                old.unlink()
+            for j in synthetic:
+                shutil.copyfile(j[1] / f"{j[2]}_report.json", dest / f"{j[2]}_report.json")
+            print(f"Reports copied to {dest}")
     if any(j[2] == "joe" for j in jobs_all):
         rc |= write_pack("joe", joe[1], ROOT / "private" / "pack" / "joe")
     print("\nPACK BUILD " + ("FAILED" if rc else "OK"))
