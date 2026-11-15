@@ -1,4 +1,4 @@
-# MVP tickets
+# Tickets
 
 Written 15 November 2026, after the spike closed with a go for close-fitting garments. Work them in number order unless a ticket says otherwise.
 
@@ -12,7 +12,7 @@ Written 15 November 2026, after the spike closed with a go for close-fitting gar
 
 **Out of scope for the MVP:** adding your own clothes, other people or profiles, clothing recommendations, editing measurements, shoes.
 
-## Tickets
+## MVP tickets (done)
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
@@ -27,19 +27,93 @@ Written 15 November 2026, after the spike closed with a go for close-fitting gar
 | 09 | [Quiz flow](MVP-09-quiz-flow.md) | 01, 08 | Haiku, high |
 | 10 | [Deploy to Google Cloud](MVP-10-deploy.md) | 01, 04 | Sonnet, high |
 
+## Roadmap tickets
+
+One folder per version, following `docs/roadmap.md`. Every open decision is collected in [decisions-needed.md](decisions-needed.md); a ticket with an open decision stops and asks rather than guessing.
+
+Versions 1.1 and 2 are full tickets. Later versions are outlines, marked as such, to refine with Joe before they start, because their details depend on the experiments (V3-00, L-01, L-02) and on decisions (V4-00, V5-00). Do V1.1-00 first, so the checks cover every new garment.
+
+### Version 1.1: Make it mine
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V1.1-00 | [Checks test the garments the app ships](v1.1-make-it-mine/V1.1-00-checks-on-shipped-garments.md) | MVP | Sonnet, medium |
+| V1.1-01 | [Favourite colours in the picker](v1.1-make-it-mine/V1.1-01-favourite-colours.md) | MVP quiz and colour picker | Haiku, high |
+| V1.1-02 | [Saved clothes library](v1.1-make-it-mine/V1.1-02-saved-clothes.md) | MVP clothes and colour picker | Sonnet, low |
+| V1.1-03 | [Preset outfits](v1.1-make-it-mine/V1.1-03-preset-outfits.md) | V1.1-02 | Haiku, high |
+| V1.1-04 | [Other t-shirt necklines](v1.1-make-it-mine/V1.1-04-necklines.md) | MVP avatar pack build | Sonnet, high |
+| V1.1-05 | [Shorts](v1.1-make-it-mine/V1.1-05-shorts.md) | MVP avatar pack build | Sonnet, medium |
+| V1.1-06 | [Back up and restore your data (recommended addition)](v1.1-make-it-mine/V1.1-06-backup.md) | V1.1-02, V1.1-03 | Sonnet, low |
+| V1.1-07 | [Show a close second season](v1.1-make-it-mine/V1.1-07-borderline-quiz-result.md) | MVP quiz | Haiku, high |
+
+### Version 2: Beth joins
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V2-01 | [Beth's measurements and photos](v2-beth-joins/V2-01-beth-measurements.md) | None | No agent. Joe and Beth. |
+| V2-02 | [A woman's body: Beth's avatar](v2-beth-joins/V2-02-womans-body.md) | V2-01 | Sonnet, high |
+| V2-03 | [MVP garments on Beth](v2-beth-joins/V2-03-garments-on-beth.md) | V2-02 | Sonnet, high |
+| V2-04 | [Tights](v2-beth-joins/V2-04-tights.md) | V2-02 | Sonnet, medium |
+| V2-05 | [Individual logins](v2-beth-joins/V2-05-logins.md) | MVP deploy | Sonnet, high |
+| V2-06 | [Profiles and per-person data](v2-beth-joins/V2-06-profiles.md) | V2-05 | Sonnet, medium |
+
+### Version 3: Loose clothes and layers
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V3-00 | [Experiment: loose clothes with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03 | Opus, high |
+| V3-01 | [Skirts](v3-loose-clothes/V3-01-skirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-02 | [Dresses](v3-loose-clothes/V3-02-dresses.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+
+### Version 4: Your real wardrobe
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V4-00 | [Decision: sending data off the device](v4-real-wardrobe/V4-00-data-off-device.md) (outline) | None | No agent. Joe and Beth. |
+| V4-01 | [Photo to nearest item](v4-real-wardrobe/V4-01-photo-to-item.md) (outline) | V4-00, V3 garments | Sonnet, high (tentative) |
+| V4-02 | [URL to nearest item (recommend dropping)](v4-real-wardrobe/V4-02-url-to-item.md) (outline) | V4-00, V4-01 | Sonnet, high (tentative) |
+| V4-03 | [Create a packing list](v4-real-wardrobe/V4-03-packing-list.md) (outline) | V1.1-02, V1.1-03 | Haiku, high |
+
+### Version 5: Finishing the look
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V5-00 | [Decision: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (outline) | None | No agent. Joe, with a short Sonnet (low) research ticket if wanted. |
+| V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) (outline) | V5-00 | Sonnet, high (tentative) |
+| V5-02 | [Hats](v5-finishing-the-look/V5-02-hats.md) (outline) | V5-00 | Sonnet, high (tentative) |
+| V5-03 | [Jewellery: necklaces, rings, watches](v5-finishing-the-look/V5-03-jewellery.md) (outline) | V5-00 | Sonnet, high (tentative) |
+| V5-04 | [Hair styles](v5-finishing-the-look/V5-04-hair.md) (outline) | V5-00 | Sonnet, high (tentative) |
+
+### Version 6: Style assistant
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V6-01 | [Ask Gemini for advice](v6-style-assistant/V6-01-gemini-advice.md) (outline) | V4-00, V2-05 | Sonnet, medium (tentative) |
+| V6-02 | [Suggested packing list](v6-style-assistant/V6-02-suggested-packing.md) (outline) | V4-03, V6-01 | Sonnet, medium (tentative) |
+
+### Later: needs an architecture change first
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| L-01 | [Experiment: changing body dimensions in the app](later-architecture/L-01-body-change-experiment.md) (outline) | V2 | Opus, high |
+| L-02 | [Experiment: other avatar poses](later-architecture/L-02-poses-experiment.md) (outline) | V3 (so loose clothes are known first) | Opus, high |
+
 ## Workers
 
 Each ticket names the cheapest model and effort level likely to finish it inside its ceiling without many reworks. Set the model and effort when you start the session for that ticket.
 - **Haiku:** small, well-defined UI work.
 - **Sonnet:** most tickets.
-- **Opus:** only MVP-07, where reworks would cost more than the stronger model.
-- **Fable:** not needed for the MVP.
+- **Opus:** only where reworks would cost more than the stronger model: new garment geometry that is hard to get right, and the capped experiments.
+- **Fable:** not needed for any ticket on the roadmap.
 
 If a ticket on Haiku or Sonnet hits the three-strikes rule, don't keep retrying on the same model. Stop, and Joe decides whether to move it up one level.
 
 ## Rules for every ticket
 
-- **Joe signs off anything visual.** He QAs by eye in the app served locally (`npm run dev`, opened on the Pixel 8 and on desktop). A ticket with a visual criterion isn't done until he says so.
+- **Joe (or Beth, for her avatar) signs off anything visual.** QA is by eye in the app served locally (`npm run dev`, opened on the Pixel 8 and on desktop). A ticket with a visual criterion isn't done until he says so.
 - **Done means stop.** When a ticket's acceptance criteria are met, stop work on it immediately, commit, report and move to the next ticket. Don't polish, refactor or add extras beyond the criteria. Write any ideas in `docs/tickets/backlog.md` instead of doing them.
 - **The ceiling is a maximum, not a budget.** Each ticket has a ceiling in hours of work. Most tickets should finish well inside it. Note the start time (run `date`) when you begin a ticket. If the ceiling is reached before the criteria are met, stop whatever state the work is in, write down what was done, what's left and why, and ask Joe.
 - **Three strikes.** If a fix hasn't worked after three attempts, stop and ask Joe, even if the ceiling hasn't been reached.
