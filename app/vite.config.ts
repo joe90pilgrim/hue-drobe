@@ -6,7 +6,7 @@ import { defineConfig, type Plugin } from 'vite';
 function servePrivatePack(): Plugin {
   const root = fileURLToPath(new URL('../private/pack/joe/', import.meta.url));
   const handler = (req: { url?: string }, res: any, next: () => void) => {
-    const m = /^\/pack\/joe\/(body|tee|trousers)\.glb$/.exec((req.url ?? '').split('?')[0]);
+    const m = /^\/pack\/joe\/(body|tee|trousers|sweatshirt)\.glb$/.exec((req.url ?? '').split('?')[0]);
     const file = m && root + m[1] + '.glb';
     if (!file || !existsSync(file)) return next();
     res.setHeader('Content-Type', 'model/gltf-binary');

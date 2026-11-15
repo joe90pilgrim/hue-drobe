@@ -19,6 +19,13 @@ class DefaultGarments(unittest.TestCase):
         self.assertEqual(g["trousers"]["inseam_cm"], 76.0)
         self.assertEqual(g["trousers"]["leg_opening_circ_cm"], 41.2)
 
+    def test_sweatshirt_has_more_room_than_the_tee(self):
+        g = fit.default_garments(BODY, CFG)
+        self.assertEqual(g["sweatshirt"]["chest_circ_cm"], 110.0)
+        self.assertGreater(g["sweatshirt"]["chest_circ_cm"], g["tee"]["chest_circ_cm"])
+        self.assertEqual(g["sweatshirt"]["neckline_width_cm"], 18.7)
+        self.assertEqual(g["sweatshirt"]["colour_srgb"], CFG["colour_srgb"])
+
     def test_ease_is_positive(self):
         g = fit.default_garments(BODY, CFG)
         self.assertGreater(g["tee"]["chest_circ_cm"], BODY["chest_cm"])

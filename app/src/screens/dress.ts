@@ -6,8 +6,8 @@ interface Slot {
   garments: Record<string, string>; // option -> pack garment name
 }
 const SLOTS: Slot[] = [
-  { name: 'Layer', options: ['Sweatshirt'], garments: {} }, // sweatshirt arrives with MVP-07
-  { name: 'Top', options: ['T-shirt', 'None'], garments: { 'T-shirt': 'tee' } },
+  // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
+  { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
   { name: 'Bottom', options: ['Trousers', 'None'], garments: { Trousers: 'trousers' } },
 ];
 

@@ -9,7 +9,10 @@ Stricter than the first version:
   pieces and openings. The ray test and the older nearest-point test are printed for information only.
 - height and inside leg use the length tolerance; circumferences use the circumference tolerance.
 
-Usage: python spike/check_reports.py <folder> [--no-garments]
+- a sweatshirt (MVP-07), when the report has one, gets exactly the tee's mesh limits (pieces, openings, intersections,
+  clearance, shoulder gap; sweatshirt with trousers uses the tee-with-trousers limit). --sweatshirt makes a missing one a failure.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt]
 """
 import json, sys, pathlib
 
@@ -53,7 +56,8 @@ for f in reports:
         err = m["achieved"] - m["target"]
         check(abs(err) <= tol["circumference_cm"], f"{k}: target {m['target']} got {m['achieved']} (error {err:+.1f}, tol {tol['circumference_cm']})")
 
-    for g in ("tee", "trousers"):
+    for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()):
+        lim = "tee" if g == "sweatshirt" else g  # the sweatshirt is held to the tee's limits
         if g not in r:
             check(False, f"{g} missing from report")
             continue
@@ -65,8 +69,8 @@ for f in reports:
         if mc is None:
             check(False, f"{g} mesh checks missing from report (rebuild with the current body_from_measurements.py)")
         else:
-            check(mc["pieces"] == gm[f"{g}_pieces"], f"{g} pieces: {mc['pieces']} (want {gm[g + '_pieces']}); faces/area {[(p['faces'], p['area_cm2']) for p in mc['piece_faces_area']]}")
-            check(mc["openings"] == gm[f"{g}_openings"], f"{g} openings: {mc['openings']} (want {gm[g + '_openings']}); lengths cm {mc['opening_lengths_cm']}")
+            check(mc["pieces"] == gm[f"{lim}_pieces"], f"{g} pieces: {mc['pieces']} (want {gm[lim + '_pieces']}); faces/area {[(p['faces'], p['area_cm2']) for p in mc['piece_faces_area']]}")
+            check(mc["openings"] == gm[f"{lim}_openings"], f"{g} openings: {mc['openings']} (want {gm[lim + '_openings']}); lengths cm {mc['opening_lengths_cm']}")
             check(mc["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"{g} body-through-cloth intersecting face pairs: {mc['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']}); by height cm {mc.get('body_intersections_by_z_cm')}")
             check(mc["self_intersecting_pairs"] <= gm["self_intersecting_pairs_max"], f"{g} self-intersecting face pairs: {mc['self_intersecting_pairs']} (max {gm['self_intersecting_pairs_max']}); by height cm {mc['self_intersections_by_z_cm']}")
             cl = mc["clearance_to_body_cm"]["min"]
@@ -89,13 +93,19 @@ for f in reports:
     if "mesh_checks" in r:
         n = r["mesh_checks"]["tee_vs_trousers_intersecting_pairs"]
         check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"tee-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
-        sg = r["mesh_checks"]["tee"]["shoulder_gap"]
-        check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
-              and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
-              f"tee shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
-              f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
-              known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
-                     and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], "tee_shoulder_gap_band_mean"))))
+        if "sweatshirt" in r["mesh_checks"]:
+            n = r["mesh_checks"]["sweatshirt_vs_trousers_intersecting_pairs"]
+            check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"sweatshirt-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+        for top in ("tee", "sweatshirt"):
+            if top not in r["mesh_checks"]:
+                continue
+            sg = r["mesh_checks"][top]["shoulder_gap"]
+            check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
+                  and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
+                  f"{top} shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
+                  f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
+                  known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
+                         and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], f"{top}_shoulder_gap_band_mean"))))
 
     for lbl, cg in (r.get("tee", {}).get("circ_vs_garment_cm") or {}).items():
         if cg.get("error") is None:

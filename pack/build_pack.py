@@ -3,7 +3,7 @@
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build Joe from private/measurements_joe.json into private/pack, check him, and write his pack
-             (private/pack/joe/: body.glb, tee.glb, trousers.glb, manifest.json). The pack is written only if every check passes.
+             (private/pack/joe/: body.glb, tee.glb, trousers.glb, sweatshirt.glb, manifest.json). The pack is written only if every check passes.
   --only     build just one body (a fixture name such as synthetic_medium, or 'joe'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3)
 Blender is found from the BLENDER environment variable, else the default Windows install path for Blender 5.3.
@@ -22,7 +22,7 @@ SCRIPT = ROOT / "spike" / "blender" / "body_from_measurements.py"
 CHECKER = ROOT / "spike" / "check_reports.py"
 TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
 CFG = json.load(open(HERE / "fit_config.json"))
-PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb"}
+PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb"}
 
 
 def arg(flag, default=None):
@@ -70,7 +70,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder)]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt"]).returncode
 
 
 def blender_version():
@@ -96,7 +96,7 @@ def write_pack(name, build_dir, pack_dir):
         "blender": blender_version(),
         "files": files,
         "total_bytes": total,
-        "garments": {"tee": {"fit": "regular"}, "trousers": {"fit": "regular"}},
+        "garments": {"tee": {"fit": "regular"}, "trousers": {"fit": "regular"}, "sweatshirt": {"fit": "regular"}},
         "garment_colour_srgb": CFG["colour_srgb"],
         "fit_config": CFG,
         "checks": "all passed (spike/check_reports.py)",

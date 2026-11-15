@@ -31,11 +31,11 @@ add-on folder from anything it starts. Run the script with the interpreter's ful
 
 `private/pack/joe/` (git-ignored, because `private/` is):
 
-- `body.glb`, `tee.glb`, `trousers.glb`: one mesh each, exported by Blender's glTF exporter.
+- `body.glb`, `tee.glb`, `trousers.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
 - `manifest.json`: file sizes and SHA-256, Blender version, the fit config used, build time.
 
 `private/pack/build/` holds the build logs, reports and garment size files for inspection. Garments are built in a neutral light grey;
-the app sets the colour. The sweatshirt is added in MVP-07.
+the app sets the colour. The sweatshirt (MVP-07) is an alternative top over the trousers, held to the tee's mesh limits.
 
 ## How the fit works
 

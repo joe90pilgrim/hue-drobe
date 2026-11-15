@@ -72,8 +72,10 @@ def in_neckline(p, neck, margin=0.0):
     return d is not None and p.z > neck["z"] - d - margin
 
 
-def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.95):
-    """Choose body faces forming a short-sleeve tee on the reference body. Returns the set of face indices."""
+def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.95, long_sleeves=False):
+    """Choose body faces forming a short-sleeve tee on the reference body. Returns the set of face indices.
+    long_sleeves (MVP-07 sweatshirt): keep the whole upper arm and the forearm up to the wrist joint (the hand is left out),
+    at any height, since in the A-pose the forearm hangs below the torso hem."""
     j = joint_positions(ref_h, JOINTS)
     bm = body_bm(ref_h)
     zmin = min(v.co.z for v in bm.verts)
@@ -96,8 +98,12 @@ def define_tee(ref_h, hem_frac=0.44, collar_drop=0.035, sleeve_t=0.95):
         d, t = _seg_dist(c, *segs[best])
         if (best in ("torso", "lleg", "rleg") or (best == "head" and c.z <= collar_z)) and hem_z <= c.z <= collar_z:
             keep.add(f.index)
-        elif best in ("lup", "rup") and t <= sleeve_t and c.z >= hem_z:
+        elif best in ("lup", "rup") and (long_sleeves or (t <= sleeve_t and c.z >= hem_z)):
             keep.add(f.index)
+        elif long_sleeves and best in ("lfo", "rfo"):
+            a, b = segs[best]
+            if (c - a).dot(b - a) / (b - a).length_squared < 1.0:  # unclamped: the hand lies beyond 1
+                keep.add(f.index)
     bm.free()
     return keep
 
@@ -132,9 +138,20 @@ def canonical_faces(g):
     g.verts.ensure_lookup_table(); g.faces.ensure_lookup_table()
 
 
+def _arm_segs(joints):
+    segs = {"torso": (joints["joint-pelvis"], joints["joint-neck"]), "head": (joints["joint-neck"], joints["joint-head"]),
+            "lup": (joints["joint-l-shoulder"], joints["joint-l-elbow"]), "rup": (joints["joint-r-shoulder"], joints["joint-r-elbow"]),
+            "lfo": (joints["joint-l-elbow"], joints["joint-l-hand"]), "rfo": (joints["joint-r-elbow"], joints["joint-r-hand"])}
+    radius = {"torso": 0.14, "head": 0.09, "lup": 0.045, "rup": 0.045, "lfo": 0.035, "rfo": 0.035}
+    return segs, radius
+
+
+ARM = ("lup", "rup", "lfo", "rfo")
+
+
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
-              fork_z=None, fork_gap=0.0015):
+              fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
@@ -142,7 +159,14 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     rests on the shoulders instead of floating by the full ease (B23). Chest, bust and sleeves keep their ease.
     fork_z (trousers): below this height (crotch plus 3 cm), a vertex whose source body vertex is on the left leg stays
     at least fork_gap left of the centre plane, and likewise on the right, so the two leg shells cannot cross (B1).
+    long_sleeves (MVP-07 sweatshirt): sleeve_t is a fraction of the forearm (elbow to wrist) instead of the upper arm, and
+    the hem cut leaves the sleeves alone (in the A-pose the forearm can hang below the hem).
+    forearm_ease_frac: the ease falls linearly down the forearm, from the full ease at the elbow to this fraction at the wrist.
+    hem_band, cuff_band: (band height m, gap m). Ribbing: within the band above the hem or before the cuff the cloth is drawn
+    in to that gap (fading in over 3 cm) from the inner garment where there is one (hem), else from the body, then kept clear
+    of the body and inner garment as everywhere else.
     Returns (mesh, list of body vertex ids still covered)."""
+    segs, radius = _arm_segs(joints)
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
     if settle_shoulders and neck is not None:
@@ -177,6 +201,10 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         for v in f.verts:
             if v.index not in vmap:
                 e = ease(v.co.z) if callable(ease) else ease
+                if forearm_ease_frac != 1.0:
+                    k = _classify(v.co, segs, radius)
+                    if k in ("lfo", "rfo"):
+                        e *= 1.0 - (1.0 - forearm_ease_frac) * _seg_dist(v.co, *segs[k])[1]
                 if in_shoulders(v.co) and e > min_gap:
                     t = min(1.0, max(0.0, (v.normal.z - 0.3) / 0.5))
                     e += (min_gap - e) * t * t * (3 - 2 * t)
@@ -278,11 +306,46 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     v.co = v.co.lerp(loc + nor * min_gap, t)
             push_out()
 
+    if hem_band is not None or cuff_band is not None:
+        # ribbing: draw the cloth in towards the body inside the bands; the 3 cm fade keeps the step smooth, so no fold
+        def _band_weight(p):
+            k = _classify(p, segs, radius)
+            s_ = None
+            if hem_band is not None and hem_z is not None and k not in ARM:
+                s_, (bh, gap) = p.z - hem_z, hem_band
+            elif cuff_band is not None and k in ("lfo", "rfo") and sleeve_t is not None:
+                a, b = segs[k]
+                d = (b - a).normalized()
+                s_, (bh, gap) = (a + (b - a) * sleeve_t - p).dot(d), cuff_band
+            if s_ is None:
+                return 0.0, 0.0
+            t = 1.0 - min(1.0, max(0.0, (s_ - bh) / 0.03))
+            return t * t * (3 - 2 * t), gap
+        for _band in range(4):
+            for v in g.verts:
+                w, gap = _band_weight(v.co)
+                if w <= 0.0:
+                    continue
+                loc, nor, fi, dist = nearest(body_bvh, v.co)
+                if extra_bvh is not None and _classify(v.co, segs, radius) not in ARM:
+                    # the hem band lies over the inner garment: follow its smooth surface, not the body, which would pull
+                    # the cloth into the cleft between the buttocks and fold it over itself
+                    loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
+                    if loc2 is not None and dist2 < 0.06:
+                        loc, nor = loc2, nor2
+                if loc is not None:
+                    v.co = v.co.lerp(loc + nor * gap, w)
+            push_out()
+
     # straight hem
     # bisect interpolates the source-vertex layer on the verts it creates, which gives meaningless indices; mark them as
     # having no source vertex (0) so push_out and the covered-vertex list below ignore them
     if hem_z is not None:
         geom = list(g.verts) + list(g.edges) + list(g.faces)
+        if long_sleeves:  # cut the body of the garment only; the sleeves hang below the hem in the A-pose
+            body_faces = [f for f in g.faces if _classify(f.calc_center_median(), segs, radius) not in ARM]
+            bv = {v for f in body_faces for v in f.verts}
+            geom = list(bv) + list({e for f in body_faces for e in f.edges}) + body_faces
         res = bmesh.ops.bisect_plane(g, geom=geom, plane_co=(0, 0, hem_z), plane_no=(0, 0, 1), clear_inner=True)
         for x in res["geom_cut"]:
             if isinstance(x, bmesh.types.BMVert) and x.is_valid:
@@ -294,17 +357,13 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             if isinstance(x, bmesh.types.BMVert) and x.is_valid:
                 x[layer] = 0
     # straight sleeve ends
-    segs = {"torso": (joints["joint-pelvis"], joints["joint-neck"]), "head": (joints["joint-neck"], joints["joint-head"]),
-            "lup": (joints["joint-l-shoulder"], joints["joint-l-elbow"]), "rup": (joints["joint-r-shoulder"], joints["joint-r-elbow"]),
-            "lfo": (joints["joint-l-elbow"], joints["joint-l-hand"]), "rfo": (joints["joint-r-elbow"], joints["joint-r-hand"])}
-    radius = {"torso": 0.14, "head": 0.09, "lup": 0.045, "rup": 0.045, "lfo": 0.035, "rfo": 0.035}
-    for side, key in (("l", "lup"), ("r", "rup")) if sleeve_t is not None else ():
+    for side, key in ((("l", "lfo"), ("r", "rfo")) if long_sleeves else (("l", "lup"), ("r", "rup"))) if sleeve_t is not None else ():
         a, b = segs[key]
         d = (b - a).normalized()
         pc = a + (b - a) * sleeve_t
         # No plane bisect (it leaves sliver triangles that read as frayed edges): remove whole arm faces beyond the cut,
         # then lay the new open edge flat on the cut plane.
-        arm = (key, "lfo" if side == "l" else "rfo")
+        arm = (side + "up", side + "fo")
         kill = [f for f in g.faces if _classify(f.calc_center_median(), segs, radius) in arm
                 and (f.calc_center_median() - pc).dot(d) > 0.0]
         bmesh.ops.delete(g, geom=kill, context="FACES")
@@ -323,6 +382,8 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     new_co[v] = v.co.lerp((nb[0].co + nb[1].co) / 2, 0.5)
             for v, c in new_co.items():
                 v.co = c - d * (c - pc).dot(d)
+    if long_sleeves and sleeve_t is not None:
+        push_out()  # a long sleeve ends at the narrow wrist, where laying the cut edge flat can pull it to the skin
     if extend_hem_to is not None and hem_z is not None and extend_hem_to < hem_z - 1e-4:
         # hanging tube below the crotch: extrude the hem loop straight down, then keep it clear of the body and trousers
         edges = [e for e in g.edges if e.is_boundary and all(abs(v.co.z - hem_z) < 3e-4 for v in e.verts)]
@@ -382,6 +443,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     for p in me.polygons:
         p.use_smooth = True
     return me, vids
+
+
+def cuff_above_wrist_cm(body_bm, vids, joints):
+    """Long sleeves: how far the left cuff stops short of the wrist joint, measured along the forearm."""
+    el, wr = joints["joint-l-elbow"], joints["joint-l-hand"]
+    d = (wr - el).normalized()
+    reach = max((body_bm.verts[i].co - el).dot(d) for i in vids
+                if body_bm.verts[i].co.x > 0 and _seg_dist(body_bm.verts[i].co, el, wr)[0] < 0.06)
+    return round(((wr - el).length - reach) * 100, 1)
 
 
 def clipping_report(body_bm, garment_obj_mesh, body_vertex_ids, tol=0.0, zrange=None, edge_margin=0.012, skip=None):

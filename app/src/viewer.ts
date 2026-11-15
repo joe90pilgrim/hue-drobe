@@ -3,11 +3,11 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** Files of the avatar pack that the viewer loads. Joe's pack is served from private/pack/joe by the dev server only. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'trousers.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'trousers.glb', 'sweatshirt.glb'];
 const PACK_URL = './pack/joe/';
 
 export interface Viewer {
-  /** Shows or hides a garment (`tee`, `trousers`) instantly. Works before the garment has loaded. */
+  /** Shows or hides a garment (`tee`, `sweatshirt`, `trousers`) instantly. Works before the garment has loaded. */
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`. Works before the garment has loaded. */
   setColour: (name: string, hex: string) => void;

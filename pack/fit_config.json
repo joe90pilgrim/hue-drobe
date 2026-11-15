@@ -10,6 +10,18 @@
     "neckline_width_fraction_of_height": 0.125,
     "neckline_drop_front_cm": 6
   },
+  "sweatshirt": {
+    "_note": "Regular-fit crew-neck sweatshirt (MVP-07), an alternative top over the trousers. More chest ease than the tee, long sleeves, hem and cuffs drawn in as ribbing would (hem gap measured from the trousers, cuff gap from the wrist). The hem and cuffs are placed by the body (hem above the crotch, cuff short of the wrist joint) rather than by a length, so they sit the same way on every body.",
+    "chest_ease_cm": 10,
+    "hem_above_crotch_cm": 6,
+    "cuff_above_wrist_cm": 1.5,
+    "neckline_width_fraction_of_height": 0.11,
+    "neckline_drop_front_cm": 5,
+    "forearm_ease_fraction": 0.4,
+    "rib_band_cm": 5,
+    "hem_rib_gap_cm": 0.8,
+    "cuff_rib_gap_cm": 0.5
+  },
   "trousers": {
     "_note": "Regular-fit straight trousers, hem just above the floor.",
     "waist_towards_hips_fraction": 0.4,
