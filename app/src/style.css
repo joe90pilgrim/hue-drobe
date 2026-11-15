@@ -31,7 +31,11 @@ button { font-family: inherit; }
 .slot-controls { flex: 1; display: flex; align-items: center; justify-content: space-between; }
 .slot-controls button { width: 36px; height: 44px; border: 0; border-radius: 10px; background: var(--bg); font-size: 20px; color: var(--ink); }
 .slot-controls button:disabled { opacity: .5; }
-.swatch { width: 44px; height: 44px; border-radius: 10px; background: var(--line-strong); }
+.swatch { width: 44px; height: 44px; border: 0; border-radius: 10px; padding: 0; background: var(--line-strong); cursor: pointer; }
+.swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.swatch::-webkit-color-swatch { border: 1px solid var(--line); border-radius: 10px; }
+.swatch::-moz-color-swatch { border: 0; border-radius: 10px; }
+.swatch:disabled { opacity: .4; cursor: default; }
 
 .card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; }
 .quiz h2 { margin: 0 0 8px; font-size: 18px; }

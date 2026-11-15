@@ -32,3 +32,22 @@ test('switches outfit and remembers it after a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Previous top' }).click();
   await expect(top).toHaveText('T-shirt');
 });
+
+test('sets the tee colour, keeps the trousers colour, and remembers it after a reload', async ({ page }) => {
+  await page.goto('/');
+  const topColour = page.getByLabel('Top colour');
+  const bottomColour = page.getByLabel('Bottom colour');
+  await expect(topColour).toBeEnabled();
+  await topColour.fill('#2e5e8c');
+  await expect(topColour).toHaveValue('#2e5e8c');
+  await expect(bottomColour).toHaveValue('#d6d6d6');
+
+  await page.getByRole('button', { name: 'Next top' }).click();
+  await expect(topColour).toBeDisabled();
+  await page.getByRole('button', { name: 'Previous top' }).click();
+  await expect(topColour).toHaveValue('#2e5e8c');
+
+  await page.reload();
+  await expect(page.getByLabel('Top colour')).toHaveValue('#2e5e8c');
+  await expect(page.getByLabel('Bottom colour')).toHaveValue('#d6d6d6');
+});

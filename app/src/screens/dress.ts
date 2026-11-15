@@ -11,6 +11,9 @@ const SLOTS: Slot[] = [
   { name: 'Bottom', options: ['Trousers', 'None'], garments: { Trousers: 'trousers' } },
 ];
 
+/** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
+const DEFAULT_COLOUR = '#d6d6d6';
+
 const DB = 'huedrobe';
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -20,24 +23,24 @@ function openDb(): Promise<IDBDatabase> {
     r.onerror = () => reject(r.error);
   });
 }
-async function loadOutfit(): Promise<Record<string, string>> {
+async function kvGet<T>(key: string, fallback: T): Promise<T> {
   try {
     const db = await openDb();
     return await new Promise((resolve) => {
-      const q = db.transaction('kv').objectStore('kv').get('outfit');
-      q.onsuccess = () => resolve((q.result as Record<string, string>) ?? {});
-      q.onerror = () => resolve({});
+      const q = db.transaction('kv').objectStore('kv').get(key);
+      q.onsuccess = () => resolve((q.result as T) ?? fallback);
+      q.onerror = () => resolve(fallback);
     });
   } catch {
-    return {};
+    return fallback;
   }
 }
-async function saveOutfit(outfit: Record<string, string>): Promise<void> {
+async function kvPut(key: string, value: unknown): Promise<void> {
   try {
     const db = await openDb();
-    db.transaction('kv', 'readwrite').objectStore('kv').put(outfit, 'outfit');
+    db.transaction('kv', 'readwrite').objectStore('kv').put(value, key);
   } catch {
-    /* storage unavailable: outfit just isn't remembered */
+    /* storage unavailable: the choice just isn't remembered */
   }
 }
 
@@ -55,7 +58,7 @@ export function renderDress(el: HTMLElement): () => void {
             <div class="slot-item" data-slot="${s.name}">${s.options[0]}</div>
             <div class="slot-controls">
               <button aria-label="Previous ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&lsaquo;</button>
-              <span class="swatch"></span>
+              <input type="color" class="swatch" aria-label="${s.name} colour" value="${DEFAULT_COLOUR}">
               <button aria-label="Next ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&rsaquo;</button>
             </div>
           </div>`,
@@ -71,26 +74,50 @@ export function renderDress(el: HTMLElement): () => void {
   });
 
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
+  let colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
+  const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
+  const pickerOf = (slot: Slot) => el.querySelector<HTMLInputElement>(`[aria-label="${slot.name} colour"]`)!;
   const apply = (slot: Slot) => {
     el.querySelector(`[data-slot="${slot.name}"]`)!.textContent = outfit[slot.name];
     for (const [opt, g] of Object.entries(slot.garments)) viewer.setGarment(g, outfit[slot.name] === opt);
+    const g = garmentOf(slot);
+    const picker = pickerOf(slot);
+    picker.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
+    picker.value = (g && colours[g]) || DEFAULT_COLOUR;
   };
   SLOTS.forEach(apply);
   let gone = false;
-  loadOutfit().then((saved) => {
-    if (gone) return;
-    for (const s of SLOTS) if (saved[s.name] && s.options.includes(saved[s.name])) outfit[s.name] = saved[s.name];
-    SLOTS.forEach(apply);
-  });
+  Promise.all([kvGet<Record<string, string>>('outfit', {}), kvGet<Record<string, string>>('colours', {})]).then(
+    ([saved, savedColours]) => {
+      if (gone) return;
+      for (const s of SLOTS) if (saved[s.name] && s.options.includes(saved[s.name])) outfit[s.name] = saved[s.name];
+      for (const [g, hex] of Object.entries(savedColours)) {
+        if (/^#[0-9a-f]{6}$/i.test(hex)) {
+          colours[g] = hex;
+          viewer.setColour(g, hex);
+        }
+      }
+      SLOTS.forEach(apply);
+    },
+  );
   for (const s of SLOTS) {
     const step = (d: number) => () => {
       const i = s.options.indexOf(outfit[s.name]);
       outfit[s.name] = s.options[(i + d + s.options.length) % s.options.length];
       apply(s);
-      void saveOutfit({ ...outfit });
+      void kvPut('outfit', { ...outfit });
     };
     el.querySelector(`[aria-label="Previous ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(-1));
     el.querySelector(`[aria-label="Next ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(1));
+
+    const picker = pickerOf(s);
+    picker.addEventListener('input', () => {
+      const g = garmentOf(s);
+      if (!g) return;
+      colours[g] = picker.value;
+      viewer.setColour(g, picker.value); // applies straight away
+    });
+    picker.addEventListener('change', () => void kvPut('colours', { ...colours }));
   }
   return () => {
     gone = true;

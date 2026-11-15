@@ -9,7 +9,18 @@ const PACK_URL = './pack/joe/';
 export interface Viewer {
   /** Shows or hides a garment (`tee`, `trousers`) instantly. Works before the garment has loaded. */
   setGarment: (name: string, visible: boolean) => void;
+  /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`. Works before the garment has loaded. */
+  setColour: (name: string, hex: string) => void;
   dispose: () => void;
+}
+
+/** Paints every material under `root`. `Color.set` reads hex as sRGB and converts to three.js's linear working space. */
+function paint(root: THREE.Object3D, hex: string) {
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) (m as THREE.MeshStandardMaterial).color.set(hex);
+    }
+  });
 }
 
 /** Shows the avatar in `stage` and lets the user turn and zoom it. `?debug` adds a frame-rate and download-size readout. */
@@ -48,6 +59,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
 
   const garments = new Map<string, THREE.Object3D>();
   const wanted = new Map<string, boolean>();
+  const colours = new Map<string, string>();
   let bytes = 0;
   let disposed = false;
   const loader = new GLTFLoader();
@@ -62,6 +74,8 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     const name = file.replace('.glb', '');
     gltf.scene.visible = wanted.get(name) ?? true;
     garments.set(name, gltf.scene);
+    const colour = colours.get(name);
+    if (colour) paint(gltf.scene, colour);
     scene.add(gltf.scene);
   });
   onStatus('Loading avatar…');
@@ -99,6 +113,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       wanted.set(name, visible);
       const g = garments.get(name);
       if (g) g.visible = visible;
+    },
+    setColour(name, hex) {
+      colours.set(name, hex);
+      const g = garments.get(name);
+      if (g) paint(g, hex);
     },
     dispose() {
       disposed = true;
