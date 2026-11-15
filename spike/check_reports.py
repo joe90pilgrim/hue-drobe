@@ -90,7 +90,8 @@ for f in reports:
         if cg.get("error") is None:
             print(f"  info tee circumference at {lbl} ({cg['height_cm']} cm): {cg['tee']} cm, no garment value (hem_circ_cm missing)")
         else:
-            check(abs(cg["error"]) <= tol["garment_landmark_cm"], f"tee circumference at {lbl} ({cg['height_cm']} cm): tee {cg['tee']} garment {cg['garment']} (error {cg['error']:+.1f}, tol {tol['garment_landmark_cm']})")
+            check(abs(cg["error"]) <= tol["garment_landmark_cm"], f"tee circumference at {lbl} ({cg['height_cm']} cm): tee {cg['tee']} expected {cg.get('expected', cg['garment'])} "
+                  f"(garment {cg['garment']}, stretched over what it covers {cg.get('stretched')}; error {cg['error']:+.1f}, tol {tol['garment_landmark_cm']})")
 
     if need_garments:
         lm = r.get("garment_landmarks_vs_real", [])

@@ -79,3 +79,28 @@ So with the real hem, Joe's tee fails the hem exit number and, at tension 15, ga
 3. **Repeatability tolerance**, now that a hem under strain varies by up to 2.9 cm between runs.
 
 Still outstanding: the A-pose side photo (silhouette exit number) and Joe's verdict by eye.
+
+## Update: hem judged against its stretched size (Joe's decision 1)
+
+Joe chose to compare the tee with the larger of the garment's own size and its stretched size: the outline of the torso or legs and trousers it covers, plus 3 mm clearance all round (`2026-11-15-hem-stretched-size.md`). The outline uses only section pieces within 15 cm of the centre line; a first version included the hands, which hang at waist height in the A-pose, and expected about 155 cm at the female waists.
+
+Built with `python spike/build_all.py --private --drape --jobs 4`.
+
+| Body | Waist: tee / expected (error) | Hem: tee / garment / stretched (error) | Self pairs | Shoulder mean / max |
+| --- | --- | --- | --- | --- |
+| synthetic_small | 99.5 / 99.6 (-0.1) | 102.1 / 101.8 / 99.0 (+0.3) | 0 | 0.50 / 0.61 |
+| synthetic_medium | 107.4 / 107.5 (-0.2) | 110.9 / 109.9 / 109.4 (+1.0) | 0 | 0.48 / 0.67 |
+| synthetic_large | 120.1 / 120.2 (-0.1) | 123.9 / 123.8 / 118.2 (+0.1) | 0 | 0.50 / 0.62 |
+| synthetic_female_small | 91.7 / 91.8 (-0.2) | 99.6 / 99.4 / 96.4 (+0.1) | 0 | 0.50 / 0.73 |
+| synthetic_female_medium | 99.9 / 100.3 (-0.4) | 109.6 / 109.4 / 106.8 (+0.2) | 0 | **0.51** / 0.86 |
+| synthetic_female_large | 112.4 / 112.7 (-0.3) | 123.5 / 123.3 / 118.5 (+0.1) | 0 | 0.48 / 0.63 |
+| Joe | 99.9 / 101.3 (-1.4) | 102.4 / 94.6 / **101.1** (+1.3) | **5** | 0.43 / 0.59 |
+
+So the waist and hem exit numbers now pass on every body. Joe's hem is judged against the stretched size, since his 94 cm hem sits on about 98 cm of jeans.
+
+### Still failing or open
+
+- **Joe's tee self-intersections:** 17, 7 and 5 pairs on three runs, mostly at 125 cm (under the arms), where the hem's strain pulls the cloth into folds. Depends on decision 2 (stretch).
+- **Repeatability:** synthetic tees differ by up to 0.99 cm between two builds; Joe's by up to 2.3 cm. Decision 3 is still open.
+- **Shoulder gap:** 0.51 cm on synthetic_female_medium this run (limit 0.5); it moves between 0.50 and 0.52 from run to run on several bodies.
+- **Still outstanding:** Joe's side photo and his verdict by eye.

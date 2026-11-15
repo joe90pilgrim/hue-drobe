@@ -544,13 +544,62 @@ if TG:
             return None
         t = min(1.0, max(0.0, (_cz - z) / max(0.01, _cz - _hz)))
         return TG["chest_circ_cm"] + (_hc - TG["chest_circ_cm"]) * t
+    def _under_hull_cm(z):
+        """Perimeter of the 2D convex hull of the body and trousers sections at height z: what the tee has to go round,
+        bridging the gap between the legs and over hollows."""
+        pts = []
+        for _b in (body_final, gtr):
+            _c = _b.copy()
+            _r = bmesh.ops.bisect_plane(_c, geom=list(_c.verts) + list(_c.edges) + list(_c.faces), plane_co=(0, 0, z), plane_no=(0, 0, 1))
+            _cut = [e for e in _r["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+            _par = {}
+
+            def _f(v):
+                while _par.setdefault(v, v) != v:
+                    _par[v] = _par[_par[v]]
+                    v = _par[v]
+                return v
+            for e in _cut:
+                _par[_f(e.verts[0])] = _f(e.verts[1])
+            _groups = {}
+            for e in _cut:
+                for v in e.verts:
+                    _groups.setdefault(_f(v), set()).add(v)
+            for _g in _groups.values():
+                # torso or legs only: arms and hands hang at waist height in the A-pose, well away from the centre line
+                if abs(sum(v.co.x for v in _g) / len(_g)) < 0.15:
+                    pts += [(v.co.x, v.co.y) for v in _g]
+            _c.free()
+        pts = sorted(set(pts))
+        if len(pts) < 3:
+            return float("nan")
+        cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
+        lower, upper = [], []
+        for q in pts:
+            while len(lower) >= 2 and cross(lower[-2], lower[-1], q) <= 0:
+                lower.pop()
+            lower.append(q)
+        for q in reversed(pts):
+            while len(upper) >= 2 and cross(upper[-2], upper[-1], q) <= 0:
+                upper.pop()
+            upper.append(q)
+        hull = lower[:-1] + upper[:-1]
+        return sum(math.dist(hull[i], hull[(i + 1) % len(hull)]) for i in range(len(hull))) * 100.0
+
+    # Joe's decision (docs/decisions/2026-11-15-hem-stretched-size.md): expect the larger of the garment's own size and
+    # its stretched size, the girth of what it sits on plus the cloth's 3 mm clearance all round
     tee_report["circ_vs_garment_cm"] = {}
     for _lbl, _z in (("waist", zmin_f + marks.get("waist_cm", 0.62) * H_f), ("hem", _hz + 0.02)):
         _got = circ_loop(gtee, _z)
         _want = _garment_circ(_z)
+        _under = _under_hull_cm(_z)
+        _stretched = None if math.isnan(_under) else _under + two_pi * 0.3
+        _expect = None if _want is None else (max(_want, _stretched) if _stretched is not None else _want)
         tee_report["circ_vs_garment_cm"][_lbl] = {"height_cm": round((_z - zmin_f) * 100, 1), "tee": round(_got, 1),
                                                   "garment": None if _want is None else round(_want, 1),
-                                                  "error": None if (_want is None or math.isnan(_got)) else round(_got - _want, 1)}
+                                                  "stretched": None if _stretched is None else round(_stretched, 1),
+                                                  "expected": None if _expect is None else round(_expect, 1),
+                                                  "error": None if (_expect is None or math.isnan(_got)) else round(_got - _expect, 1)}
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
