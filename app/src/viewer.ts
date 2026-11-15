@@ -7,6 +7,8 @@ const PACK_FILES = ['body.glb', 'tee.glb', 'trousers.glb'];
 const PACK_URL = './pack/joe/';
 
 export interface Viewer {
+  /** Shows or hides a garment (`tee`, `trousers`) instantly. Works before the garment has loaded. */
+  setGarment: (name: string, visible: boolean) => void;
   dispose: () => void;
 }
 
@@ -44,6 +46,8 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   hud.hidden = !debug;
   stage.append(hud);
 
+  const garments = new Map<string, THREE.Object3D>();
+  const wanted = new Map<string, boolean>();
   let bytes = 0;
   let disposed = false;
   const loader = new GLTFLoader();
@@ -54,7 +58,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     if (!buf || new Uint8Array(buf)[0] !== 0x67) throw new Error(file);
     bytes += buf.byteLength;
     const gltf = await loader.parseAsync(buf, '');
-    if (!disposed) scene.add(gltf.scene);
+    if (disposed) return;
+    const name = file.replace('.glb', '');
+    gltf.scene.visible = wanted.get(name) ?? true;
+    garments.set(name, gltf.scene);
+    scene.add(gltf.scene);
   });
   onStatus('Loading avatar…');
   Promise.all(loads).then(
@@ -87,6 +95,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   });
 
   return {
+    setGarment(name, visible) {
+      wanted.set(name, visible);
+      const g = garments.get(name);
+      if (g) g.visible = visible;
+    },
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);

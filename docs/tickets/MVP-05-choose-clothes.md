@@ -16,3 +16,7 @@ Joe clicks through the pre-defined clothes on his avatar.
 - Every combination shows correctly.
 - **Joe's visual sign-off:** no body showing through the cloth, viewed front, side and back.
 - The end-to-end test switches between at least two outfits.
+
+## Done (15 Nov 2026)
+Top (T-shirt/None) and Bottom (Trousers/None) switch instantly by toggling garment visibility, with the outfit saved in IndexedDB. Layer stays disabled until MVP-07. `npm run check` passes, with a new e2e test that switches outfit and reloads. About 10 minutes of work.
+**Awaiting Joe's visual sign-off** (no body showing through, front, side and back, all four combinations).
