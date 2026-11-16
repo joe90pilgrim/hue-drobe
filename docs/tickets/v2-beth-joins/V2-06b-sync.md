@@ -4,6 +4,8 @@
 **Worker:** Sonnet, high. A small backend; mistakes could show one person's data to the other.
 **Depends on:** V2-06
 
+**Status:** done 16 Nov 2026, all acceptance criteria checked by Joe on his phone and laptop. Record: `docs/decisions/2026-11-16-v2-06-data-model.md`.
+
 ## Goal
 Each person's data follows them between the phone and the laptop.
 
