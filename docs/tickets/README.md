@@ -72,13 +72,14 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V2-04 | [Tights](v2-beth-joins/V2-04-tights.md) | V2-02 | Sonnet, medium |
 | V2-05 | [Individual logins](v2-beth-joins/V2-05-logins.md) | MVP deploy | Sonnet, high |
 | V2-06 | [Profiles and per-person data](v2-beth-joins/V2-06-profiles.md) | V2-05 | Sonnet, medium |
+| V2-07 | [Spike: free MakeHuman asset packs](v2-beth-joins/V2-07-asset-pack-spike.md) | V2-03; run before V3-00 | Sonnet, high |
 | V2-08 | [Bug: the tops show a point at each breast](v2-beth-joins/V2-08-bust-shape-bug.md) | V2-03, V2-07; run last in version 2 | Fable, high |
 
 ### Version 3: Loose clothes and layers
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V3-00 | [Experiment: loose clothes with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03 | Opus, high |
+| V3-00 | [Experiment: loose clothes with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03, V2-07 (may shrink or drop this) | Opus, high |
 | V3-01 | [Skirts](v3-loose-clothes/V3-01-skirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-02 | [Dresses](v3-loose-clothes/V3-02-dresses.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |

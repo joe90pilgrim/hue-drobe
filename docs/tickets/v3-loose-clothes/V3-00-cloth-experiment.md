@@ -2,7 +2,7 @@
 
 **Ceiling:** 3 hours (hard stop). The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 **Worker:** Opus, high. The hardest technical question on the roadmap, and the area that used most of the spike's reworks. Worth the stronger model once, with a hard stop.
-**Depends on:** V2-03
+**Depends on:** V2-03, V2-07 (if free asset packs cover skirts and dresses well enough, shrink or drop this experiment)
 
 ## Goal
 Find out whether Blender cloth simulation, run offline from the offset shell, can make a skirt and a dress that pass the checks on Joe, Beth and the synthetic bodies.
