@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { addToWardrobe, closeSlot, colourInput, garment, inWardrobe, openSlot } from './helpers';
+import { addToWardrobe, closeSlot, setColour, expectColour, garment, inWardrobe, openSlot } from './helpers';
 
 test('adds a tee to the wardrobe, renames it, wears it from the library, and keeps it after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await addToWardrobe(page).click();
   await expect(inWardrobe(page)).toBeVisible();
-  await colourInput(page).fill('#1f2a5b'); // a change means this is not the added one any more
+  await setColour(page, '#1f2a5b'); // a change means this is not the added one any more
   await expect(addToWardrobe(page)).toBeVisible();
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await expect(inWardrobe(page)).toBeVisible();
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
@@ -23,7 +23,7 @@ test('adds a tee to the wardrobe, renames it, wears it from the library, and kee
   // Change the avatar, then wear the saved item and check it comes back.
   await page.getByRole('link', { name: 'Try on' }).click();
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#aa5500');
+  await setColour(page, '#aa5500');
   await garment(page, 'Sweatshirt').click();
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.reload();
@@ -31,7 +31,7 @@ test('adds a tee to the wardrobe, renames it, wears it from the library, and kee
   await expect(page).toHaveURL(/#\/try-on/);
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   await openSlot(page, 'Top');
-  await expect(colourInput(page)).toHaveValue('#1f2a5a');
+  await expectColour(page, '#1f2a5a');
 });
 
 test('hides Add to wardrobe when nothing is worn, and deletes a saved item', async ({ page }) => {

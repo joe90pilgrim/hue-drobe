@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { addToWardrobe, closeSlot, colourInput, inWardrobe, openSlot } from './helpers';
+import { addToWardrobe, closeSlot, setColour, inWardrobe, openSlot } from './helpers';
 import { writeFileSync } from 'node:fs';
 
 // V1.1-06: export, clear the app's storage, import, and everything comes back.
 test('backs up and restores saved clothes and outfits', async ({ page }, info) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await addToWardrobe(page).click();
   await expect(inWardrobe(page)).toBeVisible();
   await closeSlot(page);

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addToWardrobe, closeSlot, colourInput, garment, inWardrobe, neckline, necklines, openSlot } from './helpers';
+import { addToWardrobe, closeSlot, setColour, expectColour, garment, inWardrobe, neckline, necklines, openSlot } from './helpers';
 
 test('offers the necklines on the tee only, defaults to crew, and remembers the choice after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
@@ -32,17 +32,17 @@ test('offers the necklines on the tee only, defaults to crew, and remembers the 
 test('keeps the colour when the neckline changes', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#2e5e8c');
+  await setColour(page, '#2e5e8c');
   await neckline(page, 'V-neck').click();
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expectColour(page, '#2e5e8c');
   await neckline(page, 'Scoop').click();
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expectColour(page, '#2e5e8c');
 });
 
 test('adds a V-neck tee next to a crew-neck tee of the same colour, and wears each with its neckline', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await addToWardrobe(page).click(); // crew
   await expect(inWardrobe(page)).toBeVisible();
 

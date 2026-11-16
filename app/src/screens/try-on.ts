@@ -24,6 +24,7 @@ import {
   type GarmentId,
   type Neckline,
 } from '../wardrobe';
+import { createColourChooser } from '../colour-chooser';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
 
 interface Slot {
@@ -46,6 +47,8 @@ const optionLabel = (opt: string) => (opt === 'None' ? 'Nothing' : opt);
 
 const HEART =
   '<svg class="heart" width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>';
+const CHEVRON =
+  '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>';
 const PLUS =
   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>';
 const TICK =
@@ -89,7 +92,12 @@ export function renderTryOn(el: HTMLElement): () => void {
       </section>
       <div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="editor-title" tabindex="-1" hidden>
         <div class="grab" aria-hidden="true"></div>
-        <div class="editor-head"><h2 id="editor-title"></h2><button type="button" class="editor-done">Done</button></div>
+        <div class="editor-head">
+          <h2 id="editor-title"></h2>
+          <button type="button" class="editor-back" hidden>${CHEVRON}<span class="editor-back-text"></span></button>
+          <button type="button" class="editor-done">Done</button>
+        </div>
+        <div class="ed-controls">
         <div class="field">
           <span class="field-label" id="lbl-garment">Garment</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div>
@@ -104,7 +112,7 @@ export function renderTryOn(el: HTMLElement): () => void {
           <span class="field-label" id="lbl-colour">Colour</span>
           <div class="colour-row">
             <span class="cur-swatch" role="img" aria-label="Current colour"></span>
-            <label class="secondary choose"><span>Choose a colour</span><input type="color" class="picker" aria-label="Choose a colour" value="${DEFAULT_COLOUR}"></label>
+            <button type="button" class="secondary choose" aria-haspopup="true">Choose a colour</button>
             <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
           </div>
           <div class="fav-row" role="group" aria-label="Your favourite colours"></div>
@@ -114,6 +122,7 @@ export function renderTryOn(el: HTMLElement): () => void {
           </div>
         </div>
         <button type="button" class="secondary add-wardrobe"></button>
+        </div>
       </div>
     </div>`;
 
@@ -128,13 +137,23 @@ export function renderTryOn(el: HTMLElement): () => void {
   const neckField = editor.querySelector<HTMLElement>('[data-neck-field]')!;
   const neckGroup = editor.querySelector<HTMLElement>('[data-necklines]')!;
   const curSwatch = editor.querySelector<HTMLElement>('.cur-swatch')!;
-  const picker = editor.querySelector<HTMLInputElement>('.picker')!;
+  const controls = editor.querySelector<HTMLElement>('.ed-controls')!;
+  const chooseBtn = editor.querySelector<HTMLButtonElement>('.choose')!;
+  const backBtn = editor.querySelector<HTMLButtonElement>('.editor-back')!;
+  const backText = backBtn.querySelector<HTMLElement>('.editor-back-text')!;
   const favBtn = editor.querySelector<HTMLButtonElement>('.fav-btn')!;
   const favRow = editor.querySelector<HTMLElement>('.fav-row')!;
   const legend = editor.querySelector<HTMLElement>('.legend')!;
   const moreBtn = editor.querySelector<HTMLButtonElement>('[data-more]')!;
   const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
   const laptop = matchMedia('(min-width: 900px)');
+  // Moving a slider changes the avatar at once; the colour is saved when the slider is released or the chooser closes.
+  const chooser = createColourChooser({
+    input: (hex) => setColour(hex),
+    commit: () => void kvPut('colours', { ...colours }),
+    toggleFavourite: () => toggleFavourite(),
+  });
+  editor.append(chooser.el);
   let dragged = false; // the turn hint goes away after the first drag
   const viewer = createViewer(stage, (msg) => {
     status.textContent = msg ?? '';
@@ -154,6 +173,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let favourites: Favourite[] = []; // shared by every slot
   let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
   let editing: Slot | null = null; // the slot whose controls are open
+  let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
@@ -219,8 +239,8 @@ export function renderTryOn(el: HTMLElement): () => void {
     curSwatch.classList.toggle('o-empty', !g);
     curSwatch.style.background = g ? current : '';
     curSwatch.setAttribute('aria-label', g ? `Current colour ${current}` : 'No colour, nothing is worn');
-    if (picker.value !== current) picker.value = current;
-    picker.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
+    chooseBtn.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
+    chooser.sync({ hex: current, favourites });
     favBtn.disabled = !g;
     favBtn.setAttribute('aria-pressed', String(hasFavourite(favourites, current)));
     addBtn.hidden = !g || !(g in GARMENTS);
@@ -278,8 +298,30 @@ export function renderTryOn(el: HTMLElement): () => void {
     syncEditor();
     (editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]') ?? editor).focus();
   };
+  /** Swaps between the slot's controls and the colour chooser. */
+  const showChooser = (open: boolean) => {
+    if (!editing || chooserOpen === open) return;
+    if (!open) void kvPut('colours', { ...colours });
+    chooserOpen = open;
+    controls.hidden = open;
+    chooser.el.hidden = !open;
+    editorTitle.hidden = open;
+    backBtn.hidden = !open;
+    backText.textContent = `${editing.name} colour`;
+    backBtn.setAttribute('aria-label', `Back to the ${editing.name.toLowerCase()}`);
+    syncEditor();
+    (open ? backBtn : chooseBtn).focus();
+  };
   const hideEditor = () => {
     if (!editing) return;
+    if (chooserOpen) {
+      void kvPut('colours', { ...colours });
+      chooserOpen = false;
+      controls.hidden = false;
+      chooser.el.hidden = true;
+      editorTitle.hidden = false;
+      backBtn.hidden = true;
+    }
     editing = null;
     editor.hidden = true;
     place();
@@ -297,8 +339,12 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   for (const s of SLOTS) rowOf(s).addEventListener('click', () => openEditor(s, rowOf(s)));
   editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
+  backBtn.addEventListener('click', () => showChooser(false));
+  chooseBtn.addEventListener('click', () => showChooser(true));
   editor.addEventListener('keydown', (e) => {
-    if ((e as KeyboardEvent).key === 'Escape') requestClose();
+    if ((e as KeyboardEvent).key !== 'Escape') return;
+    if (chooserOpen) showChooser(false);
+    else requestClose();
   });
   // A tap on the stage closes the sheet on a phone; a drag to turn the avatar does not.
   let down: { x: number; y: number } | null = null;
@@ -327,32 +373,28 @@ export function renderTryOn(el: HTMLElement): () => void {
     void kvPut(NECKLINE_KEY, neckline);
   });
 
-  picker.addEventListener('input', () => {
+  /** Applies a colour to the garment in the open slot, on the avatar, the rows and the panel. */
+  function setColour(hex: string) {
     const g = editing && garmentOf(editing);
     if (!g) return;
-    colours[g] = picker.value;
-    viewer.setColour(g, picker.value); // applies straight away
+    colours[g] = hex;
+    viewer.setColour(g, hex); // applies straight away
     renderRows();
     syncEditor();
-  });
-  picker.addEventListener('change', () => void kvPut('colours', { ...colours }));
-
-  favBtn.addEventListener('click', () => {
+  }
+  function toggleFavourite() {
     if (!editing) return;
     const hex = colourOf(editing);
     favourites = hasFavourite(favourites, hex) ? removeFavourite(favourites, hex) : addFavourite(favourites, hex, false);
     void saveFavourites(favourites);
     syncEditor();
-  });
+  }
+  favBtn.addEventListener('click', toggleFavourite);
   favRow.addEventListener('click', (e) => {
     const hex = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-hex]')?.dataset.hex;
-    const g = editing && garmentOf(editing);
-    if (!hex || !g) return;
-    colours[g] = hex;
-    viewer.setColour(g, hex);
+    if (!hex) return;
+    setColour(hex);
     void kvPut('colours', { ...colours });
-    renderRows();
-    syncEditor();
   });
   moreBtn.addEventListener('click', () => {
     showAll = !showAll;

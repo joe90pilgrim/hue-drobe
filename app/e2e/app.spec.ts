@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeSlot, colourInput, garment, openSlot } from './helpers';
+import { closeSlot, setColour, expectColour, chooseButton, garment, openSlot } from './helpers';
 
 test('opens on Try on and moves between the three screens', async ({ page }) => {
   await page.goto('/');
@@ -93,28 +93,28 @@ test('switches outfit and remembers it after a reload', async ({ page }) => {
 test('sets the tee colour, keeps the trousers colour, and remembers it after a reload', async ({ page }) => {
   await page.goto('/');
   await openSlot(page, 'Top');
-  await expect(colourInput(page)).toBeEnabled();
-  await colourInput(page).fill('#2e5e8c');
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expect(chooseButton(page)).toBeEnabled();
+  await setColour(page, '#2e5e8c');
+  await expectColour(page, '#2e5e8c');
   await closeSlot(page);
   await openSlot(page, 'Bottom');
-  await expect(colourInput(page)).toHaveValue('#d6d6d6');
+  await expectColour(page, '#d6d6d6');
   await closeSlot(page);
 
   await openSlot(page, 'Top');
   await garment(page, 'Sweatshirt').click(); // its own colour, not the tee's
-  await expect(colourInput(page)).toBeEnabled();
-  await expect(colourInput(page)).toHaveValue('#d6d6d6');
+  await expect(chooseButton(page)).toBeEnabled();
+  await expectColour(page, '#d6d6d6');
   await garment(page, 'Nothing').click();
-  await expect(colourInput(page)).toBeDisabled();
+  await expect(chooseButton(page)).toBeDisabled();
   await garment(page, 'T-shirt').click();
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expectColour(page, '#2e5e8c');
 
   await page.reload();
 
   await openSlot(page, 'Top');
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expectColour(page, '#2e5e8c');
   await closeSlot(page);
   await openSlot(page, 'Bottom');
-  await expect(colourInput(page)).toHaveValue('#d6d6d6');
+  await expectColour(page, '#d6d6d6');
 });

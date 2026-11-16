@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { closeSlot, colourInput, favourite, favouriteTiles, openSlot } from './helpers';
+import { chooseButton, chooserBack, closeSlot, setColour, expectColour, favourite, favouriteTiles, openSlot } from './helpers';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/colour-quiz.json', import.meta.url), 'utf8'));
 const QUESTIONS = data.questions.length as number;
@@ -38,16 +38,16 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
   await expect(favouriteTiles(page).locator('.palette-dot')).toHaveCount(1); // marked as from the palette
   await expect(page.getByText('From your colour palette')).toBeVisible();
   await tile.click();
-  await expect(colourInput(page)).toHaveValue(hex);
+  await expectColour(page, hex);
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
   await closeSlot(page);
   await openSlot(page, 'Bottom');
-  await expect(colourInput(page)).toHaveValue('#d6d6d6');
+  await expectColour(page, '#d6d6d6');
 
   await page.reload();
 
   await openSlot(page, 'Top');
-  await expect(colourInput(page)).toHaveValue(hex);
+  await expectColour(page, hex);
   await expect(favouriteTiles(page).getByRole('button', { name: hex })).toHaveClass(/\bon\b/);
 });
 
@@ -56,10 +56,10 @@ test('saves a picked colour as a favourite, shows it in every slot, and removes 
   await openSlot(page, 'Top');
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(page.getByText('From your colour palette')).toBeHidden(); // no palette colours yet
-  await colourInput(page).fill('#2e5e8c');
+  await setColour(page, '#2e5e8c');
   await favourite(page).click();
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
-  await colourInput(page).fill('#aa5500');
+  await setColour(page, '#aa5500');
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'false'); // a different colour is not a favourite yet
   await favourite(page).click();
 
@@ -71,7 +71,7 @@ test('saves a picked colour as a favourite, shows it in every slot, and removes 
   await closeSlot(page);
   await openSlot(page, 'Bottom');
   await favouriteTiles(page).getByRole('button', { name: '#2e5e8c' }).click();
-  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expectColour(page, '#2e5e8c');
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
   await favourite(page).click();
   await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
@@ -80,17 +80,19 @@ test('saves a picked colour as a favourite, shows it in every slot, and removes 
   await openSlot(page, 'Top');
   await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
   await expect(favouriteTiles(page).getByRole('button', { name: '#aa5500' })).toBeVisible();
-  await expect(colourInput(page)).toHaveValue('#aa5500');
+  await expectColour(page, '#aa5500');
 });
 
 test('shows the first 12 favourites and Show all for the rest', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
   const tiles = favouriteTiles(page);
+  await chooseButton(page).click(); // stay in the chooser: its Favourite toggle is the same one
   for (let i = 1; i <= 13; i++) {
-    await colourInput(page).fill(`#0a0${i.toString(16)}00`);
-    await favourite(page).click();
+    await page.getByLabel('Colour code').fill(`#0a0${i.toString(16)}00`);
+    await page.locator('.chooser').getByRole('button', { name: 'Favourite', exact: true }).click();
   }
+  await chooserBack(page).click();
   await expect(tiles.locator('[data-hex]')).toHaveCount(12);
   await page.getByRole('button', { name: 'Show all' }).click();
   await expect(tiles.locator('[data-hex]')).toHaveCount(13);
@@ -101,7 +103,7 @@ test('shows the first 12 favourites and Show all for the rest', async ({ page })
 test('after turning off the only favourite, Favourite still saves a new one', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#2e5e8c');
+  await setColour(page, '#2e5e8c');
   await favourite(page).click();
   await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toBeVisible();
   await favourite(page).click();

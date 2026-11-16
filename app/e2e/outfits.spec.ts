@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { closeSlot, colourInput, garment, openSlot } from './helpers';
+import { closeSlot, setColour, expectColour, garment, openSlot } from './helpers';
 
 /**
  * Waits until the device's store holds this many saved outfits. The button's 'Outfit saved' text lasts only 1.5 seconds,
@@ -31,7 +31,7 @@ async function waitForOutfits(page: Page, count: number) {
 test('saves a look as an outfit, renames it, and wears it in one tap after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await closeSlot(page);
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);
@@ -46,7 +46,7 @@ test('saves a look as an outfit, renames it, and wears it in one tap after a rel
   // Change the avatar, then wear the outfit back after a reload.
   await page.getByRole('link', { name: 'Try on' }).click();
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#aa5500');
+  await setColour(page, '#aa5500');
   await garment(page, 'Sweatshirt').click();
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.reload();
@@ -55,13 +55,13 @@ test('saves a look as an outfit, renames it, and wears it in one tap after a rel
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Trousers');
   await openSlot(page, 'Top');
-  await expect(colourInput(page)).toHaveValue('#1f2a5a');
+  await expectColour(page, '#1f2a5a');
 });
 
 test('an outfit whose item was deleted shows that slot as empty, and wearing it clears the slot', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
-  await colourInput(page).fill('#1f2a5a');
+  await setColour(page, '#1f2a5a');
   await closeSlot(page);
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);

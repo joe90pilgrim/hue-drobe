@@ -19,8 +19,23 @@ export const garment = (page: Page, name: string) => page.getByRole('radiogroup'
 export const necklines = (page: Page) => page.getByRole('radiogroup', { name: 'Neckline' });
 export const neckline = (page: Page, name: string) => necklines(page).getByRole('radio', { name, exact: true });
 
-/** The colour input behind "Choose a colour". */
-export const colourInput = (page: Page) => page.getByLabel('Choose a colour');
+/** "Choose a colour" in the open panel, which opens the built-in chooser (V1.2-05). */
+export const chooseButton = (page: Page) => page.getByRole('button', { name: 'Choose a colour', exact: true });
+
+/** The chooser's Back button ("‹ Top colour"). */
+export const chooserBack = (page: Page) => page.getByRole('button', { name: /^Back to the/ });
+
+/** Sets the open slot's colour by typing its code into the chooser, then goes back to the slot's controls. */
+export async function setColour(page: Page, hex: string) {
+  await chooseButton(page).click();
+  await page.getByLabel('Colour code').fill(hex);
+  await chooserBack(page).click();
+  await expectColour(page, hex);
+}
+
+/** The slot's controls show this colour on the swatch (the swatch reads "Current colour #xxxxxx"). */
+export const expectColour = (page: Page, hex: string) => expect(page.getByRole('img', { name: `Current colour ${hex.toLowerCase()}` })).toBeVisible();
+
 export const favourite = (page: Page) => page.getByRole('button', { name: 'Favourite', exact: true });
 export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Your favourite colours' });
 export const addToWardrobe = (page: Page) => page.getByRole('button', { name: 'Add to wardrobe', exact: true });
