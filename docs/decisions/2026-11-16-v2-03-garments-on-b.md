@@ -96,10 +96,18 @@ Cross-sections of the exported meshes (attempt 2, `measure_glb.torso_circumferen
 - **The cause, I think:** B is short, and her bust line (110.5 cm) is only 2 to 3 cm below her armpits. The bra's top is a straight cut all the way round, 5 cm above the apex, so under the arms it rides up into the armpit. Smoothing bridges the hollow there, which makes the bra 10 cm bigger round than the body at the bust. The tee is meant to be 99.4 cm at that height, so it cannot fit over the bra, its calibration has no answer, and the tee ends up too small at the waistband (the trousers clash) and folded near the armpit (self-intersections at 115 cm).
 - **Next step if wanted:** shape the bra's top edge the way real bras are cut: high over the cups in front, low (about the bust line or below) under the arms and across the back. Not tried, because of the three-strikes rule.
 
-The patch and the check logs are in `private/experiments/` (`v2-03-bra-garment-attempt3.patch`, `b_bragar1.txt` to `b_bragar3.txt`). Nothing of it is in the tree, and B's pack was rebuilt from the committed code.
+### Fourth try (approved by J): shaped top edge
+
+The bra's top edge was cut 5 cm above the apex over the cups, falling over 4 cm to 3 cm below the apex under the arms and across the back. Faces were chosen before the shell was smoothed. 27 failures: the tee blew up (it spread 50 cm sideways and down to 29 cm above the floor; length 99.2 cm against 59.4), its chest calibration returned no reading, and the bra itself had 6 self-intersecting pairs at 110 cm.
+
+The reason is the cup shape, not the edge. Between 107 and 113 cm every bra vertex sits within 1 cm of the same depth (15.4 to 16.4 cm forward of centre). The dome is level between the two apexes, and B's apexes are 21 cm apart, so it makes one flat shelf across the chest with sharp sides, not two cups. The tops cannot be fitted around that, and the step that pushes a top clear of the inner garment then threw the tee outwards. In tries 1 to 3 the armpit problem hid this.
+
+The patches and check logs are in `private/experiments/` (`v2-03-bra-garment-attempt3.patch`, `v2-03-bra-garment-attempt4.patch`, `b_bragar1.txt` to `b_bragar4.txt`). Nothing of it is in the tree, and B's pack was rebuilt from the committed code.
+
+What a bra would need: real cup geometry (two rounded cups, each shaped around its own apex, joined by a narrow centre piece), not a floor pushed onto an offset shell. That is new garment modelling, closer to V3 than to this ticket. A ready-made bra from the MakeHuman asset packs (V2-07) may supply it.
 
 ## Next
 
-- J chooses how to go on with the bust: a fourth try at the bra with a shaped top edge, wait for V2-07, or accept for now.
+- J chooses how to go on with the bust: accept for now (B signs off on "no body showing through"), or wait for V2-07 and look for a ready-made bra or tops there.
 - B's visual sign-off in the viewer, front, side and back (not yet done).
 - Refit the trousers and shorts when B's tape hips arrive.
