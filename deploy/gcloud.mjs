@@ -2,12 +2,12 @@
 import { spawnSync } from 'node:child_process';
 
 /** Runs a command and returns { status, stdout }. On Windows gcloud and npm are .cmd files, which need a shell. */
-export function run(cmd, args, { input, inherit = true } = {}) {
+export function run(cmd, args, { input, inherit = true, quietErrors = false } = {}) {
   const r = spawnSync(cmd, args, {
     input,
     encoding: 'utf8',
     shell: process.platform === 'win32',
-    stdio: [input === undefined ? 'inherit' : 'pipe', inherit ? 'inherit' : 'pipe', 'inherit'],
+    stdio: [input === undefined ? 'inherit' : 'pipe', inherit ? 'inherit' : 'pipe', quietErrors ? 'pipe' : 'inherit'],
   });
   if (r.error) {
     console.error(`Could not run ${cmd}: ${r.error.message}`);
@@ -45,4 +45,4 @@ export function parseFlags(argv) {
   return flags;
 }
 
-export const DEFAULTS = { region: 'europe-west2', service: 'huedrobe', secret: 'huedrobe-password', user: 'huedrobe' };
+export const DEFAULTS = { region: 'europe-west2', service: 'huedrobe' };

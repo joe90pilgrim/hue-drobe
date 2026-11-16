@@ -1,13 +1,18 @@
-// Small static server for Cloud Run: serves the built app behind HTTP basic auth.
-// No dependencies. Settings come from environment variables:
-//   BASIC_AUTH_USER      username (default "huedrobe")
-//   BASIC_AUTH_PASSWORD  password (required; on Cloud Run it comes from Secret Manager)
-//   PUBLIC_DIR           folder to serve (default ./public next to this file)
-//   PORT                 port to listen on (Cloud Run sets this; default 8080)
+// Small static server for Cloud Run, behind Identity-Aware Proxy (IAP). No dependencies.
+// IAP does the Google sign-in in front of the app. This server checks IAP's signed header on every
+// request as well, and only lets in the people in ALLOWED_USERS, so it fails closed even if IAP or its
+// access list were misconfigured. Each person's avatar pack (public/pack/<person>/) is served to them only.
+//
+// Settings come from environment variables:
+//   IAP_AUDIENCE   /projects/PROJECT_NUMBER/locations/REGION/services/SERVICE (required; deploy.mjs sets it)
+//   ALLOWED_USERS  JSON object of person id to Google email, e.g. {"joe":"a@example.com"} (required)
+//   PUBLIC_DIR     folder to serve (default ./public next to this file)
+//   PORT           port to listen on (Cloud Run sets this; default 8080)
+//   LOCAL_PERSON   local trial only: act as this person without IAP. Refused on Cloud Run (K_SERVICE set).
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { timingSafeEqual, createHash } from 'node:crypto';
+import { createPublicKey, verify } from 'node:crypto';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -20,26 +25,104 @@ const TYPES = {
   '.png': 'image/png',
   '.svg': 'image/svg+xml',
   '.glb': 'model/gltf-binary',
+  '.woff2': 'font/woff2',
 };
 
-/** Compares two strings in constant time (hashing first so lengths do not leak). */
-function same(a, b) {
-  const ha = createHash('sha256').update(a).digest();
-  const hb = createHash('sha256').update(b).digest();
-  return timingSafeEqual(ha, hb);
+export const IAP_ISSUER = 'https://cloud.google.com/iap';
+export const IAP_KEYS_URL = 'https://www.gstatic.com/iap/verify/public_key-jwk';
+const SKEW = 30; // seconds, as Google's guidance says
+const MAX_LIFETIME = 600 + 2 * SKEW; // IAP tokens live at most 10 minutes plus skew
+
+const b64url = (s) => Buffer.from(s, 'base64url');
+
+/**
+ * Checks an IAP JWT (x-goog-iap-jwt-assertion). Returns { email, sub } or null.
+ * keyFor(kid) returns a public KeyObject or undefined.
+ */
+export function verifyIapJwt(token, { keyFor, audience, now = Date.now() / 1000 }) {
+  if (typeof token !== 'string' || !audience) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+  let header, claims;
+  try {
+    header = JSON.parse(b64url(parts[0]).toString('utf8'));
+    claims = JSON.parse(b64url(parts[1]).toString('utf8'));
+  } catch {
+    return null;
+  }
+  if (header?.alg !== 'ES256' || typeof header.kid !== 'string') return null;
+  const key = keyFor(header.kid);
+  if (!key) return null;
+  const sig = b64url(parts[2]);
+  if (sig.length !== 64) return null;
+  let ok = false;
+  try {
+    ok = verify('sha256', Buffer.from(`${parts[0]}.${parts[1]}`), { key, dsaEncoding: 'ieee-p1363' }, sig);
+  } catch {
+    return null;
+  }
+  if (!ok) return null;
+  const { iss, aud, exp, iat, email, sub } = claims ?? {};
+  if (iss !== IAP_ISSUER || aud !== audience) return null;
+  if (typeof exp !== 'number' || typeof iat !== 'number') return null;
+  if (exp < now - SKEW || iat > now + SKEW || exp - iat > MAX_LIFETIME) return null;
+  if (typeof email !== 'string' || typeof sub !== 'string') return null;
+  return { email: email.toLowerCase(), sub };
 }
 
-/** True when the Authorization header carries the right username and password. */
-export function authorised(header, user, password) {
-  const m = /^Basic ([A-Za-z0-9+/=]+)$/.exec(header ?? '');
-  if (!m) return false;
-  const decoded = Buffer.from(m[1], 'base64').toString('utf8');
-  const i = decoded.indexOf(':');
-  if (i < 0) return false;
-  // Evaluate both so the time taken does not show which one was wrong.
-  const userOk = same(decoded.slice(0, i), user);
-  const passOk = same(decoded.slice(i + 1), password);
-  return userOk && passOk;
+/** Parses ALLOWED_USERS into a Map of lower-case email to person id. Throws if it is not usable. */
+export function parseAllowedUsers(json) {
+  const obj = JSON.parse(json ?? '');
+  const map = new Map();
+  for (const [person, email] of Object.entries(obj ?? {})) {
+    if (!/^[a-z0-9_-]+$/.test(person) || typeof email !== 'string' || !email.includes('@')) {
+      throw new Error(`ALLOWED_USERS has a bad entry for "${person}"`);
+    }
+    map.set(email.toLowerCase(), person);
+  }
+  if (map.size === 0) throw new Error('ALLOWED_USERS is empty');
+  return map;
+}
+
+/** Google's IAP signing keys, fetched once and refetched hourly, or sooner (at most once a minute) for an unknown key id. */
+export function createKeyStore({ fetchJwks = defaultFetchJwks, now = () => Date.now() } = {}) {
+  let keys = new Map();
+  let fetchedAt = 0;
+  let pending = null;
+  async function refresh() {
+    pending ??= (async () => {
+      try {
+        const jwks = await fetchJwks();
+        const next = new Map();
+        for (const jwk of jwks.keys ?? []) {
+          try {
+            next.set(jwk.kid, createPublicKey({ key: jwk, format: 'jwk' }));
+          } catch {}
+        }
+        if (next.size) keys = next;
+      } catch (e) {
+        console.error(`Could not fetch IAP keys: ${e.message}`);
+      } finally {
+        fetchedAt = now();
+        pending = null;
+      }
+    })();
+    return pending;
+  }
+  return {
+    /** Makes sure a key for this kid is loaded if it can be. */
+    async ensure(kid) {
+      const age = now() - fetchedAt;
+      if (age > 3600_000 || (!keys.has(kid) && age > 60_000)) await refresh();
+    },
+    keyFor: (kid) => keys.get(kid),
+  };
+}
+
+async function defaultFetchJwks() {
+  const res = await fetch(IAP_KEYS_URL);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
 }
 
 /** Maps a request path to a file inside root, or null if it would leave root. */
@@ -57,11 +140,33 @@ export function resolvePath(root, urlPath) {
   return full;
 }
 
-export function createApp({ user, password, root }) {
-  if (!password) throw new Error('BASIC_AUTH_PASSWORD is not set');
+/** Reads the key id from a JWT header without trusting it (it is only used to pick a key). */
+function kidOf(token) {
+  try {
+    return JSON.parse(b64url(String(token).split('.')[0]).toString('utf8')).kid;
+  } catch {
+    return undefined;
+  }
+}
+
+export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson }) {
+  if (!localPerson && !audience) throw new Error('IAP_AUDIENCE is not set');
+  if (!(allowed instanceof Map) || allowed.size === 0) throw new Error('ALLOWED_USERS is not set');
+  if (localPerson && ![...allowed.values()].includes(localPerson)) throw new Error(`LOCAL_PERSON "${localPerson}" is not in ALLOWED_USERS`);
+
+  /** The signed-in person's id, or null. */
+  async function personFor(req) {
+    if (localPerson) return localPerson;
+    const token = req.headers['x-goog-iap-jwt-assertion'];
+    if (typeof token !== 'string') return null;
+    await keys.ensure(kidOf(token));
+    const who = verifyIapJwt(token, { keyFor: keys.keyFor, audience });
+    return (who && allowed.get(who.email)) ?? null;
+  }
+
   return async function handle(req, res) {
     const send = (code, headers, body) => {
-      res.writeHead(code, { 'X-Content-Type-Options': 'nosniff', ...headers });
+      res.writeHead(code, { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', ...headers });
       res.end(body);
     };
 
@@ -70,18 +175,29 @@ export function createApp({ user, password, root }) {
       return send(301, { Location: `https://${req.headers.host}${req.url}` });
     }
 
-    // Everything is behind the password, including the manifest, icons, service worker and avatar files.
-    if (!authorised(req.headers.authorization, user, password)) {
-      // A wrong guess waits half a second, which makes guessing the password slow. The browser's first request has no header and is not delayed.
-      if (req.headers.authorization) await new Promise((r) => setTimeout(r, 500));
-      return send(401, { 'WWW-Authenticate': 'Basic realm="Hue-drobe", charset="UTF-8"', 'Cache-Control': 'no-store' }, 'Password needed');
-    }
+    // Everything needs a signed-in, allowed person, including the manifest, icons, service worker and avatar files.
+    const person = await personFor(req);
+    if (!person) return send(403, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not allowed');
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { Allow: 'GET, HEAD' });
 
     const urlPath = (req.url ?? '/').split('?')[0];
+
+    // Who is signed in, for the app (V2-06 uses this to load the right person's data).
+    if (urlPath === '/api/me') {
+      return send(200, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify({ person }));
+    }
+
     let file = resolvePath(root, urlPath);
     if (!file) return send(400, {}, 'Bad request');
+
+    // Avatar packs are private to their owner. Someone else's pack looks the same as a missing file.
+    const packRoot = normalize(join(root, 'pack') + sep);
+    if (file.startsWith(packRoot) || file === normalize(join(root, 'pack'))) {
+      const owner = file.slice(packRoot.length).split(sep)[0];
+      if (owner !== person) return send(404, {}, 'Not found');
+    }
+
     try {
       let info = await stat(file);
       if (info.isDirectory()) {
@@ -107,7 +223,17 @@ export function createApp({ user, password, root }) {
 // Start listening only when run directly, so the tests can import the functions above.
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const root = process.env.PUBLIC_DIR ?? fileURLToPath(new URL('./public', import.meta.url));
-  const app = createApp({ user: process.env.BASIC_AUTH_USER ?? 'huedrobe', password: process.env.BASIC_AUTH_PASSWORD, root });
+  const localPerson = process.env.LOCAL_PERSON;
+  if (localPerson && process.env.K_SERVICE) {
+    console.error('LOCAL_PERSON is for local trials only and is refused on Cloud Run.');
+    process.exit(1);
+  }
+  const app = createApp({
+    audience: process.env.IAP_AUDIENCE,
+    allowed: parseAllowedUsers(process.env.ALLOWED_USERS),
+    root,
+    localPerson,
+  });
   const port = Number(process.env.PORT ?? 8080);
-  createServer(app).listen(port, () => console.log(`Serving ${root} on port ${port}`));
+  createServer(app).listen(port, () => console.log(`Serving ${root} on port ${port}${localPerson ? ` as ${localPerson} (local trial, no sign-in)` : ''}`));
 }

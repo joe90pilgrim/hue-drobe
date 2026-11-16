@@ -64,7 +64,7 @@ self.addEventListener('activate', (e) => {
       .then(() => self.clients.claim())
   );
 });
-// Pages and the pack: ask the server first (so a new deploy shows up, and the browser can ask for the password), use the cache when offline.
+// Pages and the pack: ask the server first (so a new deploy shows up, and an expired sign-in goes to Google), use the cache when offline.
 async function networkFirst(req, name) {
   const cache = await caches.open(name);
   try {

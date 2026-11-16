@@ -32,10 +32,10 @@ No open decisions for 1.2.
 - **V2-03** MVP garments on Beth: Fit per person or one fit for everyone? The MVP uses one set of ease values, the largest that pass on all seven bodies, so it is limited by the widest body (from the MVP backlog). Fitting each person separately gives looser, better-fitting garments but changes the data model. Recommendation: per person, decided here because Beth is the first real second body.
 - ~~**V2-04** Tights: Opaque only, or sheer too?~~ Decided 16 Nov 2026: opaque and sheer. See `docs/decisions/2026-11-16-v2-04-tights.md`.
 - ~~**V2-04** Tights: Can tights be worn with trousers, or only with shorts (and skirts later)?~~ Decided 16 Nov 2026: only with shorts (and skirts later).
-- **V2-05** Individual logins: How should sign-in work? Option A: Identity-Aware Proxy on Cloud Run (Google does the sign-in in front of the app; simplest, very little code). Option B: Firebase Authentication in the app (more code, but needed later if data syncs between devices; see V2-06). Recommendation: A, unless you choose syncing in V2-06.
-- **V2-05** Individual logins: Can Joe and Beth see each other's avatar and wardrobe? For example, to plan matching outfits. Recommendation: yes, read-only.
-- **V2-05** Individual logins: Staying signed in: how long before you are asked to sign in again?
-- **V2-06** Profiles and per-person data: Does your data stay on each device, or sync between devices? Staying on the device keeps the blueprint's 'no backend' principle, but your phone and laptop show different wardrobes. Syncing needs a database (for example Firestore) and Firebase sign-in (V2-05 option B). Recommendation: stay on the device for v2, and use backup (V1.1-06) to move data; revisit syncing at v4.
+- ~~**V2-05** Individual logins: How should sign-in work?~~ Decided 16 Nov 2026: Identity-Aware Proxy on Cloud Run. See `docs/decisions/2026-11-16-v2-05-logins.md`.
+- ~~**V2-05** Individual logins: Can Joe and Beth see each other's avatar and wardrobe?~~ Decided 16 Nov 2026: not for now.
+- ~~**V2-05** Individual logins: Staying signed in: how long before you are asked to sign in again?~~ Decided 16 Nov 2026: 30 days.
+- ~~**V2-06** Profiles and per-person data: Does your data stay on each device, or sync between devices?~~ Decided 16 Nov 2026 (asked during V2-05): sync through a small Firestore database written in the background, with IAP for sign-in (the server writes for the signed-in person; no Firebase sign-in). Changes the blueprint's on-device, no-backend principle. See `docs/decisions/2026-11-16-v2-05-logins.md`.
 - **V2-07** Spike: free MakeHuman asset packs: per category, adopt pack assets, keep our own method, or mix.
 - **V2-07** Spike: free MakeHuman asset packs: is a mix of pack and own garments acceptable if the styles differ slightly?
 - **V2-07** Spike: free MakeHuman asset packs: may any category carry texture (ties to the garment texture decision below)?
