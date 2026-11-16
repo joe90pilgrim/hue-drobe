@@ -1,4 +1,4 @@
-import { deleteItem, itemKind, loadItems, renameItem, saveItems, wearItem, type SavedItem } from '../wardrobe';
+import { GARMENTS, deleteItem, itemKind, loadItems, renameItem, saveItems, wearItem, type SavedItem } from '../wardrobe';
 import {
   autoOutfitName,
   deleteOutfit,
@@ -12,176 +12,326 @@ import {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-/** A swatch for an outfit slot: the item's colour, or an outlined empty square when the slot is empty. */
-const slotSwatch = (item?: SavedItem) =>
-  item ? `<span class="w-swatch" style="background:${item.colour}"></span>` : `<span class="w-swatch o-empty"></span>`;
+/** The filter chips. A garment's group is its slot, so a new garment type sorts itself into Tops or Bottoms. */
+const GROUPS = [
+  { slot: 'Top', label: 'Tops' },
+  { slot: 'Bottom', label: 'Bottoms' },
+] as const;
+type Filter = 'all' | (typeof GROUPS)[number]['slot'];
+
+type Selection = { kind: 'item' | 'outfit'; id: string } | null;
+
+/** One slice of an outfit tile: the item's colour, or a dashed outline when the slot is empty or its item was deleted. */
+const slice = (item: SavedItem | undefined, cls: string) =>
+  `<span class="o-slice ${cls}${item ? '' : ' o-empty'}"${item ? ` style="background:${item.colour}"` : ''}></span>`;
+
+const stacked = (top?: SavedItem, bottom?: SavedItem, big = false) =>
+  `<span class="o-stack${big ? ' big' : ''}" aria-hidden="true">${slice(top, 'top')}${slice(bottom, 'bottom')}</span>`;
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
     <h1 class="page-title">Wardrobe</h1>
-    <div class="card wardrobe">
-      <h2 class="w-heading">Clothes</h2>
-      <p class="help" id="w-empty" hidden>Nothing saved yet. On the Try on screen, choose a garment and colour, then tap Save.</p>
-      <ul class="w-list" id="w-list"></ul>
+    <div class="seg w-tabs" role="tablist" aria-label="Wardrobe">
+      <button type="button" role="tab" id="tab-clothes" aria-controls="w-view" aria-selected="true"></button>
+      <button type="button" role="tab" id="tab-outfits" aria-controls="w-view" aria-selected="false"></button>
     </div>
-    <div class="card wardrobe">
-      <h2 class="w-heading">Outfits</h2>
-      <p class="help" id="o-empty" hidden>No outfits yet. On the Try on screen, put a look together and tap Save outfit.</p>
-      <ul class="w-list" id="o-list"></ul>
-    </div>`;
-  const list = el.querySelector<HTMLElement>('#w-list')!;
-  const empty = el.querySelector<HTMLElement>('#w-empty')!;
-  const outfitList = el.querySelector<HTMLElement>('#o-list')!;
-  const outfitEmpty = el.querySelector<HTMLElement>('#o-empty')!;
+    <div class="w-chips" role="group" aria-label="Show" id="w-chips"></div>
+    <div class="w-layout" id="w-view" role="tabpanel">
+      <div class="w-body">
+        <p class="help w-empty" id="w-empty" hidden></p>
+        <div class="w-grid" id="w-grid"></div>
+      </div>
+      <aside class="w-panel" id="w-panel" hidden></aside>
+    </div>
+    <dialog class="sheet w-sheet" id="w-sheet" aria-labelledby="w-title"></dialog>
+    <dialog class="sheet w-confirm" id="w-confirm" aria-labelledby="w-confirm-title"></dialog>`;
+
+  const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>('#' + id)!;
+  const tabClothes = $('tab-clothes');
+  const tabOutfits = $('tab-outfits');
+  const chips = $('w-chips');
+  const grid = $('w-grid');
+  const empty = $('w-empty');
+  const panel = $('w-panel');
+  const sheet = $<HTMLDialogElement>('w-sheet');
+  const confirmDlg = $<HTMLDialogElement>('w-confirm');
+  const wide = window.matchMedia('(min-width: 900px)');
+
   let items: SavedItem[] = [];
-  let renaming: string | null = null;
   let outfits: Outfit[] = [];
-  let renamingOutfit: string | null = null;
+  let tab: 'clothes' | 'outfits' = 'clothes';
+  let filter: Filter = 'all';
+  let sel: Selection = null;
+  let renaming = false;
   let gone = false;
 
-  const draw = () => {
-    empty.hidden = items.length > 0;
-    list.innerHTML = items
-      .map((i) =>
-        renaming === i.id
-          ? `<li class="w-item" data-id="${i.id}">
-              <span class="w-swatch" style="background:${i.colour}"></span>
-              <input class="w-name-input" aria-label="Name" value="${esc(i.name)}" maxlength="40">
-              <button type="button" data-act="done">Done</button>
-            </li>`
-          : `<li class="w-item" data-id="${i.id}">
-              <button type="button" class="w-wear" data-act="wear" aria-label="Wear ${esc(i.name)}">
-                <span class="w-swatch" style="background:${i.colour}"></span>
-                <span class="w-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${itemKind(i)}</span></span>
-              </button>
-              <button type="button" data-act="rename" aria-label="Rename ${esc(i.name)}">Rename</button>
-              <button type="button" data-act="delete" aria-label="Delete ${esc(i.name)}">Delete</button>
-            </li>`,
-      )
+  const slotOf = (i: SavedItem) => GARMENTS[i.garment].slot;
+  const selectedItem = () => (sel?.kind === 'item' ? items.find((i) => i.id === sel!.id) : undefined);
+  const selectedOutfit = () => (sel?.kind === 'outfit' ? outfits.find((o) => o.id === sel!.id) : undefined);
+  const nameOf = () => selectedItem()?.name ?? selectedOutfit()?.name ?? '';
+
+  /** The pieces an outfit is made of, as words: "Navy tee, Brown trousers". A deleted piece reads "Top missing". */
+  const piecesOf = (o: Outfit) => {
+    const look = resolveOutfit(o, items);
+    const parts: string[] = [];
+    if (o.top) parts.push(look.top ? look.top.name : 'Top missing');
+    if (o.bottom) parts.push(look.bottom ? look.bottom.name : 'Bottom missing');
+    return parts.map(esc).join(', ');
+  };
+
+  // --- The grid -------------------------------------------------------------------------------------------------
+
+  const drawChips = () => {
+    chips.hidden = tab !== 'clothes';
+    const count = (f: Filter) => (f === 'all' ? items.length : items.filter((i) => slotOf(i) === f).length);
+    const all: { f: Filter; label: string }[] = [{ f: 'all', label: 'All' }, ...GROUPS.map((g) => ({ f: g.slot as Filter, label: g.label }))];
+    chips.innerHTML = all
+      .map(({ f, label }) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${filter === f}">${label}${f === 'all' ? '' : ` · ${count(f)}`}</button>`)
       .join('');
-    list.querySelector<HTMLInputElement>('.w-name-input')?.focus();
-    drawOutfits();
   };
 
-  /** Outfits are drawn from the current items, so a slot whose item was deleted shows as empty. */
-  const drawOutfits = () => {
-    outfitEmpty.hidden = outfits.length > 0;
-    outfitList.innerHTML = outfits
-      .map((o) => {
-        const look = resolveOutfit(o, items);
-        if (renamingOutfit === o.id)
-          return `<li class="w-item" data-oid="${o.id}">
-              <span class="o-swatches">${slotSwatch(look.top)}${slotSwatch(look.bottom)}</span>
-              <input class="w-name-input o-name-input" aria-label="Outfit name" value="${esc(o.name)}" maxlength="40">
-              <button type="button" data-oact="done">Done</button>
-            </li>`;
-        const sub =`Top: ${look.top ? esc(look.top.name) : 'empty'}, Bottom: ${look.bottom ? esc(look.bottom.name) : 'empty'}`;
-        return `<li class="w-item" data-oid="${o.id}">
-              <button type="button" class="w-wear" data-oact="wear" aria-label="Wear outfit ${esc(o.name)}">
-                <span class="o-swatches">${slotSwatch(look.top)}${slotSwatch(look.bottom)}</span>
-                <span class="w-text"><span class="w-name">${esc(o.name)}</span><span class="w-sub">${sub}</span></span>
-              </button>
-              <button type="button" data-oact="rename" aria-label="Rename outfit ${esc(o.name)}">Rename</button>
-              <button type="button" data-oact="delete" aria-label="Delete outfit ${esc(o.name)}">Delete</button>
-            </li>`;
-      })
-      .join('');
-    outfitList.querySelector<HTMLInputElement>('.o-name-input')?.focus();
-  };
-
-  const finishRename = (id: string, value: string) => {
-    items = renameItem(items, id, value);
-    renaming = null;
-    void saveItems(items);
-    draw();
-  };
-
-  const finishOutfitRename = (id: string, value: string) => {
-    const o = outfits.find((x) => x.id === id);
-    if (!o) return;
-    outfits = renameOutfit(outfits, id, value, autoOutfitName(resolveOutfit(o, items)));
-    renamingOutfit = null;
-    void saveOutfits(outfits);
-    drawOutfits();
-  };
-
-  list.addEventListener('click', async (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
-    const id = b?.closest<HTMLElement>('[data-id]')?.dataset.id;
-    if (!b || !id) return;
-    const item = items.find((i) => i.id === id);
-    if (!item) return;
-    switch (b.dataset.act) {
-      case 'wear':
-        await wearItem(item);
-        location.hash = '#/try-on';
-        break;
-      case 'rename':
-        renaming = id;
-        draw();
-        break;
-      case 'done':
-        finishRename(id, list.querySelector<HTMLInputElement>('.w-name-input')!.value);
-        break;
-      case 'delete':
-        items = deleteItem(items, id);
-        void saveItems(items);
-        draw();
-        break;
+  const drawGrid = () => {
+    tabClothes.textContent = `Clothes · ${items.length}`;
+    tabOutfits.textContent = `Outfits · ${outfits.length}`;
+    tabClothes.setAttribute('aria-selected', String(tab === 'clothes'));
+    tabOutfits.setAttribute('aria-selected', String(tab === 'outfits'));
+    tabClothes.tabIndex = tab === 'clothes' ? 0 : -1;
+    tabOutfits.tabIndex = tab === 'outfits' ? 0 : -1;
+    drawChips();
+    const shown = wide.matches;
+    const on = (kind: 'item' | 'outfit', id: string) => shown && sel?.kind === kind && sel.id === id;
+    if (tab === 'clothes') {
+      const list = filter === 'all' ? items : items.filter((i) => slotOf(i) === filter);
+      empty.hidden = list.length > 0;
+      empty.textContent =
+        items.length === 0 ? 'Nothing here yet. On Try on, change a piece and tap Add to wardrobe.' : `No ${GROUPS.find((g) => g.slot === filter)?.label.toLowerCase() ?? 'clothes'} yet.`;
+      grid.innerHTML = list
+        .map(
+          (i) => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
+            <span class="w-tile" style="background:${i.colour}"></span>
+            <span class="w-card-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${esc(itemKind(i))}</span></span>
+          </button>`,
+        )
+        .join('');
+    } else {
+      empty.hidden = outfits.length > 0;
+      empty.textContent = 'No outfits yet. On Try on, put a look together and tap Save outfit.';
+      grid.innerHTML = outfits
+        .map((o) => {
+          const look = resolveOutfit(o, items);
+          return `<button type="button" class="w-card${on('outfit', o.id) ? ' on' : ''}" data-kind="outfit" data-id="${o.id}" aria-pressed="${on('outfit', o.id)}">
+            <span class="w-tile o-tile">${stacked(look.top, look.bottom)}</span>
+            <span class="w-card-text"><span class="w-name">${esc(o.name)}</span><span class="w-sub">${piecesOf(o)}</span></span>
+          </button>`;
+        })
+        .join('');
     }
-  });
-  list.addEventListener('keydown', (e) => {
-    const input = e.target as HTMLInputElement;
-    if (!input.classList.contains('w-name-input') || renaming === null) return;
-    if (e.key === 'Enter') finishRename(renaming, input.value);
-    if (e.key === 'Escape') {
-      renaming = null;
-      draw();
-    }
-  });
+  };
 
-  outfitList.addEventListener('click', async (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-oact]');
-    const id = b?.closest<HTMLElement>('[data-oid]')?.dataset.oid;
-    if (!b || !id) return;
-    const outfit = outfits.find((o) => o.id === id);
-    if (!outfit) return;
-    switch (b.dataset.oact) {
-      case 'wear':
-        await wearOutfit(outfit, items);
-        location.hash = '#/try-on';
-        break;
-      case 'rename':
-        renamingOutfit = id;
-        drawOutfits();
-        break;
-      case 'done':
-        finishOutfitRename(id, outfitList.querySelector<HTMLInputElement>('.o-name-input')!.value);
-        break;
-      case 'delete':
-        outfits = deleteOutfit(outfits, id);
+  // --- The sheet (phone) or panel (laptop) for the chosen card -------------------------------------------------------
+
+  const detailHtml = () => {
+    const item = selectedItem();
+    const outfit = selectedOutfit();
+    if (!item && !outfit) return '';
+    const look = outfit ? resolveOutfit(outfit, items) : undefined;
+    const art = item
+      ? `<span class="d-swatch" style="background:${item.colour}"></span>`
+      : `<span class="d-swatch o-tile">${stacked(look!.top, look!.bottom, true)}</span>`;
+    const sub = item ? esc(itemKind(item)) : piecesOf(outfit!);
+    const head = renaming
+      ? `<div class="d-text"><label class="field-label" for="w-rename">Name</label>
+           <input id="w-rename" class="w-name-input" value="${esc(nameOf())}" maxlength="40" autocomplete="off"></div>`
+      : `<div class="d-text"><h2 id="w-title">${esc(nameOf())}</h2><span class="d-sub">${sub}</span></div>`;
+    const actions = renaming
+      ? `<div class="d-pair"><button type="button" class="secondary" data-act="cancel-rename">Cancel</button><button type="button" class="primary" data-act="save-rename">Done</button></div>`
+      : `<button type="button" class="primary d-try" data-act="try">Try it on</button>
+         <div class="d-pair"><button type="button" class="secondary" data-act="rename">Rename</button><button type="button" class="secondary danger" data-act="delete">Delete</button></div>`;
+    return `<div class="d-head">${art}${head}</div>${actions}`;
+  };
+
+  const drawDetail = () => {
+    const html = detailHtml();
+    const useSheet = !wide.matches;
+    panel.hidden = useSheet || !html;
+    panel.setAttribute('aria-label', nameOf());
+    if (useSheet) {
+      sheet.innerHTML = html;
+      if (html && !sheet.open) sheet.showModal();
+      if (!html && sheet.open) sheet.close();
+      panel.innerHTML = '';
+    } else {
+      if (sheet.open) sheet.close();
+      panel.innerHTML = html;
+    }
+    const root = useSheet ? sheet : panel;
+    if (renaming) {
+      const input = root.querySelector<HTMLInputElement>('#w-rename');
+      input?.focus();
+      input?.select();
+    }
+  };
+
+  const select = (next: Selection) => {
+    sel = next;
+    renaming = false;
+    drawGrid();
+    drawDetail();
+  };
+
+  const finishRename = (value: string) => {
+    if (sel?.kind === 'item') {
+      items = renameItem(items, sel.id, value);
+      void saveItems(items);
+    } else if (sel?.kind === 'outfit') {
+      const o = selectedOutfit();
+      if (o) {
+        outfits = renameOutfit(outfits, o.id, value, autoOutfitName(resolveOutfit(o, items)));
         void saveOutfits(outfits);
-        drawOutfits();
+      }
+    }
+    renaming = false;
+    drawGrid();
+    drawDetail();
+    (wide.matches ? panel : sheet).querySelector<HTMLElement>('[data-act="rename"]')?.focus();
+  };
+
+  const askDelete = () => {
+    const isItem = sel?.kind === 'item';
+    confirmDlg.innerHTML = `
+      <h2 id="w-confirm-title">Delete ${esc(nameOf())}?</h2>
+      <p class="help">${isItem ? 'Outfits that use it will show a gap where it was.' : 'The clothes in it stay in your wardrobe.'}</p>
+      <div class="sheet-actions">
+        <button type="button" class="primary" data-act="confirm-delete">Delete</button>
+        <button type="button" class="secondary" data-act="cancel-delete">Cancel</button>
+      </div>`;
+    confirmDlg.showModal();
+  };
+
+  const doDelete = () => {
+    if (sel?.kind === 'item') {
+      items = deleteItem(items, sel.id);
+      void saveItems(items);
+    } else if (sel?.kind === 'outfit') {
+      outfits = deleteOutfit(outfits, sel.id);
+      void saveOutfits(outfits);
+    }
+    confirmDlg.close();
+    select(null);
+  };
+
+  const tryOn = async () => {
+    const item = selectedItem();
+    const outfit = selectedOutfit();
+    if (item) await wearItem(item);
+    else if (outfit) await wearOutfit(outfit, items);
+    else return;
+    location.hash = '#/try-on';
+  };
+
+  const onAction = (e: Event) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act]');
+    if (!b) return;
+    switch (b.dataset.act) {
+      case 'try':
+        void tryOn();
+        break;
+      case 'rename':
+        renaming = true;
+        drawDetail();
+        break;
+      case 'save-rename':
+        finishRename((b.closest('.w-sheet, .w-panel')!.querySelector<HTMLInputElement>('#w-rename'))!.value);
+        break;
+      case 'cancel-rename':
+        renaming = false;
+        drawDetail();
+        break;
+      case 'delete':
+        askDelete();
         break;
     }
-  });
-  outfitList.addEventListener('keydown', (e) => {
+  };
+  const onRenameKey = (e: KeyboardEvent) => {
     const input = e.target as HTMLInputElement;
-    if (!input.classList.contains('o-name-input') || renamingOutfit === null) return;
-    if (e.key === 'Enter') finishOutfitRename(renamingOutfit, input.value);
-    if (e.key === 'Escape') {
-      renamingOutfit = null;
-      drawOutfits();
+    if (input.id !== 'w-rename') return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      finishRename(input.value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault(); // cancel the rename, not the whole sheet
+      renaming = false;
+      drawDetail();
+      (wide.matches ? panel : sheet).querySelector<HTMLElement>('[data-act="rename"]')?.focus();
+    }
+  };
+  panel.addEventListener('click', onAction);
+  sheet.addEventListener('click', (e) => {
+    if (e.target === sheet) sheet.close(); // a tap on the scrim
+    else onAction(e);
+  });
+  sheet.addEventListener('close', () => {
+    if (confirmDlg.open) return;
+    if (sel && !wide.matches) {
+      sel = null;
+      renaming = false;
+      drawGrid();
     }
   });
+  panel.addEventListener('keydown', onRenameKey);
+  sheet.addEventListener('keydown', onRenameKey);
+  confirmDlg.addEventListener('click', (e) => {
+    if (e.target === confirmDlg) return confirmDlg.close();
+    const act = (e.target as HTMLElement).closest<HTMLElement>('[data-act]')?.dataset.act;
+    if (act === 'confirm-delete') doDelete();
+    if (act === 'cancel-delete') confirmDlg.close();
+  });
+
+  // --- Tabs, chips and cards ------------------------------------------------------------------------------------------
+
+  const setTab = (t: 'clothes' | 'outfits') => {
+    tab = t;
+    select(null);
+  };
+  tabClothes.addEventListener('click', () => setTab('clothes'));
+  tabOutfits.addEventListener('click', () => setTab('outfits'));
+  el.querySelector('.w-tabs')!.addEventListener('keydown', (e) => {
+    const k = (e as KeyboardEvent).key;
+    if (k !== 'ArrowLeft' && k !== 'ArrowRight') return;
+    setTab(tab === 'clothes' ? 'outfits' : 'clothes');
+    (tab === 'clothes' ? tabClothes : tabOutfits).focus();
+  });
+  chips.addEventListener('click', (e) => {
+    const f = (e.target as HTMLElement).closest<HTMLElement>('[data-filter]')?.dataset.filter as Filter | undefined;
+    if (!f) return;
+    filter = f;
+    select(null);
+    chips.querySelector<HTMLElement>(`[data-filter="${f}"]`)?.focus();
+  });
+  grid.addEventListener('click', (e) => {
+    const card = (e.target as HTMLElement).closest<HTMLElement>('.w-card');
+    if (!card) return;
+    const next = { kind: card.dataset.kind as 'item' | 'outfit', id: card.dataset.id! };
+    // On a laptop, tapping the chosen card again closes the panel.
+    select(wide.matches && sel?.kind === next.kind && sel.id === next.id ? null : next);
+    if (!wide.matches) return;
+    grid.querySelector<HTMLElement>(`.w-card[data-id="${next.id}"]`)?.focus();
+  });
+  // Crossing the laptop/phone breakpoint swaps between the panel and the sheet.
+  const onResize = () => select(null);
+  wide.addEventListener('change', onResize);
 
   Promise.all([loadItems(), loadOutfits()]).then(([loadedItems, loadedOutfits]) => {
     if (gone) return;
     items = loadedItems;
     outfits = loadedOutfits;
-    draw();
+    drawGrid();
   });
+  drawGrid();
   return () => {
     gone = true;
+    wide.removeEventListener('change', onResize);
+    if (sheet.open) sheet.close();
+    if (confirmDlg.open) confirmDlg.close();
   };
 }

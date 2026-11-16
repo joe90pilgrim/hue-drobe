@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { closeSlot, setColour, expectColour, garment, openSlot } from './helpers';
+import { card, closeSlot, deleteCard, expectColour, garment, openCard, openSlot, setColour, tryItOn, wardrobeTab } from './helpers';
 
 /**
  * Waits until the device's store holds this many saved outfits. The button's 'Outfit saved' text lasts only 1.5 seconds,
@@ -37,11 +37,16 @@ test('saves a look as an outfit, renames it, and wears it in one tap after a rel
   await waitForOutfits(page, 1);
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await expect(page.getByRole('button', { name: 'Wear outfit Navy tee, Light grey trousers' })).toBeVisible();
-  await page.getByRole('button', { name: 'Rename outfit Navy tee, Light grey trousers' }).click();
-  await page.getByLabel('Outfit name').fill('Work day');
+  await expect(wardrobeTab(page, 'Outfits')).toHaveText('Outfits · 1');
+  await wardrobeTab(page, 'Outfits').click();
+  await expect(card(page, 'Navy tee, Light grey trousers')).toBeVisible();
+  await openCard(page, 'Navy tee, Light grey trousers');
+  await page.getByRole('button', { name: 'Rename', exact: true }).click();
+  await page.getByLabel('Name').fill('Work day');
   await page.getByRole('button', { name: 'Done' }).click();
-  await expect(page.getByRole('button', { name: 'Wear outfit Work day' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Work day' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(card(page, 'Work day')).toBeVisible();
 
   // Change the avatar, then wear the outfit back after a reload.
   await page.getByRole('link', { name: 'Try on' }).click();
@@ -50,15 +55,15 @@ test('saves a look as an outfit, renames it, and wears it in one tap after a rel
   await garment(page, 'Sweatshirt').click();
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.reload();
-  await page.getByRole('button', { name: 'Wear outfit Work day' }).click();
-  await expect(page).toHaveURL(/#\/try-on/);
+  await wardrobeTab(page, 'Outfits').click();
+  await tryItOn(page, 'Work day');
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Trousers');
   await openSlot(page, 'Top');
   await expectColour(page, '#1f2a5a');
 });
 
-test('an outfit whose item was deleted shows that slot as empty, and wearing it clears the slot', async ({ page }) => {
+test('an outfit whose item was deleted shows that slot as a gap, and wearing it clears the slot', async ({ page }) => {
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
   await setColour(page, '#1f2a5a');
@@ -67,22 +72,26 @@ test('an outfit whose item was deleted shows that slot as empty, and wearing it 
   await waitForOutfits(page, 1);
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await page.getByRole('button', { name: 'Delete Navy tee' }).click();
-  await expect(page.getByText('Top: empty, Bottom: Light grey trousers')).toBeVisible();
+  await deleteCard(page, 'Navy tee');
+  await wardrobeTab(page, 'Outfits').click();
+  await expect(page.getByText('Top missing, Light grey trousers')).toBeVisible();
+  await expect(page.locator('.w-card .o-slice.top.o-empty')).toHaveCount(1); // the gap is a dashed outline
 
-  await page.getByRole('button', { name: 'Wear outfit Navy tee, Light grey trousers' }).click();
+  await tryItOn(page, 'Navy tee, Light grey trousers');
   await expect(page.locator('[data-slot="Top"]')).toHaveText('Nothing');
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Trousers');
 });
 
-test('deletes a saved outfit and keeps the deletion after a reload', async ({ page }) => {
+test('deletes a saved outfit after asking, and keeps the deletion after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await page.getByRole('button', { name: 'Delete outfit Light grey tee, Light grey trousers' }).click();
-  await expect(page.getByText('No outfits yet')).toBeVisible();
+  await wardrobeTab(page, 'Outfits').click();
+  await deleteCard(page, 'Light grey tee, Light grey trousers');
+  await expect(page.getByText('No outfits yet. On Try on, put a look together and tap Save outfit.')).toBeVisible();
   await page.reload();
-  await expect(page.getByText('No outfits yet')).toBeVisible();
+  await wardrobeTab(page, 'Outfits').click();
+  await expect(page.getByText('No outfits yet. On Try on, put a look together and tap Save outfit.')).toBeVisible();
 });

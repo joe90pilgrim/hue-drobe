@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addToWardrobe, closeSlot, setColour, expectColour, chooseButton, garment, inWardrobe, openSlot } from './helpers';
+import { addToWardrobe, card, tryItOn, closeSlot, setColour, expectColour, chooseButton, garment, inWardrobe, openSlot } from './helpers';
 
 // V1.1-05: shorts are a Bottom option with their own colour, and can be saved and worn like the trousers.
 test('offers shorts as a bottom with their own colour, and remembers the choice after a reload', async ({ page }) => {
@@ -42,7 +42,7 @@ test('adds shorts to the wardrobe and wears them from the library', async ({ pag
   await expect(inWardrobe(page)).toBeVisible();
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await expect(page.getByRole('button', { name: 'Wear Navy shorts' })).toBeVisible();
+  await expect(card(page, 'Navy shorts')).toBeVisible();
 
   await page.getByRole('link', { name: 'Try on' }).click();
 
@@ -50,8 +50,7 @@ test('adds shorts to the wardrobe and wears them from the library', async ({ pag
   await garment(page, 'Trousers').click(); // back to trousers
   await closeSlot(page);
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await page.getByRole('button', { name: 'Wear Navy shorts' }).click();
-  await expect(page).toHaveURL(/#\/try-on/);
+  await tryItOn(page, 'Navy shorts');
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Shorts');
   await openSlot(page, 'Bottom');
   await expectColour(page, '#1f2a5a');

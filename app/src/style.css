@@ -240,19 +240,63 @@ button { font-family: inherit; }
 .hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }
 .stage-hint[hidden] { display: none; }
 
-.wardrobe { padding: 8px 12px; }
-.w-list { list-style: none; margin: 0; padding: 0; }
-.w-item { display: flex; align-items: center; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.w-item:last-child { border-bottom: 0; }
-.w-wear { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
-.w-swatch { flex: 0 0 36px; width: 36px; height: 36px; border-radius: 10px; box-shadow: var(--swatch-edge); }
-.w-text { display: flex; flex-direction: column; min-width: 0; }
-.w-name { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.w-sub { font-size: 12px; color: var(--muted); }
-.w-item > button:not(.w-wear) { min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); font-size: 13px; }
-.w-name-input { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; font: inherit; font-size: 15px; }
+/* Wardrobe (V1.2-06): a two-part switch, filter chips and a grid of cards. A card opens a sheet (phone) or a side panel (laptop). */
+.w-tabs { flex: 0 0 auto; }
+.w-tabs button[aria-selected="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); color: var(--ink); font-weight: 600; }
+.w-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.w-chips[hidden] { display: none; }
+.chip-btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); color: var(--ink); font-size: 14px; }
+.chip-btn[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 600; }
+.w-layout { display: flex; gap: 24px; align-items: flex-start; }
+.w-body { flex: 1; min-width: 0; }
+.w-empty { margin: 8px 0; font-size: 15px; line-height: 1.45; color: var(--muted); }
+.w-empty[hidden] { display: none; }
+.w-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.w-card { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 8px 8px 10px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; }
+.w-card.on { border: 2px solid var(--ink); padding: 7px 7px 9px; }
+.w-tile { display: block; width: 100%; height: 78px; border-radius: 10px; box-shadow: var(--swatch-edge); }
+.w-card-text { display: flex; flex-direction: column; gap: 1px; padding: 0 4px; min-width: 0; }
+.w-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.w-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+/* An outfit tile: the top above a narrower bottom. A slot with nothing in it is a dashed outline. */
+.w-tile.o-tile, .d-swatch.o-tile { background: #efefef; box-shadow: none; }
+.o-tile { display: flex; align-items: center; justify-content: center; }
+.o-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.o-slice { display: block; height: 28px; border-radius: 8px; box-shadow: var(--swatch-edge); }
+.o-slice.top { width: 64px; }
+.o-slice.bottom { width: 44px; }
+.o-slice.o-empty { box-shadow: none; }
+.o-stack.big .o-slice { height: 44px; }
+.o-stack.big .o-slice.top { width: 96px; }
+.o-stack.big .o-slice.bottom { width: 66px; }
+.w-name-input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
+.w-card:focus-visible, .chip-btn:focus-visible, .w-tabs button:focus-visible, .w-name-input:focus-visible, .w-sheet button:focus-visible, .w-panel button:focus-visible, .w-confirm button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* The chosen piece: sheet content (phone) and panel content (laptop) are the same markup. */
+.d-head { display: flex; align-items: center; gap: 14px; }
+.d-swatch { flex: 0 0 56px; width: 56px; height: 56px; border-radius: 12px; box-shadow: var(--swatch-edge); display: flex; align-items: center; justify-content: center; }
+.d-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.d-text h2 { margin: 0; font-size: 22px; line-height: 1.2; overflow-wrap: anywhere; }
+.d-sub { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
+.w-sheet, .w-panel { display: flex; flex-direction: column; gap: 16px; }
+.w-sheet:not([open]), .w-confirm:not([open]) { display: none; }
+.w-panel[hidden] { display: none; }
+.d-try { width: 100%; height: 50px; font-size: 15px; }
+.d-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.d-pair .primary, .d-pair .secondary { height: 48px; border-radius: 12px; }
+.secondary.danger { color: var(--danger); }
+.w-confirm h2 { overflow-wrap: anywhere; }
+@media (min-width: 900px) {
+  .w-tabs { width: 300px; max-width: 100%; }
+  .w-tabs button { min-height: 40px; }
+  .chip-btn { min-height: 40px; }
+  .w-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+  .w-tile { height: 104px; }
+  .w-panel { flex: 0 0 auto; width: 100%; max-width: 340px; min-width: 280px; position: sticky; top: 0; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+  .w-panel .d-swatch { flex: 0 0 160px; width: 100%; height: 160px; border-radius: 14px; }
+  .w-panel .d-head { flex-direction: column; align-items: stretch; gap: 14px; }
+  .w-panel .d-try { height: 48px; }
+  .w-panel .d-pair .primary, .w-panel .d-pair .secondary { height: 44px; }
+  .w-card.on { border-width: 2px; }
+}
 .outfit-save { align-self: stretch; height: 50px; font-size: 15px; margin-top: 4px; }
-.w-heading { margin: 0 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.o-swatches { flex: 0 0 auto; display: flex; gap: 3px; }
-.o-swatches .w-swatch { flex-basis: 18px; width: 18px; height: 36px; border-radius: 6px; }
 .o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }

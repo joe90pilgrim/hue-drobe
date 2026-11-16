@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addToWardrobe, closeSlot, setColour, inWardrobe, openSlot } from './helpers';
+import { addToWardrobe, card, closeSlot, setColour, inWardrobe, openSlot } from './helpers';
 import { writeFileSync } from 'node:fs';
 
 // V1.1-06: export, clear the app's storage, import, and everything comes back.
@@ -28,8 +28,8 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
     )
     .toBe(1);
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Wear outfit/ })).toBeVisible();
+  await expect(card(page, 'Navy tee')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Outfits · 1' })).toBeVisible();
 
   await expect(page.getByText('Back up', { exact: true })).toHaveCount(0); // no backup card in the Wardrobe
   await page.getByRole('button', { name: 'Menu' }).click();
@@ -48,19 +48,19 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
       }),
   );
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toHaveCount(0);
+  await expect(card(page, 'Navy tee')).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Menu' }).click();
   await page.locator('#b-file').setInputFiles(path);
   await expect(page.getByText('Replace everything on this device with this backup?')).toBeVisible();
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toHaveCount(0);
+  await expect(card(page, 'Navy tee')).toHaveCount(0);
   await page.locator('#b-file').setInputFiles(path);
   await page.getByRole('button', { name: 'Replace' }).click();
   await expect(page.getByText('Backup restored.')).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Wear outfit/ })).toBeVisible();
+  await expect(card(page, 'Navy tee')).toBeVisible();
+  await expect(page.getByRole('tab', { name: 'Outfits · 1' })).toBeVisible();
 
   const bad = info.outputPath('bad.json');
   writeFileSync(bad, '{"hello":1}');
@@ -68,5 +68,5 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
   await page.locator('#b-file').setInputFiles(bad);
   await expect(page.getByText('not a Hue-drobe backup')).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
-  await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toBeVisible();
+  await expect(card(page, 'Navy tee')).toBeVisible();
 });

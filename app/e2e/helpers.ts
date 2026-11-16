@@ -40,3 +40,50 @@ export const favourite = (page: Page) => page.getByRole('button', { name: 'Favou
 export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Your favourite colours' });
 export const addToWardrobe = (page: Page) => page.getByRole('button', { name: 'Add to wardrobe', exact: true });
 export const inWardrobe = (page: Page) => page.getByRole('button', { name: 'In your wardrobe', exact: true });
+
+/** A card in the Wardrobe grid, found by its exact name. */
+export const card = (page: Page, name: string) => page.locator('.w-card').filter({ has: page.getByText(name, { exact: true }) });
+
+/** Taps a Wardrobe card and waits for the sheet (phone) or panel (laptop) that holds its actions. */
+export async function openCard(page: Page, name: string) {
+  await card(page, name).click();
+  await expect(page.getByRole('button', { name: 'Try it on' })).toBeVisible();
+}
+
+/** Taps a card, then "Try it on", and waits for the Try on screen. */
+export async function tryItOn(page: Page, name: string) {
+  await openCard(page, name);
+  await page.getByRole('button', { name: 'Try it on' }).click();
+  await expect(page).toHaveURL(/#\/try-on/);
+}
+
+/** Taps a card, then Delete, then Delete in the question that follows. */
+export async function deleteCard(page: Page, name: string) {
+  await openCard(page, name);
+  await page.getByRole('button', { name: 'Delete', exact: true }).click();
+  await page.getByRole('dialog', { name: /^Delete / }).getByRole('button', { name: 'Delete', exact: true }).click();
+}
+
+/** The Wardrobe's Clothes and Outfits switch. */
+export const wardrobeTab = (page: Page, name: 'Clothes' | 'Outfits') => page.getByRole('tab', { name: new RegExp(`^${name} · [0-9]+$`) });
+
+/** Writes saved clothes and outfits straight into the device store (a fixture, not real data), then reloads. */
+export async function seedWardrobe(page: Page, items: unknown[], outfits: unknown[] = []) {
+  await page.evaluate(
+    ([i, o]) =>
+      new Promise<void>((resolve, reject) => {
+        const open = indexedDB.open('huedrobe', 1);
+        open.onupgradeneeded = () => open.result.createObjectStore('kv');
+        open.onerror = () => reject(open.error);
+        open.onsuccess = () => {
+          const tx = open.result.transaction('kv', 'readwrite');
+          tx.objectStore('kv').put(i, 'wardrobe');
+          tx.objectStore('kv').put(o, 'outfits');
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        };
+      }),
+    [items, outfits] as [unknown[], unknown[]],
+  );
+  await page.reload();
+}
