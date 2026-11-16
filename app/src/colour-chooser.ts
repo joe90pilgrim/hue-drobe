@@ -40,6 +40,13 @@ export function createColourChooser(handlers: ChooserHandlers) {
   el.className = 'chooser';
   el.hidden = true;
   el.innerHTML = `
+    <div class="chooser-top">
+      <span class="cur-swatch chooser-swatch" role="img" aria-label="Chosen colour"></span>
+      <label class="code-field"><span class="field-label">Colour code</span>
+        <input type="text" class="code" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off">
+      </label>
+      <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
+    </div>
     <div class="field" data-fav-field>
       <span class="field-label">Favourites</span>
       <div class="fav-row" role="group" aria-label="Favourite colours"></div>
@@ -51,20 +58,10 @@ export function createColourChooser(handlers: ChooserHandlers) {
         (b) => `<button type="button" class="fav-tile" data-hex="${b.hex}" aria-pressed="false" aria-label="${b.name}" style="background:${b.hex}"></button>`,
       ).join('')}</div>
     </div>
-    <section class="field custom" aria-labelledby="custom-title">
-      <h3 class="field-label custom-title" id="custom-title">Custom</h3>
-    <div class="chooser-top">
-      <span class="cur-swatch chooser-swatch" role="img" aria-label="Chosen colour"></span>
-      <label class="code-field"><span class="field-label">Colour code</span>
-        <input type="text" class="code" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off">
-      </label>
-      <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
-    </div>
     <div class="sliders">${SLIDERS.map(
       (s) => `<label class="slider"><span class="slider-text"><span class="slider-name">${s.label}</span>${s.hint ? `<span class="slider-hint">${s.hint}</span>` : ''}</span>
         <input type="range" min="${s.min}" max="${s.max}" step="1" data-k="${s.key}"></label>`,
-    ).join('')}</div>
-    </section>`;
+    ).join('')}</div>`;
 
   const swatch = el.querySelector<HTMLElement>('.chooser-swatch')!;
   const code = el.querySelector<HTMLInputElement>('.code')!;

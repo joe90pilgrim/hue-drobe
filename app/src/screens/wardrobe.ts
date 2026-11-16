@@ -38,6 +38,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     <div class="w-chips" role="group" aria-label="Show" id="w-chips"></div>
     <div class="w-layout" id="w-view" role="tabpanel">
       <div class="w-body">
+        <p class="w-tip" id="w-tip" hidden>Select an outfit to try it on, rename it or delete it. The panel opens on the right, as it does for clothes.</p>
         <p class="help w-empty" id="w-empty" hidden></p>
         <div class="w-grid" id="w-grid"></div>
       </div>
@@ -52,6 +53,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
   const chips = $('w-chips');
   const grid = $('w-grid');
   const empty = $('w-empty');
+  const tip = $('w-tip');
   const panel = $('w-panel');
   const sheet = $<HTMLDialogElement>('w-sheet');
   const confirmDlg = $<HTMLDialogElement>('w-confirm');
@@ -70,12 +72,12 @@ export function renderWardrobe(el: HTMLElement): () => void {
   const selectedOutfit = () => (sel?.kind === 'outfit' ? outfits.find((o) => o.id === sel!.id) : undefined);
   const nameOf = () => selectedItem()?.name ?? selectedOutfit()?.name ?? '';
 
-  /** The pieces an outfit is made of, as words: "Navy tee, Brown trousers". A deleted piece reads "Top missing". */
+  /** The pieces an outfit is made of, as words: "Navy tee, Brown trousers". A deleted piece reads "top deleted". */
   const piecesOf = (o: Outfit) => {
     const look = resolveOutfit(o, items);
     const parts: string[] = [];
-    if (o.top) parts.push(look.top ? look.top.name : 'Top missing');
-    if (o.bottom) parts.push(look.bottom ? look.bottom.name : 'Bottom missing');
+    if (o.top) parts.push(look.top ? look.top.name : 'top deleted');
+    if (o.bottom) parts.push(look.bottom ? look.bottom.name : 'bottom deleted');
     return parts.map(esc).join(', ');
   };
 
@@ -98,6 +100,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     tabClothes.tabIndex = tab === 'clothes' ? 0 : -1;
     tabOutfits.tabIndex = tab === 'outfits' ? 0 : -1;
     drawChips();
+    tip.hidden = tab !== 'outfits';
     const shown = wide.matches;
     const on = (kind: 'item' | 'outfit', id: string) => shown && sel?.kind === kind && sel.id === id;
     if (tab === 'clothes') {
@@ -147,7 +150,8 @@ export function renderWardrobe(el: HTMLElement): () => void {
       ? `<div class="d-pair"><button type="button" class="secondary" data-act="cancel-rename">Cancel</button><button type="button" class="primary" data-act="save-rename">Done</button></div>`
       : `<button type="button" class="primary d-try" data-act="try">Try it on</button>
          <div class="d-pair"><button type="button" class="secondary" data-act="rename">Rename</button><button type="button" class="secondary danger" data-act="delete">Delete</button></div>`;
-    return `<div class="d-head">${art}${head}</div>${actions}`;
+    const hint = item && !renaming ? '<p class="d-hint">Delete asks you to confirm first. Outfits that use this piece will show a gap where it was.</p>' : '';
+    return `<div class="grab" aria-hidden="true"></div><div class="d-head">${art}${head}</div>${actions}${hint}`;
   };
 
   const drawDetail = () => {

@@ -1,17 +1,48 @@
-// Captures every screen of the running app at phone and desktop sizes into docs/screenshots/.
-// Usage: node scripts/screenshots.mjs [baseUrl]   (default http://localhost:5174, start `npm run dev` first)
+// Captures every screen of the running app into one folder, with the same sample wardrobe every run.
+// Usage: node scripts/screenshots.mjs [baseUrl] [outDir] [phoneSize]
+//   baseUrl    default http://localhost:5174 (start `npm run dev` first)
+//   outDir     default docs/screenshots/
+//   phoneSize  default 412x915 (Pixel 8, shot at 2x). Use 390x844 to compare with the design files, which are 1x.
 // Joe's private avatar pack is blocked on purpose, so no personal body shape is ever written into a committed image.
 import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
 const base = process.argv[2] ?? 'http://localhost:5174';
-const out = fileURLToPath(new URL('../../docs/screenshots/', import.meta.url));
+const out = process.argv[3] ?? fileURLToPath(new URL('../../docs/screenshots/', import.meta.url));
+const [phoneW, phoneH] = (process.argv[4] ?? '412x915').split('x').map(Number);
 mkdirSync(out, { recursive: true });
 
 const sizes = {
-  mobile: { viewport: { width: 412, height: 915 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 },
-  desktop: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
+  phone: { viewport: { width: phoneW, height: phoneH }, hasTouch: true, isMobile: true, deviceScaleFactor: phoneW === 412 ? 2 : 1 },
+  laptop: { viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 },
+};
+
+// Sample content, the same every run: clothes, three outfits (the last with a gap where a piece was deleted) and favourites.
+const item = (id, garment, colour, name, savedAt, neckline) => ({ v: 2, id, garment, ...(neckline && { neckline }), colour, name, savedAt });
+const SEED = {
+  wardrobe: [
+    item('i1', 'tee', '#1f2a5a', 'Navy tee', 6),
+    item('i2', 'tee', '#f4f4f2', 'White tee', 5, 'v'),
+    item('i3', 'trousers', '#6b4f3a', 'Brown trousers', 4),
+    item('i4', 'sweatshirt', '#8c8c8c', 'Grey sweatshirt', 3),
+    item('i5', 'shorts', '#b8ad98', 'Stone shorts', 2),
+    item('i6', 'tee', '#1e7a55', 'Emerald tee', 1, 'scoop'),
+  ],
+  outfits: [
+    { v: 1, id: 'o1', name: 'Weekend', top: 'i1', bottom: 'i3', savedAt: 3 },
+    { v: 1, id: 'o2', name: 'Stone and grey', top: 'i4', bottom: 'i5', savedAt: 2 },
+    { v: 1, id: 'o3', name: 'Emerald', top: 'i6', bottom: 'deleted', savedAt: 1 },
+  ],
+  outfit: { Top: 'T-shirt', Bottom: 'Trousers' },
+  colours: { tee: '#1f2a5a', trousers: '#6b4f3a' },
+  neckline: 'crew',
+  favourites: [
+    { hex: '#1f2a5a', fromPalette: false },
+    { hex: '#6b4f3a', fromPalette: true },
+    { hex: '#c8b89a', fromPalette: true },
+  ],
 };
 
 const browser = await chromium.launch();
@@ -20,92 +51,104 @@ let count = 0;
 for (const [size, opts] of Object.entries(sizes)) {
   const ctx = await browser.newContext(opts);
   await ctx.route('**/pack/**', (r) => r.abort());
+  // The pack is blocked, so the stage would say the avatar failed to load. Hide that line: the stage is empty on purpose.
+  await ctx.addInitScript(() => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const style = document.createElement('style');
+      style.textContent = '.stage-status { visibility: hidden !important; }';
+      document.head.append(style);
+    });
+  });
   const page = await ctx.newPage();
   let n = 0;
   const shot = async (name) => {
     await page.waitForTimeout(300);
     n += 1;
-    await page.screenshot({ path: `${out}${size}-${String(n).padStart(2, '0')}-${name}.png` });
+    await page.screenshot({ path: join(out, `${size}-${String(n).padStart(2, '0')}-${name}.png`) });
     count += 1;
   };
-  const go = async (hash) => {
-    await page.goto(`${base}/#/${hash}`);
+  const go = async (route) => {
+    await page.goto(`${base}/#/${route}`);
     await page.reload();
   };
 
-  // Wardrobe, empty
-  await go('wardrobe');
-  await shot('wardrobe-empty');
-
-  // Dress: default, then a coloured look
+  // Put the sample content on the device, then reload so every screen reads it.
   await go('try-on');
-  await shot('dress-default');
-  await page.getByLabel('Top colour').fill('#1f2a5a');
-  await page.getByLabel('Bottom colour').fill('#6b4f3a');
-  await shot('dress-colours-chosen');
-  await page.locator('[data-save="Top"]').click();
-  await page.locator('[data-save="Bottom"]').click();
-  await page.getByRole('button', { name: 'Save outfit' }).click();
-  await page.waitForTimeout(400);
-  await shot('dress-saved-with-favourites');
+  await page.evaluate(async (data) => {
+    await new Promise((resolve, reject) => {
+      const req = indexedDB.open('huedrobe', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('kv');
+      req.onsuccess = () => {
+        const tx = req.result.transaction('kv', 'readwrite');
+        for (const [key, value] of Object.entries(data)) tx.objectStore('kv').put(value, key);
+        tx.oncomplete = () => { req.result.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }, SEED);
+  await go('try-on');
+  await page.locator('.wear-row').first().waitFor();
 
-  const neck = page.locator('[data-neckline]').nth(1);
-  if (await neck.isVisible()) {
-    await neck.click();
-    await shot('dress-neckline-changed');
-  }
-  await page.getByRole('button', { name: 'Next top' }).click();
-  await shot('dress-sweatshirt');
-  await page.getByRole('button', { name: 'Next bottom' }).click();
-  await shot('dress-shorts');
-  await page.getByRole('button', { name: 'Next top' }).click();
-  await page.getByRole('button', { name: 'Next bottom' }).click();
-  await shot('dress-nothing-worn');
-
-  // Wardrobe, with a saved item and outfit, then in rename mode
-  await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await shot('wardrobe-saved');
-  const rename = page.getByRole('button', { name: /^Rename/ }).first();
-  if (await rename.isVisible()) {
-    await rename.click();
-    await shot('wardrobe-renaming');
-    await page.getByRole('button', { name: 'Done' }).first().click();
+  // Phone: the Try on screen, then one piece open, its colour chooser, then the menu.
+  if (size === 'phone') {
+    await shot('try-on');
+    await page.locator('[data-row="Top"]').click();
+    await page.locator('.editor').waitFor();
+    await shot('change-a-piece');
+    await page.locator('.choose').click();
+    await shot('choose-a-colour');
+    await page.locator('.editor-back').click();
+    await page.locator('.editor-done').click();
+    await page.locator('#menu-btn').click();
+    await shot('menu-back-up');
+    await page.keyboard.press('Escape');
   }
 
-  // Colour quiz: intro, a question, a later question, result, close second
+  // Laptop: the Try on screen with the Top section open in the panel, then the colour chooser, then back up.
+  if (size === 'laptop') {
+    await shot('try-on');
+    await page.locator('[data-row="Top"]').click();
+    await shot('change-a-piece');
+    await page.locator('.choose').click();
+    await shot('choose-a-colour');
+    await page.locator('.editor-back').click();
+    await page.locator('#backup-btn').click();
+    await shot('back-up');
+    await page.keyboard.press('Escape');
+  }
+
+  // Wardrobe: clothes, a piece tapped (sheet on a phone, panel on a laptop), then outfits.
+  await go('wardrobe');
+  await shot('wardrobe-clothes');
+  await page.locator('.w-card').first().click();
+  await shot('wardrobe-a-piece');
+  if (size === 'phone') await page.keyboard.press('Escape');
+  await page.locator('#tab-outfits').click();
+  await shot('wardrobe-outfits');
+
+  // My colours: before the quiz, a question, the result (and the palette further down).
   await go('colours');
-  await shot('colour-intro');
-  await page.getByRole('button', { name: 'Start the quiz' }).click();
-  await shot('colour-question-1');
-  const total = await page.evaluate(() => 0).then(() => null);
-  let i = 0;
+  await shot('my-colours-start');
+  await page.getByRole('button', { name: 'Take the quiz' }).click();
+  for (let i = 0; i < 2; i += 1) {
+    await page.locator('[role="radio"]').first().click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
+  }
+  await page.locator('[role="radio"]').first().click();
+  await shot('my-colours-question');
   for (;;) {
-    i += 1;
-    await page.getByRole('radio').first().click();
-    if (i === 3) await shot('colour-question-answered');
+    await page.locator('[role="radio"]').first().click();
     const see = page.getByRole('button', { name: 'See my result' });
     if (await see.isVisible()) {
       await see.click();
       break;
     }
-    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Next', exact: true }).click();
   }
-  void total;
-  await shot('colour-result');
-  await page.locator('[data-fav]').first().click();
-  await page.locator('[data-fav]').nth(2).click();
-  await page.mouse.wheel(0, 2000);
-  await shot('colour-result-lower');
-  await page.evaluate(() => window.scrollTo(0, 0));
-  const second = page.getByRole('button', { name: 'See this palette' });
-  if (await second.isVisible()) {
-    await second.click();
-    await shot('colour-close-second');
-  }
-
-  // Dress again: palette colours now appear as favourites
-  await page.getByRole('link', { name: 'Try on' }).click();
-  await shot('dress-palette-favourites');
+  await shot('my-colours-result');
+  await page.evaluate(() => document.querySelector('.main')?.scrollTo(0, 100000));
+  await shot('my-colours-result-lower');
 
   await ctx.close();
 }

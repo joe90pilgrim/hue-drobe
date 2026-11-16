@@ -74,7 +74,7 @@ test('an outfit whose item was deleted shows that slot as a gap, and wearing it 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await deleteCard(page, 'Navy tee');
   await wardrobeTab(page, 'Outfits').click();
-  await expect(page.getByText('Top missing, Light grey trousers')).toBeVisible();
+  await expect(page.getByText('top deleted, Light grey trousers')).toBeVisible();
   await expect(page.locator('.w-card .o-slice.top.o-empty')).toHaveCount(1); // the gap is a dashed outline
 
   await tryItOn(page, 'Navy tee, Light grey trousers');

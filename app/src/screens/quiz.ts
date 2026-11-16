@@ -51,7 +51,7 @@ export function renderQuiz(el: HTMLElement): () => void {
     current = -1;
     card.innerHTML = `
       <div class="card">
-        <h2>Find the colours that suit you</h2>
+        <h2 class="intro-title">Find the colours that suit you</h2>
         <p>Answer ${n} short questions about your skin, hair and eyes. You'll get your colour season, a palette of colours to wear, and some general advice.</p>
         <p class="tip"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><span>Do it in daylight, by a window rather than under a lamp, with a mirror to hand.</span></p>
       </div>
@@ -123,7 +123,7 @@ export function renderQuiz(el: HTMLElement): () => void {
           </div>
           <div class="card">
             <h3>Your palette</h3>
-            <p class="help">Tap a colour to add it to your favourites. Favourites are offered when you choose a garment colour.</p>
+            <p class="help"><span class="when-tap">Tap</span><span class="when-select">Select</span> a colour to add it to your favourites. Favourites are offered when you choose a garment colour.</p>
             ${paletteHtml(s)}
           </div>
         </div>
