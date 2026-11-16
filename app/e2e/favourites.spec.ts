@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { openRows } from './helpers';
+import { closeSlot, colourInput, favourite, favouriteTiles, openSlot } from './helpers';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/colour-quiz.json', import.meta.url), 'utf8'));
 const QUESTIONS = data.questions.length as number;
@@ -28,85 +28,86 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
 
   await page.reload();
 
-  await openRows(page);
   await expect(mainToggles.first()).toHaveText('Saved');
 
   await page.getByRole('link', { name: 'Try on' }).click();
 
-  await openRows(page);
-  const top = page.getByRole('group', { name: 'Top favourite colours' });
-  const tile = top.getByRole('button', { name: hex });
+  await openSlot(page, 'Top');
+  const tile = favouriteTiles(page).getByRole('button', { name: hex });
   await expect(tile).toBeVisible();
-  await expect(top.locator('.palette-dot')).toHaveCount(1); // marked as from the palette
+  await expect(favouriteTiles(page).locator('.palette-dot')).toHaveCount(1); // marked as from the palette
+  await expect(page.getByText('From your colour palette')).toBeVisible();
   await tile.click();
-  await expect(page.getByLabel('Top colour')).toHaveValue(hex);
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#d6d6d6');
+  await expect(colourInput(page)).toHaveValue(hex);
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
+  await closeSlot(page);
+  await openSlot(page, 'Bottom');
+  await expect(colourInput(page)).toHaveValue('#d6d6d6');
 
   await page.reload();
 
-  await openRows(page);
-  await expect(page.getByLabel('Top colour')).toHaveValue(hex);
-  await expect(page.getByRole('group', { name: 'Top favourite colours' }).getByRole('button', { name: hex })).toHaveClass(/\bon\b/);
+  await openSlot(page, 'Top');
+  await expect(colourInput(page)).toHaveValue(hex);
+  await expect(favouriteTiles(page).getByRole('button', { name: hex })).toHaveClass(/\bon\b/);
 });
 
-test('saves a picked colour with the star, shows it in every slot, and removes it in edit mode', async ({ page }) => {
+test('saves a picked colour as a favourite, shows it in every slot, and removes it by turning Favourite off', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  const top = page.getByRole('group', { name: 'Top favourite colours' });
-  const bottom = page.getByRole('group', { name: 'Bottom favourite colours' });
-  const star = (group: typeof top) => group.getByRole('button', { name: 'Save this colour to favourites' });
-
-  await page.getByLabel('Top colour').fill('#2e5e8c');
-  await star(top).click();
-  await expect(star(top)).toHaveAttribute('aria-pressed', 'true');
-  await page.getByLabel('Top colour').fill('#aa5500');
-  await star(top).click();
+  await openSlot(page, 'Top');
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.getByText('From your colour palette')).toBeHidden(); // no palette colours yet
+  await colourInput(page).fill('#2e5e8c');
+  await favourite(page).click();
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
+  await colourInput(page).fill('#aa5500');
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'false'); // a different colour is not a favourite yet
+  await favourite(page).click();
 
   await page.reload();
 
-  await openRows(page);
-  await expect(top.getByRole('button', { name: '#2e5e8c' })).toBeVisible();
-  await expect(top.getByRole('button', { name: '#aa5500' })).toBeVisible();
-  await expect(bottom.getByRole('button', { name: '#2e5e8c' })).toBeVisible();
+  await openSlot(page, 'Top');
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toBeVisible();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#aa5500' })).toBeVisible();
+  await closeSlot(page);
+  await openSlot(page, 'Bottom');
+  await favouriteTiles(page).getByRole('button', { name: '#2e5e8c' }).click();
+  await expect(colourInput(page)).toHaveValue('#2e5e8c');
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
+  await favourite(page).click();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
+  await closeSlot(page);
 
-  await bottom.getByRole('button', { name: 'Edit' }).click();
-  await bottom.getByRole('button', { name: '#2e5e8c' }).click();
-  await bottom.getByRole('button', { name: 'Done' }).click();
-  await expect(top.getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
-  await expect(top.getByRole('button', { name: '#aa5500' })).toBeVisible();
-  await expect(page.getByLabel('Top colour')).toHaveValue('#aa5500');
+  await openSlot(page, 'Top');
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
+  await expect(favouriteTiles(page).getByRole('button', { name: '#aa5500' })).toBeVisible();
+  await expect(colourInput(page)).toHaveValue('#aa5500');
 });
 
-test('shows the first 12 favourites and a more option for the rest', async ({ page }) => {
+test('shows the first 12 favourites and Show all for the rest', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  const top = page.getByRole('group', { name: 'Top favourite colours' });
+  await openSlot(page, 'Top');
+  const tiles = favouriteTiles(page);
   for (let i = 1; i <= 13; i++) {
-    await page.getByLabel('Top colour').fill(`#0a0${i.toString(16).padStart(1, '0')}00`);
-    await top.getByRole('button', { name: 'Save this colour to favourites' }).click();
+    await colourInput(page).fill(`#0a0${i.toString(16)}00`);
+    await favourite(page).click();
   }
-  await expect(top.locator('[data-hex]')).toHaveCount(12);
-  await top.getByRole('button', { name: 'More (1)' }).click();
-  await expect(top.locator('[data-hex]')).toHaveCount(13);
-  await top.getByRole('button', { name: 'Fewer' }).click();
-  await expect(top.locator('[data-hex]')).toHaveCount(12);
+  await expect(tiles.locator('[data-hex]')).toHaveCount(12);
+  await page.getByRole('button', { name: 'Show all' }).click();
+  await expect(tiles.locator('[data-hex]')).toHaveCount(13);
+  await page.getByRole('button', { name: 'Show fewer' }).click();
+  await expect(tiles.locator('[data-hex]')).toHaveCount(12);
 });
 
-test('after removing the last favourite in edit mode, the star still saves a new one', async ({ page }) => {
+test('after turning off the only favourite, Favourite still saves a new one', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  const top = page.getByRole('group', { name: 'Top favourite colours' });
-  const star = top.getByRole('button', { name: 'Save this colour to favourites' });
-
-  await page.getByLabel('Top colour').fill('#2e5e8c');
-  await star.click();
-  await top.getByRole('button', { name: 'Edit' }).click();
-  await top.getByRole('button', { name: '#2e5e8c' }).click();
-  await expect(top.getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
-
-  // With no favourites left, Edit is gone, so the star must not be stuck disabled.
-  await expect(star).toBeEnabled();
-  await star.click();
-  await expect(top.getByRole('button', { name: '#2e5e8c' })).toBeVisible();
-  await expect(star).toHaveAttribute('aria-pressed', 'true');
+  await openSlot(page, 'Top');
+  await colourInput(page).fill('#2e5e8c');
+  await favourite(page).click();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toBeVisible();
+  await favourite(page).click();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toHaveCount(0);
+  await expect(favourite(page)).toBeEnabled();
+  await favourite(page).click();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#2e5e8c' })).toBeVisible();
+  await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
 });

@@ -41,6 +41,32 @@ const SLOTS: Slot[] = [
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
 const DEFAULT_COLOUR = '#d6d6d6';
 
+/** "None" is what is stored (and what older backups hold); the person sees "Nothing". */
+const optionLabel = (opt: string) => (opt === 'None' ? 'Nothing' : opt);
+
+const HEART =
+  '<svg class="heart" width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>';
+const PLUS =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>';
+const TICK =
+  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>';
+
+/** Arrow keys move the choice along a radio group, as a native radio group does. */
+function bindRadioKeys(group: HTMLElement) {
+  group.addEventListener('keydown', (e) => {
+    const key = (e as KeyboardEvent).key;
+    const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 0;
+    if (!step) return;
+    const radios = [...group.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    const i = radios.indexOf(document.activeElement as HTMLButtonElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = radios[(i + step + radios.length) % radios.length];
+    next.click();
+    next.focus();
+  });
+}
+
 export function renderTryOn(el: HTMLElement): () => void {
   el.innerHTML = `
     <div class="try-on">
@@ -51,38 +77,64 @@ export function renderTryOn(el: HTMLElement): () => void {
       <section class="panel" aria-labelledby="wearing-title">
         <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
         ${SLOTS.map(
-          (s) => `<div class="slot">
-            <button type="button" class="wear-row" data-row="${s.name}" aria-expanded="false" aria-controls="edit-${s.name}">
+          (s) => `<div class="slot" data-box="${s.name}">
+            <button type="button" class="wear-row" data-row="${s.name}" aria-haspopup="dialog">
               <span class="wear-swatch" data-row-swatch="${s.name}"></span>
               <span class="wear-text"><span class="slot-label">${s.name}</span><span class="wear-name" data-slot="${s.name}"></span></span>
               <span class="wear-change" aria-hidden="true">Change ›</span>
             </button>
-            <div class="slot-edit" id="edit-${s.name}" role="group" aria-label="${s.name}" hidden>
-            ${
-              Object.values(s.garments).some((g) => hasNecklines(g as GarmentId))
-                ? `<div class="neckline-row" role="group" aria-label="Neckline" data-necklines hidden>${(Object.keys(NECKLINES) as Neckline[])
-                    .map((n) => `<button type="button" class="neckline-btn" data-neckline="${n}" aria-pressed="false">${NECKLINES[n].label}</button>`)
-                    .join('')}</div>`
-                : ''
-            }
-            <div class="fav-row" role="group" aria-label="${s.name} favourite colours" data-favs="${s.name}"></div>
-            <div class="slot-controls">
-              <button aria-label="Previous ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&lsaquo;</button>
-              <input type="color" class="swatch" aria-label="${s.name} colour" value="${DEFAULT_COLOUR}">
-              <button aria-label="Next ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&rsaquo;</button>
-            </div>
-            <button type="button" class="slot-save" data-save="${s.name}">Save</button>
-            </div>
           </div>`,
         ).join('')}
         <button type="button" class="primary outfit-save" id="save-outfit">Save outfit</button>
       </section>
+      <div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="editor-title" tabindex="-1" hidden>
+        <div class="grab" aria-hidden="true"></div>
+        <div class="editor-head"><h2 id="editor-title"></h2><button type="button" class="editor-done">Done</button></div>
+        <div class="field">
+          <span class="field-label" id="lbl-garment">Garment</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div>
+        </div>
+        <div class="field" data-neck-field hidden>
+          <span class="field-label" id="lbl-neck">Neckline</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-neck" data-necklines>${(Object.keys(NECKLINES) as Neckline[])
+            .map((n) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-neckline="${n}">${NECKLINES[n].label}</button>`)
+            .join('')}</div>
+        </div>
+        <div class="field">
+          <span class="field-label" id="lbl-colour">Colour</span>
+          <div class="colour-row">
+            <span class="cur-swatch" role="img" aria-label="Current colour"></span>
+            <label class="secondary choose"><span>Choose a colour</span><input type="color" class="picker" aria-label="Choose a colour" value="${DEFAULT_COLOUR}"></label>
+            <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
+          </div>
+          <div class="fav-row" role="group" aria-label="Your favourite colours"></div>
+          <div class="fav-foot">
+            <span class="legend" hidden><span class="legend-dot"></span>From your colour palette</span>
+            <button type="button" class="link-btn" data-more hidden></button>
+          </div>
+        </div>
+        <button type="button" class="secondary add-wardrobe"></button>
+      </div>
     </div>`;
 
+  const tryOn = el.querySelector<HTMLElement>('.try-on')!;
   const stage = el.querySelector<HTMLElement>('#stage')!;
   const hint = stage.querySelector<HTMLElement>('.stage-hint')!;
   const status = stage.querySelector<HTMLElement>('.stage-status')!;
   const outfitBtn = el.querySelector<HTMLButtonElement>('#save-outfit')!;
+  const editor = el.querySelector<HTMLElement>('#editor')!;
+  const editorTitle = editor.querySelector<HTMLElement>('#editor-title')!;
+  const garmentGroup = editor.querySelector<HTMLElement>('[data-garment]')!;
+  const neckField = editor.querySelector<HTMLElement>('[data-neck-field]')!;
+  const neckGroup = editor.querySelector<HTMLElement>('[data-necklines]')!;
+  const curSwatch = editor.querySelector<HTMLElement>('.cur-swatch')!;
+  const picker = editor.querySelector<HTMLInputElement>('.picker')!;
+  const favBtn = editor.querySelector<HTMLButtonElement>('.fav-btn')!;
+  const favRow = editor.querySelector<HTMLElement>('.fav-row')!;
+  const legend = editor.querySelector<HTMLElement>('.legend')!;
+  const moreBtn = editor.querySelector<HTMLButtonElement>('[data-more]')!;
+  const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
+  const laptop = matchMedia('(min-width: 900px)');
   let dragged = false; // the turn hint goes away after the first drag
   const viewer = createViewer(stage, (msg) => {
     status.textContent = msg ?? '';
@@ -95,82 +147,229 @@ export function renderTryOn(el: HTMLElement): () => void {
       hint.hidden = true;
     }
   });
-  // A row opens the controls for its slot (V1.2-04 replaces these with a sheet and a side panel).
-  for (const row of el.querySelectorAll<HTMLButtonElement>('.wear-row')) {
-    row.addEventListener('click', () => {
-      const open = row.getAttribute('aria-expanded') !== 'true';
-      row.setAttribute('aria-expanded', String(open));
-      el.querySelector<HTMLElement>(`#${row.getAttribute('aria-controls')}`)!.hidden = !open;
-    });
-  }
 
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
-  let colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
+  const colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
   let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
   let favourites: Favourite[] = []; // shared by every slot
-  let editing = false; // while true, tapping a favourite removes it instead of applying it
   let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
+  let editing: Slot | null = null; // the slot whose controls are open
+  let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
+  let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
+  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || DEFAULT_COLOUR).toLowerCase();
+  const itemKey = (slot: Slot) => `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}`;
+  const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
   /** The row's name: "T-shirt, crew neck", "Trousers" or "Nothing". */
   const nameOf = (slot: Slot) => {
     const g = garmentOf(slot) as GarmentId | undefined;
     if (!g) return 'Nothing';
     return hasNecklines(g) ? `${outfit[slot.name]}, ${NECKLINES[neckline].words}` : outfit[slot.name];
   };
-  const pickerOf = (slot: Slot) => el.querySelector<HTMLInputElement>(`[aria-label="${slot.name} colour"]`)!;
-  const favRowOf = (slot: Slot) => el.querySelector<HTMLElement>(`[data-favs="${slot.name}"]`)!;
 
-  /** Draws each slot's favourites above its free picker. The star saves or removes the colour the picker shows. */
-  const renderFavs = () => {
-    // Edit mode has a Done button only while there are favourites, so it must not outlive the last one.
-    if (!favourites.length) editing = false;
+  const renderRows = () => {
     for (const s of SLOTS) {
       const g = garmentOf(s);
-      const row = favRowOf(s);
+      el.querySelector(`[data-slot="${s.name}"]`)!.textContent = nameOf(s);
       const sw = el.querySelector<HTMLElement>(`[data-row-swatch="${s.name}"]`)!;
       sw.classList.toggle('o-empty', !g);
-      sw.style.background = g ? pickerOf(s).value : '';
-      const current = pickerOf(s).value.toLowerCase();
-      const isFav = hasFavourite(favourites, current);
-      const shown = showAll ? favourites : favourites.slice(0, SHOWN_FIRST);
-      const more =
-        favourites.length > SHOWN_FIRST
-          ? `<button type="button" class="fav-text" data-more>${showAll ? 'Fewer' : `More (${favourites.length - SHOWN_FIRST})`}</button>`
-          : '';
-      const edit = favourites.length ? `<button type="button" class="fav-text" data-edit>${editing ? 'Done' : 'Edit'}</button>` : '';
-      row.classList.toggle('editing', editing);
-      row.innerHTML = `
-        <button type="button" class="fav-tile fav-star" data-star aria-pressed="${isFav}" aria-label="Save this colour to favourites" title="${isFav ? 'Remove this colour from favourites' : 'Save this colour to favourites'}" ${!g || editing ? 'disabled' : ''}>${isFav ? '&#9733;' : '&#9734;'}</button>
-        ${shown
-          .map(
-            (f) => `<button type="button" class="fav-tile${f.hex === current ? ' on' : ''}" data-hex="${f.hex}" aria-label="${f.hex}${f.fromPalette ? ', from your palette' : ''}" title="${f.hex}${f.fromPalette ? ' (from your palette)' : ''}" style="background:${f.hex}" ${!g ? 'disabled' : ''}>${f.fromPalette ? '<span class="palette-dot"></span>' : ''}</button>`,
-          )
-          .join('')}
-        ${more}${edit}`;
+      sw.style.background = g ? colourOf(s) : '';
     }
+    outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
+  /** Draws the favourite tiles and keeps the keyboard focus on the tile or link that was used. */
+  const renderFavs = (s: Slot) => {
+    const g = garmentOf(s);
+    const current = colourOf(s);
+    const active = document.activeElement as HTMLElement | null;
+    const keep = active && favRow.contains(active) ? active.dataset.hex : active === moreBtn ? 'more' : undefined;
+    const shown = showAll ? favourites : favourites.slice(0, SHOWN_FIRST);
+    favRow.innerHTML = shown
+      .map(
+        (f) =>
+          `<button type="button" class="fav-tile${f.hex === current ? ' on' : ''}" data-hex="${f.hex}" aria-pressed="${f.hex === current}" aria-label="${f.hex}${f.fromPalette ? ', from your palette' : ''}" style="background:${f.hex}" ${!g ? 'disabled' : ''}>${f.fromPalette ? '<span class="palette-dot"></span>' : ''}</button>`,
+      )
+      .join('');
+    legend.hidden = !shown.some((f) => f.fromPalette);
+    moreBtn.hidden = favourites.length <= SHOWN_FIRST;
+    moreBtn.textContent = showAll ? 'Show fewer' : 'Show all';
+    moreBtn.setAttribute('aria-expanded', String(showAll));
+    if (keep === 'more') moreBtn.focus();
+    else if (keep) favRow.querySelector<HTMLElement>(`[data-hex="${keep}"]`)?.focus();
+  };
+
+  /** Brings every control in the open panel up to date with the current outfit. */
+  const syncEditor = () => {
+    const s = editing;
+    if (!s) return;
+    const g = garmentOf(s) as GarmentId | undefined;
+    const current = colourOf(s);
+    for (const b of garmentGroup.querySelectorAll<HTMLButtonElement>('[data-opt]')) {
+      const on = b.dataset.opt === outfit[s.name];
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+    neckField.hidden = !g || !hasNecklines(g);
+    for (const b of neckGroup.querySelectorAll<HTMLButtonElement>('[data-neckline]')) {
+      const on = b.dataset.neckline === neckline;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+    curSwatch.classList.toggle('o-empty', !g);
+    curSwatch.style.background = g ? current : '';
+    curSwatch.setAttribute('aria-label', g ? `Current colour ${current}` : 'No colour, nothing is worn');
+    if (picker.value !== current) picker.value = current;
+    picker.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
+    favBtn.disabled = !g;
+    favBtn.setAttribute('aria-pressed', String(hasFavourite(favourites, current)));
+    addBtn.hidden = !g || !(g in GARMENTS);
+    const saved = !!g && savedKey === itemKey(s);
+    addBtn.innerHTML = saved ? `${TICK}In your wardrobe` : `${PLUS}Add to wardrobe`;
+    addBtn.classList.toggle('done', saved);
+    renderFavs(s);
+  };
+
+  /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them. */
   const apply = (slot: Slot) => {
-    el.querySelector(`[data-slot="${slot.name}"]`)!.textContent = nameOf(slot);
-    // Show exactly one mesh: the chosen garment, with the chosen neckline if it has them.
     for (const [opt, id] of Object.entries(slot.garments)) {
       const shown = meshName(id as GarmentId, neckline);
       for (const mesh of meshesOf(id as GarmentId)) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
     }
-    const g = garmentOf(slot);
-    const necks = el.querySelector<HTMLElement>(`#edit-${slot.name} [data-necklines]`);
-    if (necks) {
-      necks.hidden = !g || !hasNecklines(g as GarmentId);
-      for (const b of necks.querySelectorAll<HTMLButtonElement>('[data-neckline]')) b.setAttribute('aria-pressed', String(b.dataset.neckline === neckline));
-    }
-    const picker = pickerOf(slot);
-    picker.disabled = !g;
-    el.querySelector<HTMLButtonElement>(`[data-save="${slot.name}"]`)!.disabled = !g; // "None" and garments not yet in the pack have no colour to pick
-    picker.value = (g && colours[g]) || DEFAULT_COLOUR;
-    outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
-    renderFavs();
   };
-  SLOTS.forEach(apply);
+  const refresh = () => {
+    SLOTS.forEach(apply);
+    renderRows();
+    syncEditor();
+  };
+  refresh();
+
+  // --- The panel for one slot: a bottom sheet under the stage on a phone, in place of the row on a laptop. ---
+  const place = () => {
+    const s = editing;
+    for (const slot of SLOTS) rowOf(slot).hidden = false;
+    if (!s) {
+      tryOn.classList.remove('sheet-open');
+      return;
+    }
+    if (laptop.matches) {
+      tryOn.classList.remove('sheet-open');
+      el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
+      rowOf(s).hidden = true;
+    } else {
+      tryOn.classList.add('sheet-open');
+      stage.after(editor);
+    }
+  };
+  const buildGarments = (s: Slot) => {
+    garmentGroup.innerHTML = s.options
+      .map((o) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${o}">${optionLabel(o)}</button>`)
+      .join('');
+  };
+  const openEditor = (s: Slot, row: HTMLButtonElement) => {
+    if (editing === s) return;
+    if (!editing) history.pushState({ hueEditor: true }, ''); // so the back gesture closes the panel instead of leaving the screen
+    editing = s;
+    lastRow = row;
+    editorTitle.textContent = s.name;
+    buildGarments(s);
+    place();
+    editor.hidden = false;
+    syncEditor();
+    (editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]') ?? editor).focus();
+  };
+  const hideEditor = () => {
+    if (!editing) return;
+    editing = null;
+    editor.hidden = true;
+    place();
+    lastRow?.focus();
+  };
+  const requestClose = () => {
+    if (!editing) return;
+    if (history.state?.hueEditor) history.back(); // the popstate handler closes it
+    else hideEditor();
+  };
+  const onPop = () => hideEditor();
+  window.addEventListener('popstate', onPop);
+  const onLayout = () => place();
+  laptop.addEventListener('change', onLayout);
+
+  for (const s of SLOTS) rowOf(s).addEventListener('click', () => openEditor(s, rowOf(s)));
+  editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
+  editor.addEventListener('keydown', (e) => {
+    if ((e as KeyboardEvent).key === 'Escape') requestClose();
+  });
+  // A tap on the stage closes the sheet on a phone; a drag to turn the avatar does not.
+  let down: { x: number; y: number } | null = null;
+  stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
+  stage.addEventListener('click', (e) => {
+    if (!tryOn.classList.contains('sheet-open')) return;
+    if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
+    requestClose();
+  });
+
+  bindRadioKeys(garmentGroup);
+  bindRadioKeys(neckGroup);
+  garmentGroup.addEventListener('click', (e) => {
+    const opt = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
+    const s = editing;
+    if (!s || !opt || opt === outfit[s.name]) return;
+    outfit[s.name] = opt;
+    refresh();
+    void kvPut('outfit', { ...outfit });
+  });
+  neckGroup.addEventListener('click', (e) => {
+    const n = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-neckline]')?.dataset.neckline;
+    if (!isNeckline(n) || n === neckline) return;
+    neckline = n;
+    refresh();
+    void kvPut(NECKLINE_KEY, neckline);
+  });
+
+  picker.addEventListener('input', () => {
+    const g = editing && garmentOf(editing);
+    if (!g) return;
+    colours[g] = picker.value;
+    viewer.setColour(g, picker.value); // applies straight away
+    renderRows();
+    syncEditor();
+  });
+  picker.addEventListener('change', () => void kvPut('colours', { ...colours }));
+
+  favBtn.addEventListener('click', () => {
+    if (!editing) return;
+    const hex = colourOf(editing);
+    favourites = hasFavourite(favourites, hex) ? removeFavourite(favourites, hex) : addFavourite(favourites, hex, false);
+    void saveFavourites(favourites);
+    syncEditor();
+  });
+  favRow.addEventListener('click', (e) => {
+    const hex = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-hex]')?.dataset.hex;
+    const g = editing && garmentOf(editing);
+    if (!hex || !g) return;
+    colours[g] = hex;
+    viewer.setColour(g, hex);
+    void kvPut('colours', { ...colours });
+    renderRows();
+    syncEditor();
+  });
+  moreBtn.addEventListener('click', () => {
+    showAll = !showAll;
+    syncEditor();
+  });
+  addBtn.addEventListener('click', async () => {
+    const s = editing;
+    const g = s && (garmentOf(s) as GarmentId | undefined);
+    if (!s || !g || !(g in GARMENTS)) return;
+    const key = itemKey(s);
+    const items = await loadItems();
+    const r = ensureItem(items, g, colourOf(s), Date.now(), neckline); // one item per garment, colour and (for a tee) neckline
+    if (r.list !== items) await saveItems(r.list);
+    savedKey = key;
+    syncEditor();
+  });
+
   let gone = false;
   Promise.all([
     kvGet<Record<string, string>>('outfit', {}),
@@ -188,91 +387,17 @@ export function renderTryOn(el: HTMLElement): () => void {
       }
     }
     favourites = favs;
-    SLOTS.forEach(apply);
+    refresh();
   });
-  for (const s of SLOTS) {
-    const step = (d: number) => () => {
-      const i = s.options.indexOf(outfit[s.name]);
-      outfit[s.name] = s.options[(i + d + s.options.length) % s.options.length];
-      apply(s);
-      void kvPut('outfit', { ...outfit });
-    };
-    el.querySelector(`[aria-label="Previous ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(-1));
-    el.querySelector(`[aria-label="Next ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(1));
 
-    el.querySelector(`#edit-${s.name} [data-necklines]`)?.addEventListener('click', (e) => {
-      const n = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-neckline]')?.dataset.neckline;
-      if (!isNeckline(n) || n === neckline) return;
-      neckline = n;
-      apply(s);
-      void kvPut(NECKLINE_KEY, neckline);
-    });
-
-    const picker = pickerOf(s);
-    picker.addEventListener('input', () => {
-      const g = garmentOf(s);
-      if (!g) return;
-      colours[g] = picker.value;
-      viewer.setColour(g, picker.value); // applies straight away
-      renderFavs();
-    });
-    el.querySelector<HTMLButtonElement>(`[data-save="${s.name}"]`)!.addEventListener('click', async (e) => {
-      const g = garmentOf(s) as GarmentId | undefined;
-      if (!g || !(g in GARMENTS)) return;
-      const btn = e.currentTarget as HTMLButtonElement;
-      const items = await loadItems();
-      const r = ensureItem(items, g, picker.value, Date.now(), neckline); // one item per garment, colour and (for a tee) neckline
-      if (r.list !== items) await saveItems(r.list);
-      btn.textContent = 'Saved';
-      setTimeout(() => (btn.textContent = 'Save'), 1500);
-    });
-    picker.addEventListener('change', () => void kvPut('colours', { ...colours }));
-
-    favRowOf(s).addEventListener('click', (e) => {
-      const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button');
-      if (!b || b.disabled) return;
-      if (b.hasAttribute('data-more')) {
-        showAll = !showAll;
-        renderFavs();
-        return;
-      }
-      if (b.hasAttribute('data-edit')) {
-        editing = !editing;
-        renderFavs();
-        return;
-      }
-      if (b.hasAttribute('data-star')) {
-        const hex = picker.value.toLowerCase();
-        favourites = hasFavourite(favourites, hex) ? removeFavourite(favourites, hex) : addFavourite(favourites, hex, false);
-        void saveFavourites(favourites);
-        renderFavs();
-        return;
-      }
-      const hex = b.dataset.hex;
-      if (!hex) return;
-      if (editing) {
-        favourites = removeFavourite(favourites, hex);
-        void saveFavourites(favourites);
-        renderFavs();
-        return;
-      }
-      const g = garmentOf(s);
-      if (!g) return;
-      colours[g] = hex;
-      viewer.setColour(g, hex);
-      picker.value = hex;
-      void kvPut('colours', { ...colours });
-      renderFavs();
-    });
-  }
-  // Saves the look as shown: each garment on the avatar in the colour the picker shows, added to the library if new.
+  // Saves the look as shown: each garment on the avatar in its colour, added to the library if new.
   outfitBtn.addEventListener('click', async () => {
     let items = await loadItems();
     const look: OutfitLook = {};
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
       if (!g) continue;
-      const r = ensureItem(items, g, pickerOf(s).value, Date.now(), neckline);
+      const r = ensureItem(items, g, colourOf(s), Date.now(), neckline);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
       else look.bottom = r.item;
@@ -285,6 +410,8 @@ export function renderTryOn(el: HTMLElement): () => void {
   });
   return () => {
     gone = true;
+    window.removeEventListener('popstate', onPop);
+    laptop.removeEventListener('change', onLayout);
     viewer.dispose();
   };
 }

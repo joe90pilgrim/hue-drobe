@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { openRows } from './helpers';
+import { closeSlot, colourInput, garment, openSlot } from './helpers';
 
 /**
  * Waits until the device's store holds this many saved outfits. The button's 'Outfit saved' text lasts only 1.5 seconds,
@@ -30,8 +30,9 @@ async function waitForOutfits(page: Page, count: number) {
 
 test('saves a look as an outfit, renames it, and wears it in one tap after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  await page.getByLabel('Top colour').fill('#1f2a5a');
+  await openSlot(page, 'Top');
+  await colourInput(page).fill('#1f2a5a');
+  await closeSlot(page);
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);
 
@@ -44,23 +45,24 @@ test('saves a look as an outfit, renames it, and wears it in one tap after a rel
 
   // Change the avatar, then wear the outfit back after a reload.
   await page.getByRole('link', { name: 'Try on' }).click();
-  await openRows(page);
-  await page.getByLabel('Top colour').fill('#aa5500');
-  await page.getByRole('button', { name: 'Next top' }).click(); // sweatshirt
+  await openSlot(page, 'Top');
+  await colourInput(page).fill('#aa5500');
+  await garment(page, 'Sweatshirt').click();
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.reload();
-  await openRows(page);
   await page.getByRole('button', { name: 'Wear outfit Work day' }).click();
   await expect(page).toHaveURL(/#\/try-on/);
-  await expect(page.getByLabel('Top colour')).toHaveValue('#1f2a5a');
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Trousers');
+  await openSlot(page, 'Top');
+  await expect(colourInput(page)).toHaveValue('#1f2a5a');
 });
 
 test('an outfit whose item was deleted shows that slot as empty, and wearing it clears the slot', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  await page.getByLabel('Top colour').fill('#1f2a5a');
+  await openSlot(page, 'Top');
+  await colourInput(page).fill('#1f2a5a');
+  await closeSlot(page);
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);
 
@@ -75,7 +77,6 @@ test('an outfit whose item was deleted shows that slot as empty, and wearing it 
 
 test('deletes a saved outfit and keeps the deletion after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await waitForOutfits(page, 1);
 
@@ -83,6 +84,5 @@ test('deletes a saved outfit and keeps the deletion after a reload', async ({ pa
   await page.getByRole('button', { name: 'Delete outfit Light grey tee, Light grey trousers' }).click();
   await expect(page.getByText('No outfits yet')).toBeVisible();
   await page.reload();
-  await openRows(page);
   await expect(page.getByText('No outfits yet')).toBeVisible();
 });

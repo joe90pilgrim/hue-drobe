@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
-import { openRows } from './helpers';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/colour-quiz.json', import.meta.url), 'utf8'));
 const QUESTIONS = data.questions.length as number;
@@ -42,7 +41,6 @@ test('takes the quiz, sees a season with its palette and advice, and keeps it af
 
   await page.reload();
 
-  await openRows(page);
   await expect(page.locator('h2.season')).toHaveText(name);
 
   await page.getByRole('button', { name: 'Retake the quiz' }).click();

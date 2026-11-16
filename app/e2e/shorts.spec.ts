@@ -1,55 +1,58 @@
 import { expect, test } from '@playwright/test';
-import { openRows } from './helpers';
+import { addToWardrobe, closeSlot, colourInput, garment, inWardrobe, openSlot } from './helpers';
 
 // V1.1-05: shorts are a Bottom option with their own colour, and can be saved and worn like the trousers.
 test('offers shorts as a bottom with their own colour, and remembers the choice after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
   const bottom = page.locator('[data-slot="Bottom"]');
   await expect(bottom).toHaveText('Trousers');
-  await expect(page.getByLabel('Bottom colour')).toBeEnabled();
-  await page.getByLabel('Bottom colour').fill('#333333');
+  await openSlot(page, 'Bottom');
+  await expect(colourInput(page)).toBeEnabled();
+  await colourInput(page).fill('#333333');
 
-  await page.getByRole('button', { name: 'Next bottom' }).click();
+  await garment(page, 'Shorts').click();
   await expect(bottom).toHaveText('Shorts');
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#d6d6d6'); // the trousers' colour stays with the trousers
-  await page.getByLabel('Bottom colour').fill('#1f2a5a');
+  await expect(colourInput(page)).toHaveValue('#d6d6d6'); // the trousers' colour stays with the trousers
+  await colourInput(page).fill('#1f2a5a');
   // The colour is written to IndexedDB on change; go round the slot once so the write has landed before the reload.
-  await page.getByRole('button', { name: 'Previous bottom' }).click();
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#333333');
-  await page.getByRole('button', { name: 'Next bottom' }).click();
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#1f2a5a');
+  await garment(page, 'Trousers').click();
+  await expect(colourInput(page)).toHaveValue('#333333');
+  await garment(page, 'Shorts').click();
+  await expect(colourInput(page)).toHaveValue('#1f2a5a');
 
   await page.reload();
 
-  await openRows(page);
   await expect(bottom).toHaveText('Shorts');
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#1f2a5a');
+  await openSlot(page, 'Bottom');
+  await expect(colourInput(page)).toHaveValue('#1f2a5a');
 
-  await page.getByRole('button', { name: 'Next bottom' }).click();
+  await garment(page, 'Nothing').click();
   await expect(bottom).toHaveText('Nothing');
-  await page.getByRole('button', { name: 'Next bottom' }).click();
+  await garment(page, 'Trousers').click();
   await expect(bottom).toHaveText('Trousers');
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#333333');
+  await expect(colourInput(page)).toHaveValue('#333333');
 });
 
-test('saves shorts and wears them from the library', async ({ page }) => {
+test('adds shorts to the wardrobe and wears them from the library', async ({ page }) => {
   await page.goto('/#/try-on');
-  await openRows(page);
-  await page.getByRole('button', { name: 'Next bottom' }).click();
-  await page.getByLabel('Bottom colour').fill('#1f2a5a');
-  await page.getByRole('button', { name: 'Save', exact: true }).last().click();
+  await openSlot(page, 'Bottom');
+  await garment(page, 'Shorts').click();
+  await colourInput(page).fill('#1f2a5a');
+  await addToWardrobe(page).click();
+  await expect(inWardrobe(page)).toBeVisible();
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await expect(page.getByRole('button', { name: 'Wear Navy shorts' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Try on' }).click();
 
-  await openRows(page);
-  await page.getByRole('button', { name: 'Previous bottom' }).click(); // back to trousers
+  await openSlot(page, 'Bottom');
+  await garment(page, 'Trousers').click(); // back to trousers
+  await closeSlot(page);
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.getByRole('button', { name: 'Wear Navy shorts' }).click();
   await expect(page).toHaveURL(/#\/try-on/);
   await expect(page.locator('[data-slot="Bottom"]')).toHaveText('Shorts');
-  await expect(page.getByLabel('Bottom colour')).toHaveValue('#1f2a5a');
+  await openSlot(page, 'Bottom');
+  await expect(colourInput(page)).toHaveValue('#1f2a5a');
 });
