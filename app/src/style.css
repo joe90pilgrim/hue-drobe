@@ -110,6 +110,8 @@ button { font-family: inherit; }
 .editor-back { min-height: 44px; padding: 0 8px 0 0; border: 0; background: none; color: var(--ink); display: flex; align-items: center; gap: 4px;
   font-family: var(--font-head); font-size: 22px; font-weight: 700; line-height: 1.2; text-align: left; min-width: 0; }
 .editor-back-text { overflow-wrap: anywhere; }
+.custom { gap: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.custom-title { margin: 0; font-family: var(--font); }
 .chooser-top { display: flex; align-items: center; gap: 8px; }
 .code-field { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .code { width: 100%; box-sizing: border-box; height: 30px; padding: 0; border: 0; border-bottom: 1px solid var(--line-strong); border-radius: 0; background: transparent;
