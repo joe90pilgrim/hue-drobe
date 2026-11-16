@@ -167,7 +167,7 @@ ARM = ("lup", "rup", "lfo", "rfo")
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
               fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None, final_push=False,
-              extra_trigger=-0.0015, extra_push=0.003):
+              extra_trigger=-0.0015, extra_push=0.003, bust=None):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
@@ -187,6 +187,14 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     extra_trigger, extra_push (inner garment, m): the final pass moves cloth out when an inner-garment vertex is less than
     -extra_trigger inside it, by enough to put the inner vertex extra_push inside. The defaults (1.5 mm, 3 mm) suit a tee over trousers;
     shorts over skin-close tights use 0.2 mm and 0.4 mm, so they move out only where the two would touch.
+    bust (V2-08, tops on a female body): {"apexes": [Vector, Vector] (the most forward body point of each breast), "front": +1/-1
+    (sign of the forward axis, y), "reach": m, "slack": m per m, "halfwidth": m, "side_taper": m per m, "pad": m, "pad_radius": m}. Without it the shell rests
+    on the body at min_gap everywhere, so under each breast it follows the body back in and comes to a point at the apex. With it:
+    (1) gravity: below each apex, down to reach, a front-facing torso vertex is kept no further back than the cloth above it in its
+    own column (within halfwidth sideways), less slack per metre of drop, so the cloth hangs from the bust instead of tucking under
+    it; and (2) pad: within pad_radius of each apex the clearance to the body rises from min_gap to min_gap plus pad (smoothly), which
+    rounds the apex the way a bra cup does. Both only move cloth away from the body, so neither can cause a clip. Applied inside
+    every push_out, so the smoothing blends the result rather than leaving a step.
     Returns (mesh, list of body vertex ids still covered)."""
     segs, radius = _arm_segs(joints)
     bm.normal_update()
@@ -240,14 +248,25 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
             pass
     g.verts.ensure_lookup_table()
 
+    def _gap(p):
+        """Clearance wanted at p: min_gap, raised by the bust pad near each apex (V2-08)."""
+        if bust is None or bust["pad"] <= 0.0:
+            return min_gap
+        extra = 0.0
+        for a in bust["apexes"]:
+            t = 1.0 - min(1.0, (p - a).length / bust["pad_radius"])
+            extra = max(extra, bust["pad"] * t * t * (3 - 2 * t))
+        return min_gap + extra
+
     def push_out():
         for v in g.verts:
             loc, nor, fi, dist = nearest(body_bvh, v.co)
             if loc is None:
                 continue
+            gap = _gap(v.co)
             d = (v.co - loc).dot(nor)
-            if d < min_gap:
-                v.co += nor * (min_gap - d)
+            if d < gap:
+                v.co += nor * (gap - d)
             # nearest-point tests are unreliable in folds (crotch), so also keep each vertex outside its own source vertex's plane
             si = v[layer] - 1
             if 0 <= si < len(bm.verts):
@@ -264,6 +283,39 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                 loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
                     v.co += nor2 * (extra_gap - (v.co - loc2).dot(nor2))
+        if bust is not None and bust["reach"] > 0.0:
+            hang()
+
+    def hang():
+        """V2-08 gravity under the bust: a front-facing torso vertex below an apex is kept no further back than the cloth above
+        it in its own column, less the slack. Columns are per vertex, so the floor tapers off sideways where the cloth above is
+        lower (towards the centre and the sides), and nothing is moved where the body below is already further forward."""
+        fr = bust["front"]
+        for a in bust["apexes"]:
+            z_lo, z_hi, side = a.z - bust["reach"], a.z + 0.01, 1.0 if a.x > 0 else -1.0
+            col = []
+            for v in g.verts:
+                # the breast's own width, then a taper (side_taper, m back per m sideways) out to 5 cm beyond the apex: with no
+                # taper the smoothing spread the hung cloth into a flat wall right round to the sides under the arms, where a
+                # real top is held back by the side seam, and a hard cut-off left a step at its edge
+                if not (z_lo < v.co.z < z_hi and v.co.x * side > -0.01 and abs(v.co.x) < abs(a.x) + 0.05):
+                    continue
+                si = v[layer] - 1
+                if not (0 <= si < len(bm.verts)) or bm.verts[si].normal.y * fr < 0.1 or _classify(v.co, segs, radius) != "torso":
+                    continue
+                col.append(v)
+            col.sort(key=lambda v: -v.co.z)  # top down, so a vertex sees the already-settled cloth above it
+            for i, v in enumerate(col):
+                floor = None
+                for u in col[:i]:
+                    if abs(u.co.x - v.co.x) < bust["halfwidth"]:
+                        # over the bottom third of the reach the floor falls away at 1 in 2, so the hang ends in a slope, not a step
+                        f = (u.co.y * fr - bust["slack"] * (u.co.z - v.co.z) - bust["side_taper"] * max(0.0, abs(v.co.x) - abs(a.x) - 0.01)
+                             - 0.5 * max(0.0, z_lo + bust["reach"] / 3.0 - v.co.z))
+                        if floor is None or f > floor:
+                            floor = f
+                if floor is not None and v.co.y * fr < floor:
+                    v.co.y += fr * (floor - v.co.y * fr)
 
     for it in range(smooth_iters):
         new_co = {}

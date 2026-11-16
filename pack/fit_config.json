@@ -43,6 +43,15 @@
     "leg_opening_extra_cm": 4,
     "flare_band_cm": 8
   },
+  "bust": {
+    "_note": "V2-08: how a top sits over the bust on a female body (sex_base female; male bodies never read this, so their garments are unchanged). The offset shell rested on the body at every bump, so the tops came to a point at each breast and tucked under the bust. hang: below each bust apex, down to hang_reach_cm (the floor falls away over the bottom third, so the hang ends in a slope), the cloth is kept no further back than the cloth above it (less hang_slack_cm_per_cm of drop), so it falls from the bust the way a worn top does; hang_halfwidth_cm is how far sideways a vertex looks for the cloth above it (at least the mesh spacing, or the chain breaks and the cloth sags back), and beyond the apex the floor tapers back by hang_side_taper_cm_per_cm so the hung cloth stops at the side of the breast instead of spreading under the arm. pad: within pad_radius_cm of each apex the clearance to the body rises from the usual 3 mm to 3 mm plus pad_cm, rounding the apex the way a bra cup does. Measured by pack/bust_shape.py against spike/tolerances.json bust_shape.",
+    "hang_reach_cm": 12,
+    "hang_slack_cm_per_cm": 0.05,
+    "hang_halfwidth_cm": 2.5,
+    "hang_side_taper_cm_per_cm": 1.0,
+    "pad_cm": 0,
+    "pad_radius_cm": 5
+  },
   "tights": {
     "_note": "Tights (V2-04): the trouser template as a skin-close shell, from the trousers' waist line to a hem above the floor. Worn under shorts (and skirts in v3), never under trousers. gap_cm is the distance from the skin; the hard checks need at least 0.2 cm, so 0.25 leaves a little for the cut edges. hem_above_floor_cm ends the tights at the ankle, because feet are bare until shoes arrive in v5. smooth_iterations is how often the shell is smoothed (the trousers use 25 so they drape; a skin-close shell needs few, or the ankle bulges towards the foot). waist_below_trousers_cm ends the tights just under the shorts' waistband, so the two top edges are not level (they crossed there). Opaque or sheer is a display setting in the app, not a different mesh.",
     "gap_cm": 0.25,

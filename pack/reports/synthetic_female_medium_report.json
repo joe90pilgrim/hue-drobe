@@ -50,7 +50,7 @@
     "template_faces": 2602,
     "ease_cm": 2.79,
     "clipping": {
-      "covered_body_verts": 1810,
+      "covered_body_verts": 1768,
       "showing_through": 0,
       "fraction": 0.0,
       "worst_penetration_cm": 0.0,
@@ -60,13 +60,13 @@
     "hem_height_cm": 81.0,
     "sleeve_end_from_shoulder_cm": 19.1,
     "clipping_ray": {
-      "samples": 3348,
-      "showing_through_strict": 86,
-      "fraction_strict": 0.0257,
-      "showing_through_excluding_edges": 44,
-      "fraction_excluding_edges": 0.0131,
+      "samples": 3236,
+      "showing_through_strict": 80,
+      "fraction_strict": 0.0247,
+      "showing_through_excluding_edges": 38,
+      "fraction_excluding_edges": 0.0117,
       "front_face_hits": 6,
-      "no_hit": 80,
+      "no_hit": 74,
       "where_z_x_y_kind_cm": [
         [
           124,
@@ -93,12 +93,6 @@
           "miss"
         ],
         [
-          125,
-          16,
-          -3,
-          "miss"
-        ],
-        [
           124,
           17,
           -3,
@@ -234,12 +228,6 @@
           124,
           -17,
           -2,
-          "miss"
-        ],
-        [
-          125,
-          -16,
-          -3,
           "miss"
         ],
         [
@@ -430,12 +418,6 @@
         ],
         [
           124,
-          -16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           -17,
           -1,
           "miss"
@@ -456,12 +438,6 @@
           124,
           -15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          -16,
-          0,
           "miss"
         ],
         [
@@ -520,12 +496,6 @@
         ],
         [
           124,
-          16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           17,
           -1,
           "miss"
@@ -546,12 +516,6 @@
           124,
           15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          16,
-          0,
           "miss"
         ],
         [
@@ -598,11 +562,12 @@
     "front_neck_bottom_to_hem_cm": 58.1,
     "neckline_width_cm": 20.3,
     "chest_circ_cm": 99.8,
+    "chest_circ_as_worn_cm": 101.2,
     "drape": null,
     "circ_vs_garment_cm": {
       "waist": {
         "height_cm": 107.2,
-        "tee": 83.6,
+        "tee": 85.7,
         "garment": null,
         "stretched": 75.7,
         "expected": null,
@@ -898,19 +863,20 @@
       }
     },
     "chest_circ_cm": 101.9,
+    "chest_circ_as_worn_cm": 102.9,
     "hem_height_cm": 82.7,
     "hem_above_crotch_cm": 6.0,
     "hem_from_hps_cm": 55.5,
     "cuff_above_wrist_cm": 1.1,
     "neckline_width_cm": 17.8,
     "clipping_ray": {
-      "samples": 4425,
-      "showing_through_strict": 152,
-      "fraction_strict": 0.0344,
-      "showing_through_excluding_edges": 26,
-      "fraction_excluding_edges": 0.0059,
+      "samples": 4317,
+      "showing_through_strict": 150,
+      "fraction_strict": 0.0347,
+      "showing_through_excluding_edges": 24,
+      "fraction_excluding_edges": 0.0056,
       "front_face_hits": 0,
-      "no_hit": 152,
+      "no_hit": 150,
       "where_z_x_y_kind_cm": [
         [
           124,
@@ -1447,12 +1413,6 @@
           "miss"
         ],
         [
-          123,
-          -18,
-          -2,
-          "miss"
-        ],
-        [
           124,
           -17,
           1,
@@ -1636,12 +1596,6 @@
           124,
           17,
           -4,
-          "miss"
-        ],
-        [
-          123,
-          18,
-          -2,
           "miss"
         ],
         [
@@ -1835,7 +1789,7 @@
     "template_faces": 2602,
     "ease_cm": 2.79,
     "clipping": {
-      "covered_body_verts": 1796,
+      "covered_body_verts": 1754,
       "showing_through": 0,
       "fraction": 0.0,
       "worst_penetration_cm": 0.0,
@@ -1843,13 +1797,13 @@
       "worst_at_z_x_depth_cm": []
     },
     "clipping_ray": {
-      "samples": 3295,
-      "showing_through_strict": 86,
-      "fraction_strict": 0.0261,
-      "showing_through_excluding_edges": 44,
-      "fraction_excluding_edges": 0.0134,
+      "samples": 3183,
+      "showing_through_strict": 80,
+      "fraction_strict": 0.0251,
+      "showing_through_excluding_edges": 38,
+      "fraction_excluding_edges": 0.0119,
       "front_face_hits": 6,
-      "no_hit": 80,
+      "no_hit": 74,
       "where_z_x_y_kind_cm": [
         [
           124,
@@ -1876,12 +1830,6 @@
           "miss"
         ],
         [
-          125,
-          16,
-          -3,
-          "miss"
-        ],
-        [
           124,
           17,
           -3,
@@ -2017,12 +1965,6 @@
           124,
           -17,
           -2,
-          "miss"
-        ],
-        [
-          125,
-          -16,
-          -3,
           "miss"
         ],
         [
@@ -2213,12 +2155,6 @@
         ],
         [
           124,
-          -16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           -17,
           -1,
           "miss"
@@ -2239,12 +2175,6 @@
           124,
           -15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          -16,
-          0,
           "miss"
         ],
         [
@@ -2303,12 +2233,6 @@
         ],
         [
           124,
-          16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           17,
           -1,
           "miss"
@@ -2329,12 +2253,6 @@
           124,
           15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          16,
-          0,
           "miss"
         ],
         [
@@ -2375,14 +2293,15 @@
       "converged": true,
       "ease_at_floor": [],
       "residual_cm": {
-        "chest": -0.24,
+        "chest": 1.18,
         "sleeve": -0.7,
         "front_drop": -0.2
       },
-      "cut_depth_cm": 13.8
+      "cut_depth_cm": 13.7
     },
     "neckline_style": "v",
     "chest_circ_cm": 99.8,
+    "chest_circ_as_worn_cm": 101.2,
     "neckline_width_cm": 20.7,
     "neckline_drop_front_cm": 11.8
   },
@@ -2390,7 +2309,7 @@
     "template_faces": 2602,
     "ease_cm": 2.79,
     "clipping": {
-      "covered_body_verts": 1778,
+      "covered_body_verts": 1738,
       "showing_through": 0,
       "fraction": 0.0,
       "worst_penetration_cm": 0.0,
@@ -2398,13 +2317,13 @@
       "worst_at_z_x_depth_cm": []
     },
     "clipping_ray": {
-      "samples": 3277,
-      "showing_through_strict": 86,
-      "fraction_strict": 0.0262,
-      "showing_through_excluding_edges": 44,
-      "fraction_excluding_edges": 0.0134,
+      "samples": 3165,
+      "showing_through_strict": 80,
+      "fraction_strict": 0.0253,
+      "showing_through_excluding_edges": 38,
+      "fraction_excluding_edges": 0.012,
       "front_face_hits": 6,
-      "no_hit": 80,
+      "no_hit": 74,
       "where_z_x_y_kind_cm": [
         [
           124,
@@ -2431,12 +2350,6 @@
           "miss"
         ],
         [
-          125,
-          16,
-          -3,
-          "miss"
-        ],
-        [
           124,
           17,
           -3,
@@ -2572,12 +2485,6 @@
           124,
           -17,
           -2,
-          "miss"
-        ],
-        [
-          125,
-          -16,
-          -3,
           "miss"
         ],
         [
@@ -2768,12 +2675,6 @@
         ],
         [
           124,
-          -16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           -17,
           -1,
           "miss"
@@ -2794,12 +2695,6 @@
           124,
           -15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          -16,
-          0,
           "miss"
         ],
         [
@@ -2858,12 +2753,6 @@
         ],
         [
           124,
-          16,
-          -2,
-          "miss"
-        ],
-        [
-          124,
           17,
           -1,
           "miss"
@@ -2884,12 +2773,6 @@
           124,
           15,
           -1,
-          "miss"
-        ],
-        [
-          124,
-          16,
-          0,
           "miss"
         ],
         [
@@ -2930,16 +2813,17 @@
       "converged": true,
       "ease_at_floor": [],
       "residual_cm": {
-        "chest": -0.24,
+        "chest": 1.18,
         "sleeve": -0.7,
-        "front_drop": 0.4
+        "front_drop": 0.0
       },
-      "cut_depth_cm": 8.4
+      "cut_depth_cm": 8.3
     },
     "neckline_style": "scoop",
     "chest_circ_cm": 99.8,
+    "chest_circ_as_worn_cm": 101.2,
     "neckline_width_cm": 23.1,
-    "neckline_drop_front_cm": 9.4
+    "neckline_drop_front_cm": 9.0
   },
   "garment_landmarks_vs_real": [
     {
@@ -3081,8 +2965,8 @@
       "garment": "tee_scoop",
       "measure": "neckline_drop_front_cm",
       "target": 9,
-      "achieved": 9.4,
-      "error": 0.4,
+      "achieved": 9.0,
+      "error": 0.0,
       "tolerance": 2.0,
       "pass": true
     },
@@ -3212,7 +3096,7 @@
       "piece_faces_area": [
         {
           "faces": 3668,
-          "area_cm2": 6992.0,
+          "area_cm2": 7105.3,
           "z_cm": [
             76.4,
             138.3
@@ -3232,8 +3116,8 @@
       "self_intersections_by_z_cm": [],
       "clearance_to_body_cm": {
         "min": 0.3,
-        "p05": 0.32,
-        "median": 1.44,
+        "p05": 0.33,
+        "median": 1.6,
         "max": 6.92,
         "min_at_xyz_cm": [
           11.6,
@@ -3327,7 +3211,7 @@
       "piece_faces_area": [
         {
           "faces": 4752,
-          "area_cm2": 7554.6,
+          "area_cm2": 7662.7,
           "z_cm": [
             82.7,
             138.9
@@ -3348,8 +3232,8 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.32,
-        "median": 1.46,
-        "max": 4.31,
+        "median": 1.5,
+        "max": 5.74,
         "min_at_xyz_cm": [
           -41.4,
           -13.0,
@@ -3408,7 +3292,7 @@
       "piece_faces_area": [
         {
           "faces": 3632,
-          "area_cm2": 6918.5,
+          "area_cm2": 7031.5,
           "z_cm": [
             76.4,
             138.3
@@ -3418,7 +3302,7 @@
       "openings": 4,
       "opening_lengths_cm": [
         109.2,
-        77.0,
+        77.3,
         29.3,
         29.3
       ],
@@ -3429,7 +3313,7 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.33,
-        "median": 1.44,
+        "median": 1.61,
         "max": 6.92,
         "min_at_xyz_cm": [
           11.6,
@@ -3483,8 +3367,8 @@
       "pieces": 1,
       "piece_faces_area": [
         {
-          "faces": 3604,
-          "area_cm2": 6895.9,
+          "faces": 3608,
+          "area_cm2": 7014.8,
           "z_cm": [
             76.4,
             138.1
@@ -3494,7 +3378,7 @@
       "openings": 4,
       "opening_lengths_cm": [
         109.2,
-        74.9,
+        74.3,
         29.3,
         29.3
       ],
@@ -3505,7 +3389,7 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.33,
-        "median": 1.45,
+        "median": 1.64,
         "max": 6.92,
         "min_at_xyz_cm": [
           -11.5,
@@ -3638,5 +3522,99 @@
     "tee_v_vs_trousers_intersecting_pairs": 0,
     "tee_scoop_vs_trousers_intersecting_pairs": 0
   },
-  "fit_config_sha256": "d06cee7834ff81332956676e485cbdb12380a64b06b80c996318f7a92da3796e"
+  "bust_shape": {
+    "body_apexes_x_height_depth_cm": [
+      [
+        -10.5,
+        120.6,
+        16.9
+      ],
+      [
+        10.5,
+        120.6,
+        16.9
+      ]
+    ],
+    "tee": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      }
+    ],
+    "tee_v": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      }
+    ],
+    "tee_scoop": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 118.57766191362752,
+        "apex_depth_cm": 19.35,
+        "hollow_below_cm": 0.46,
+        "drop_up_cm": 0.53,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 1.97
+      }
+    ],
+    "sweatshirt": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 119.07766191362752,
+        "apex_depth_cm": 19.7,
+        "hollow_below_cm": 0.34,
+        "drop_up_cm": 0.73,
+        "drop_in_cm": 0.06,
+        "drop_out_cm": 2.0
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 119.07766191362752,
+        "apex_depth_cm": 19.7,
+        "hollow_below_cm": 0.34,
+        "drop_up_cm": 0.73,
+        "drop_in_cm": 0.06,
+        "drop_out_cm": 2.0
+      }
+    ]
+  },
+  "fit_config_sha256": "2cfb084b341f7460f74e1b47fbf1ebcc41e2f37bcb7ea3a16c64cac3d2a11179"
 }

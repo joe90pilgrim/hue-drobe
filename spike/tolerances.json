@@ -15,6 +15,12 @@
     "tee_shoulder_gap_max_cm": 1.0
   },
   "garment_landmark_cm": 2.0,
+  "bust_shape": {
+    "_note": "V2-08, tops on a female body, measured by pack/bust_shape.py on the exported GLBs at each breast. hollow_below_cm: how far the cloth falls back behind its apex in the 6 cm below it (the tuck under the bust). drop_up_cm and drop_in_cm: how far it falls back 3 cm above and 3 cm towards the centre (a point; 1 cm over 3 cm is a radius of about 4.5 cm, a rounded cup is 6 to 8). Proposed by Claude on 16 Nov 2026 from B, the three synthetic female bodies and the V2-07 pack dress; to be agreed by Joe. The outward drop is reported only: 3 cm out from the apex is the side of the chest.",
+    "hollow_below_cm": 0.7,
+    "drop_up_cm": 1.0,
+    "drop_in_cm": 1.0
+  },
   "phone_min_fps": 30,
   "phone_max_load_mb": 15
 }

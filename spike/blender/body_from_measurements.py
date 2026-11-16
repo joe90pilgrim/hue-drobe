@@ -433,6 +433,23 @@ def tee_chest_circ(gt):
 
 TG = (G or {}).get("tee")
 RG = (G or {}).get("trousers")
+
+
+def bust_option(cfg):
+    """V2-08: garment.build_tee's bust option from the garments file's "bust" block, on a female body only (None otherwise, so a
+    male body's garments are untouched). Each apex is the most forward body vertex on its side: within 4 cm of the bust landmark
+    height and 5 to 16 cm off the centre line (nearer the centre the belly can be further forward than the bust, as on B)."""
+    if not cfg or M["sex_base"] != "female" or "chest_cm" not in marks:
+        return None
+    bz = zmin_f + marks["chest_cm"] * H_f
+    band = [v.co for v in body_final.verts if abs(v.co.z - bz) < 0.04 and 0.05 < abs(v.co.x) < 0.16]
+    apexes = [max((c for c in band if c.x * s > 0), key=lambda c: c.y * FRONT).copy() for s in (1, -1)]
+    print("BUST apexes cm", [[round(c.x * 100, 1), round(c.y * 100, 1), round((c.z - zmin_f) * 100, 1)] for c in apexes])
+    return {"apexes": apexes, "front": FRONT, "reach": cfg["hang_reach_cm"] / 100.0, "slack": cfg["hang_slack_cm_per_cm"],
+            "halfwidth": cfg["hang_halfwidth_cm"] / 100.0, "side_taper": cfg["hang_side_taper_cm_per_cm"], "pad": cfg["pad_cm"] / 100.0, "pad_radius": cfg["pad_radius_cm"] / 100.0}
+
+
+BUST = bust_option((G or {}).get("bust"))
 two_pi = 2 * math.pi
 
 tr_cal = None
@@ -598,9 +615,18 @@ if TG:
             tee_sleeve_t = min(0.95, max(0.2, tee_sleeve_t + (TG["sleeve_cm"] - got_sleeve) / 100.0 / arm_len))
         if not math.isnan(got):  # no usable reading this round: keep the ease as it is
             tee_ease = min(0.06, max(0.003, tee_ease + (TG["chest_circ_cm"] - got) / two_pi / 100.0))
+    tee_size_chest = got
+    if BUST is not None:
+        # V2-08: the hang under the bust is drape, not size: the calibrated ease is the garment's, so the ease is settled above
+        # without it (the hung cloth reads bigger at the bust line, and calibrating on that reading shrank the tee everywhere
+        # else, through the trousers' waistband). The garment is then built once more, at that ease, with the hang.
+        tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
+                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True,
+                                           bust=BUST)
 else:
+    tee_size_chest = None
     tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
-                                       sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck, settle_shoulders=True)
+                                       sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck, settle_shoulders=True, bust=BUST)
 
 # --- sweatshirt (MVP-07): an alternative top, built over the trousers like the tee. Regular fit: more ease than the tee,
 # long sleeves, and the hem and cuffs drawn in as ribbing would. Its hem and cuffs are set by the body (hem above the crotch,
@@ -637,6 +663,13 @@ if SG:
             sw_sleeve_t = min(1.0, max(0.3, sw_sleeve_t + (got_cuff - SG["cuff_above_wrist_cm"]) / 100.0 / fo_len))
         if not math.isnan(got):
             sw_ease = min(0.08, max(0.003, sw_ease + (SG["chest_circ_cm"] - got) / two_pi / 100.0))
+    sw_size_chest = got
+    if BUST is not None:  # V2-08: as for the tee, the hang is applied after the size is settled
+        sw_mesh, sw_vids = garment.build_tee(body_final, sw_faces, joints_final, ease=sw_ease, min_gap=tee_gap, hem_z=sw_hem_z,
+                                             sleeve_t=sw_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, neck=sw_neck,
+                                             settle_shoulders=True, long_sleeves=True, forearm_ease_frac=SG["forearm_ease_fraction"],
+                                             hem_band=(SG["rib_band_cm"] / 100.0, SG["hem_rib_gap_cm"] / 100.0),
+                                             cuff_band=(SG["rib_band_cm"] / 100.0, SG["cuff_rib_gap_cm"] / 100.0), bust=BUST)
 
 # --- V1.1-04: other tee necklines. The same offset shell as the crew-neck tee (same ease, sleeve and hem, taken from the
 # calibration above), cut with a different neck shape. Each gets its own calibration record and its own mesh checks.
@@ -661,7 +694,7 @@ for _style, _VG in ((TG or {}).get("necklines") or {}).items():
                "reach": max(0.0, _drop - neck["drop_front"])}
         _vm, _vv = garment.build_tee(
             body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z, sleeve_t=tee_sleeve_t,
-            extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True)
+            extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True, bust=BUST)
         _g = bmesh.new()
         _g.from_mesh(_vm)
         _got = _measured_front_drop_cm(_g)
@@ -707,6 +740,10 @@ _nb = [v.co.z for v in gtee.verts if v.is_boundary and abs(v.co.x) < 0.03 and (v
 tee_report["front_neck_bottom_to_hem_cm"] = round((min(_nb) - gz_min_tee) * 100, 1) if _nb else None
 tee_report["neckline_width_cm"] = round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None
 tee_report["chest_circ_cm"] = round(tee_chest_circ(gtee), 1) if "chest_cm" in marks else None
+if BUST is not None and tee_size_chest is not None:
+    # V2-08: the size is what was calibrated (the shell without the hang); the hung cloth reads bigger at the bust line
+    tee_report["chest_circ_as_worn_cm"] = tee_report["chest_circ_cm"]
+    tee_report["chest_circ_cm"] = round(tee_size_chest, 1)
 tee_report["drape"] = drape_info
 if TG:
     # task 5 exit check: tee circumference (path length round the section, folds included) against the garment's own,
@@ -783,7 +820,8 @@ if SG:
     _sw_body_z = [v.co.z for v in gsw.verts if garment._classify(v.co, _segs, _rad) not in garment.ARM]
     _swtop = [v for v in gsw.verts if v.is_boundary and v.co.z > joints_final["joint-neck"].z - 0.10 and abs(v.co.x) < 0.2]
     sw_report = {"template_faces": len(sw_faces), "ease_cm": round(sw_ease * 100, 2), "calibration": sw_cal,
-                 "chest_circ_cm": round(tee_chest_circ(gsw), 1),
+                 "chest_circ_cm": round(sw_size_chest if BUST is not None else tee_chest_circ(gsw), 1),
+                 **({"chest_circ_as_worn_cm": round(tee_chest_circ(gsw), 1)} if BUST is not None else {}),
                  "hem_height_cm": round((min(_sw_body_z) - zmin_f) * 100, 1),
                  "hem_above_crotch_cm": round((min(_sw_body_z) - crotch_z) * 100, 1),
                  "hem_from_hps_cm": round((hps_z - min(_sw_body_z)) * 100, 1),
@@ -814,14 +852,15 @@ for _style, _vm in var_meshes.items():
         # chest and sleeve: the shell is the crew tee's, so the variant must match what the crew tee reached (within 0.3 cm),
         # as well as the crew tee itself having converged; the depth is the variant's own calibration
         "calibration": {"converged": tee_cal["converged"]
-                        and abs(_got_chest - tee_report["chest_circ_cm"]) < 0.3
+                        and abs(_got_chest - tee_report.get("chest_circ_as_worn_cm", tee_report["chest_circ_cm"])) < 0.3
                         and abs(_got_sleeve - tee_report["sleeve_end_from_shoulder_cm"]) < 0.3
                         and abs(var_cal[_style]["drop_residual_cm"]) < 0.6,
                         "ease_at_floor": ["chest"] if tee_ease <= 0.0031 else [],
                         "residual_cm": {"chest": round(_got_chest - TG["chest_circ_cm"], 2), "sleeve": round(_got_sleeve - TG["sleeve_cm"], 2),
                                         "front_drop": var_cal[_style]["drop_residual_cm"]},
                         "cut_depth_cm": var_cal[_style]["cut_depth_cm"]},
-        "neckline_style": _style, "chest_circ_cm": round(_got_chest, 1),
+        "neckline_style": _style, "chest_circ_cm": tee_report["chest_circ_cm"] if BUST is not None else round(_got_chest, 1),
+        **({"chest_circ_as_worn_cm": round(_got_chest, 1)} if BUST is not None else {}),
         "neckline_width_cm": round((max(v.co.x for v in _top) - min(v.co.x for v in _top)) * 100, 1) if _top else None,
         "neckline_drop_front_cm": _measured_front_drop_cm(_gv),
     }
@@ -1012,6 +1051,15 @@ report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_
                                         tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
                                         shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None,
                                         tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None)
+if BUST is not None:  # V2-08: how each top sits over the bust, measured on the exported GLBs (pack/bust_shape.py, numpy only)
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "pack"))
+    import bust_shape
+    _body = bust_shape.load_glb(glb)
+    _apx = bust_shape.body_apexes(_body, marks["chest_cm"] * H_f * 100)
+    report["bust_shape"] = {"body_apexes_x_height_depth_cm": [[round(c, 1) for c in a] for a in _apx],
+                            **{top: bust_shape.measure_top(bust_shape.load_glb(os.path.join(out_dir, f"{name}_{top}.glb")), _body[0][:, 1].min(), _apx)
+                               for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + (["sweatshirt"] if SG else [])}}
+    print("BUST_SHAPE", json.dumps(report["bust_shape"]))
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))

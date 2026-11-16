@@ -1,6 +1,6 @@
 # V2-08 Bug: the tops show a point at each breast
 
-**Status:** ready. Raised 16 November 2026 at the end of V2-03, which Joe accepted with this bug open. Run it last in version 2, after V2-07.
+**Status:** done 16 November 2026, awaiting B's visual sign-off. Record: `docs/decisions/2026-11-16-v2-08-bust-shape.md`. Raised 16 November 2026 at the end of V2-03, which Joe accepted with this bug open.
 **Ceiling:** 3 hours (hard stop). The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 **Worker:** Fable, high. Opus tried seven fixes in V2-03 (three on the tee shell, three body shapes, four bra garments, counting the fourth) and none worked.
 **Depends on:** V2-03, V2-07 (if V2-07 adopts a ready-made bra or tops that hang properly from the bust, this ticket may shrink or close)
@@ -37,3 +37,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - The agreed "no point" number met on B and the three synthetic female bodies, for the tee, both necklines and the sweatshirt, with front and side screenshots.
 - Every hard mesh check passes on all eight bodies; Joe's and the male synthetic bodies' garments are byte-identical to before.
 - B's visual sign-off, front, side and back.
+
+## Done (16 Nov 2026)
+The point was the cloth tucking under each breast, not the breast itself. Every top on a female body now hangs from the bust (`garment.build_tee` `bust` option, settings in `pack/fit_config.json`), with the size calibrated first and the hang applied after. "No point" is measured by `pack/bust_shape.py` and held by the checker to the limits Joe agreed in `spike/tolerances.json` (`bust_shape`: hollow below the apex 0.7 cm, drop 3 cm up or in 1.0 cm). On B the hollow went from 3.26 cm to 0.15 cm. All eight bodies pass every check; Joe's and the male synthetic bodies' garments are byte-identical. No bra garment was needed, so the bra-visibility decision did not arise. Left: B's visual sign-off, front, side and back.

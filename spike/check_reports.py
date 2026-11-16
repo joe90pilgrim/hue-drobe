@@ -25,6 +25,10 @@ Stricter than the first version:
 - tights (V2-04), when the report has them, get exactly the trousers' mesh limits, and the shorts and every top are checked against
   them with the tee-with-trousers limit. --tights makes missing tights a failure.
 
+- bust shape (V2-08): on a female body (sex_base in the report) every top must have a bust_shape record (pack/bust_shape.py, written
+  by the generator) and each breast's hollow_below, drop_up and drop_in must be within tolerances.json "bust_shape". Male bodies are
+  not judged on this.
+
 Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights]
 """
 import json, sys, pathlib
@@ -143,6 +147,21 @@ for f in reports:
                   f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
                   known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
                          and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], f"{top}_shoulder_gap_band_mean"))))
+
+    if r.get("sex_base") == "female" and "bust_shape" in tol:  # V2-08
+        bs = r.get("bust_shape") or {}
+        for top in ("tee", "sweatshirt") + variants:
+            if top not in r:
+                continue
+            if top not in bs:
+                check(False, f"{top} bust shape missing from report (rebuild with the current body_from_measurements.py)")
+                continue
+            for side, m in zip(("right", "left"), bs[top]):
+                vals = {k: m[k] for k in ("hollow_below_cm", "drop_up_cm", "drop_in_cm")}
+                check(all(vals[k] <= tol["bust_shape"][k] for k in vals),
+                      f"{top} bust shape, {side}: hollow below {vals['hollow_below_cm']} cm (max {tol['bust_shape']['hollow_below_cm']}), "
+                      f"drop up {vals['drop_up_cm']} cm, drop in {vals['drop_in_cm']} cm (max {tol['bust_shape']['drop_up_cm']}, {tol['bust_shape']['drop_in_cm']}); "
+                      f"drop out {m['drop_out_cm']} cm (information)")
 
     for lbl, cg in (r.get("tee", {}).get("circ_vs_garment_cm") or {}).items():
         if cg.get("error") is None:

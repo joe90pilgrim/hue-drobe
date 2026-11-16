@@ -12,6 +12,7 @@ It wraps the spike's Blender scripts (`spike/blender/`) and checker (`spike/chec
 | `test_fit.py` | Unit tests for `fit.py`; run by `npm run check`. |
 | `measure_glb.py` | Measures an exported body GLB against its tape measurements, with numpy only (no Blender, none of the generator's code). `python pack/measure_glb.py private/pack/b/body.glb private/measurements_b.json private/pack/build/b_report.json` |
 | `test_measure_glb.py` | Unit tests for `measure_glb.py` on small synthetic tubes. |
+| `bust_shape.py` | V2-08: how a top sits over the bust on a female body, from the GLBs with numpy only: the tuck under each breast (hollow below the apex) and how sharply the cloth falls away from the apex. The generator writes it into each female body's report (`bust_shape`), and `check_reports.py` holds it to `spike/tolerances.json` `bust_shape`. By hand: `python pack/bust_shape.py private/pack/b/body.glb private/pack/build/b_report.json private/pack/b/tee.glb private/pack/b/sweatshirt.glb` |
 | `test_reports.py` | Fails if the committed reports in `reports/` were not built from the current `fit_config.json`; run by `npm run check`. |
 | `reports/` | The six synthetic bodies' reports, built by `build_pack.py` from `fit_config.json`. `npm run check` validates these, so it checks the garments the app ships. |
 
@@ -58,6 +59,9 @@ The tights (V2-04) are the trousers' template as a skin-close shell, 2.5 mm off 
 the floor (`fit_config.json`, `tights`). The shorts are built over them, then the tights are tucked inside the shorts on the exported
 triangles (`garment.tuck_inside`). They get the trousers' hard mesh checks, and the shorts and every top are checked against them.
 Opaque or sheer is set in the app. Record: `docs/decisions/2026-11-16-v2-04-tights.md`.
+On a female body every top hangs from the bust instead of tucking under it (V2-08, `fit_config.json` `bust`): the top's size is
+calibrated without the hang, then the shell is built once more with it, and the report carries both `chest_circ_cm` (the size) and
+`chest_circ_as_worn_cm`. Male bodies never read the block, so their garments are unchanged. Record: `docs/decisions/2026-11-16-v2-08-bust-shape.md`.
 
 ## How the fit works
 
