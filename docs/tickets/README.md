@@ -72,6 +72,7 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V2-04 | [Tights](v2-beth-joins/V2-04-tights.md) | V2-02 | Sonnet, medium |
 | V2-05 | [Individual logins](v2-beth-joins/V2-05-logins.md) | MVP deploy | Sonnet, high |
 | V2-06 | [Profiles and per-person data](v2-beth-joins/V2-06-profiles.md) | V2-05 | Sonnet, medium |
+| V2-06b | [Sync between devices](v2-beth-joins/V2-06b-sync.md) | V2-06 | Sonnet, high |
 | V2-07 | [Spike: free MakeHuman asset packs](v2-beth-joins/V2-07-asset-pack-spike.md) | V2-03; run before V3-00 | Sonnet, high |
 | V2-08 | [Bug: the tops show a point at each breast](v2-beth-joins/V2-08-bust-shape-bug.md) | V2-03, V2-07; run last in version 2 | Fable, high |
 

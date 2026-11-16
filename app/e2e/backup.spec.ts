@@ -16,7 +16,7 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
       page.evaluate(
         () =>
           new Promise<number>((resolve) => {
-            const open = indexedDB.open('huedrobe', 1);
+            const open = indexedDB.open('huedrobe-joe', 1);
             open.onsuccess = () => {
               const get = open.result.transaction('kv').objectStore('kv').get('outfits');
               get.onsuccess = () => resolve(Array.isArray(get.result) ? get.result.length : 0);
@@ -43,7 +43,7 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
   await page.evaluate(
     () =>
       new Promise<void>((res) => {
-        const r = indexedDB.deleteDatabase('huedrobe');
+        const r = indexedDB.deleteDatabase('huedrobe-joe');
         r.onsuccess = r.onerror = r.onblocked = () => res();
       }),
   );

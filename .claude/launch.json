@@ -14,6 +14,13 @@
       "port": 5174
     },
     {
+      "name": "app-dev-b",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "app", "run", "dev", "--", "--port", "5175", "--strictPort"],
+      "env": { "LOCAL_PERSON": "b" },
+      "port": 5175
+    },
+    {
       "name": "app-preview",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["--prefix", "app", "run", "preview", "--", "--port", "4173", "--strictPort"],

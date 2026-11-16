@@ -12,7 +12,7 @@ async function waitForOutfits(page: Page, count: number) {
         () =>
           new Promise<number>((resolve) => {
             try {
-              const open = indexedDB.open('huedrobe', 1);
+              const open = indexedDB.open('huedrobe-joe', 1);
               open.onsuccess = () => {
                 const get = open.result.transaction('kv').objectStore('kv').get('outfits');
                 get.onsuccess = () => resolve(Array.isArray(get.result) ? get.result.length : 0);

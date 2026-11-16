@@ -67,23 +67,38 @@ export async function deleteCard(page: Page, name: string) {
 /** The Wardrobe's Clothes and Outfits switch. */
 export const wardrobeTab = (page: Page, name: 'Clothes' | 'Outfits') => page.getByRole('tab', { name: new RegExp(`^${name} · [0-9]+$`) });
 
-/** Writes saved clothes and outfits straight into the device store (a fixture, not real data), then reloads. */
-export async function seedWardrobe(page: Page, items: unknown[], outfits: unknown[] = []) {
+/** Writes keys straight into a device database (a fixture, not real data). Joe's by default; `huedrobe` is the database from before V2-06. */
+export async function seedStore(page: Page, data: Record<string, unknown>, db = 'huedrobe-joe') {
   await page.evaluate(
-    ([i, o]) =>
+    ([d, name]) =>
       new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open('huedrobe', 1);
+        const open = indexedDB.open(name, 1);
         open.onupgradeneeded = () => open.result.createObjectStore('kv');
         open.onerror = () => reject(open.error);
         open.onsuccess = () => {
           const tx = open.result.transaction('kv', 'readwrite');
-          tx.objectStore('kv').put(i, 'wardrobe');
-          tx.objectStore('kv').put(o, 'outfits');
-          tx.oncomplete = () => resolve();
+          for (const [k, v] of Object.entries(d)) tx.objectStore('kv').put(v, k);
+          tx.oncomplete = () => {
+            open.result.close();
+            resolve();
+          };
           tx.onerror = () => reject(tx.error);
         };
       }),
-    [items, outfits] as [unknown[], unknown[]],
+    [data, db] as [Record<string, unknown>, string],
   );
+}
+
+/** Writes saved clothes and outfits straight into Joe's device store (a fixture, not real data), then reloads. */
+export async function seedWardrobe(page: Page, items: unknown[], outfits: unknown[] = []) {
+  await seedStore(page, { wardrobe: items, outfits });
   await page.reload();
+}
+
+/** Makes the app's /api/me answer as this person, as the server does from IAP's header. `null` makes it unreachable (offline). */
+export async function signInAs(page: Page, person: string | null) {
+  await page.unroute('**/api/me');
+  await page.route('**/api/me', (r) =>
+    person ? r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ person }) }) : r.abort('internetdisconnected'),
+  );
 }

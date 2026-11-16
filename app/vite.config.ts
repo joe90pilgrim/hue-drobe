@@ -8,12 +8,20 @@ const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', '
 // Self-hosted heading font files in public/fonts/ (Bricolage Grotesque, SIL OFL 1.1). Public files are not in the bundle, so list them for the precache.
 const FONT_FILES = ['bricolage-grotesque-latin-600-normal.woff2', 'bricolage-grotesque-latin-700-normal.woff2'];
 
-// Dev and preview only: serves Joe's private avatar pack at /pack/joe/. It is never copied into a build.
+// Dev and preview only: who is signed in. The real server reads IAP's header; here it is Joe, or LOCAL_PERSON when set.
+const DEV_PERSON = process.env.LOCAL_PERSON ?? 'joe';
+
+// Dev and preview only: serves the private avatar packs at /pack/<person>/, and /api/me. Packs are never copied into a build.
 function servePrivatePack(): Plugin {
-  const root = fileURLToPath(new URL('../private/pack/joe/', import.meta.url));
+  const root = fileURLToPath(new URL('../private/pack/', import.meta.url));
   const handler = (req: { url?: string }, res: any, next: () => void) => {
-    const m = new RegExp(`^/pack/joe/(${PACK_FILES.join('|')})\\.glb$`).exec((req.url ?? '').split('?')[0]);
-    const file = m && root + m[1] + '.glb';
+    const url = (req.url ?? '').split('?')[0];
+    if (url === '/api/me') {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.end(JSON.stringify({ person: DEV_PERSON }));
+    }
+    const m = new RegExp(`^/pack/([a-z][a-z0-9-]*)/(${PACK_FILES.join('|')})\\.glb$`).exec(url);
+    const file = m && `${root}${m[1]}/${m[2]}.glb`;
     if (!file || !existsSync(file)) return next();
     res.setHeader('Content-Type', 'model/gltf-binary');
     createReadStream(file).pipe(res);
@@ -41,14 +49,20 @@ function precacheServiceWorker(): Plugin {
         source: `const CACHE = 'huedrobe-${version}';
 // The avatar pack lives in its own cache so it survives app updates, and it is only fetched when the avatar loads.
 const PACK_CACHE = 'huedrobe-pack';
-const PACK = ${JSON.stringify(PACK_FILES.map((n) => `./pack/joe/${n}.glb`))};
+const PACK_FILES = ${JSON.stringify(PACK_FILES)};
 const isGlb = (res) => res.ok && res.headers.get('Content-Type') === 'model/gltf-binary';
 const URLS = ${urls};
-// Best effort: fetch the pack now, so the first visit works offline too (the page's own first request can beat the service worker).
-// A missing pack (a build run without Joe's private files) is skipped, and must not stop the app installing.
+// Best effort: fetch the signed-in person's pack now, so the first visit works offline too (the page's own first request can beat the service worker).
+// A missing pack (a build run without the private files) or no answer from /api/me is skipped, and must not stop the app installing.
 async function cachePack() {
+  let person;
+  try {
+    person = (await (await fetch('./api/me', { cache: 'no-store' })).json()).person;
+  } catch {}
+  if (typeof person !== 'string' || !/^[a-z][a-z0-9-]*$/.test(person)) return;
   const cache = await caches.open(PACK_CACHE);
-  await Promise.all(PACK.map(async (u) => {
+  await Promise.all(PACK_FILES.map(async (n) => {
+    const u = './pack/' + person + '/' + n + '.glb';
     try {
       const res = await fetch(u);
       if (isGlb(res)) await cache.put(u, res);
@@ -82,6 +96,8 @@ async function cacheFirst(req) {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
+  // Who is signed in is never cached: the page falls back to the person it remembers when this fails.
+  if (new URL(req.url).pathname.includes('/api/')) return;
   if (new URL(req.url).pathname.includes('/pack/')) e.respondWith(networkFirst(req, PACK_CACHE));
   else if (req.mode === 'navigate') e.respondWith(networkFirst(req, CACHE));
   else e.respondWith(cacheFirst(req));

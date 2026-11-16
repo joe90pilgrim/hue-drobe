@@ -4,6 +4,8 @@ import { renderWardrobe } from './screens/wardrobe';
 import { renderQuiz } from './screens/quiz';
 import { routeFromHash, type Route } from './route';
 import { createBackupDialog } from './backup-ui';
+import { findPerson, setPerson } from './person';
+import { moveLegacyData } from './store';
 
 /** Screens in tab order. A fourth entry here adds a tab to the phone bar and the sidebar with no layout change. */
 const screens: Record<Route, { label: string; icon: string; render: (el: HTMLElement) => () => void }> = {
@@ -79,8 +81,20 @@ const backup = createBackupDialog(show);
 document.getElementById('menu-btn')!.addEventListener('click', backup.open);
 document.getElementById('backup-btn')!.addEventListener('click', backup.open);
 
-window.addEventListener('hashchange', show);
-show();
+// Who is signed in decides whose data and avatar load (V2-06), so nothing renders until that is known.
+async function start() {
+  const who = await findPerson();
+  if (!who) {
+    main.innerHTML = '<p class="start-error" role="alert">Could not tell who is signed in. Connect to the internet and reload.</p>';
+    return;
+  }
+  setPerson(who);
+  document.documentElement.dataset.person = who;
+  await moveLegacyData(who);
+  window.addEventListener('hashchange', show);
+  show();
+}
+void start();
 
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});

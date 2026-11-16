@@ -1,4 +1,4 @@
-# V2-06 Profiles and per-person data
+# V2-06(a) Profiles and per-person data
 
 **Ceiling:** 1.5 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 **Worker:** Sonnet, medium. Adds an owner to every stored record; the V1.1 records were designed for this.
@@ -6,6 +6,9 @@
 
 ## Goal
 The app knows who is signed in and shows their avatar, clothes, outfits, favourites and quiz result.
+
+## Re-scoped 16 Nov 2026
+Split in two (Joe approved, `docs/decisions/2026-11-16-v2-06-data-model.md`). This ticket is now profiles on the device only, within the original 1.5 hours. Sync through Firestore moved to [V2-06b](V2-06b-sync.md). Owner is by placement: one IndexedDB database per person, no `owner` field on records.
 
 ## Scope
 - Every stored record gains an owner.

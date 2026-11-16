@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { person } from './person';
 
-/** Files of the avatar pack that the viewer loads. Joe's pack is served from private/pack/joe by the dev server only. */
+/** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
 const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb'];
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
 const groupOf = (name: string) => name.split('_')[0];
-const PACK_URL = './pack/joe/';
+const packUrl = () => `./pack/${person()}/`;
 
 export interface Viewer {
   /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`, `shorts`, `tights`) instantly. Works before it has loaded. */
@@ -87,7 +88,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   let disposed = false;
   const loader = new GLTFLoader();
   const loads = PACK_FILES.map(async (file) => {
-    const res = await fetch(PACK_URL + file);
+    const res = await fetch(packUrl() + file);
     const buf = res.ok ? await res.arrayBuffer() : null;
     // The dev server answers a missing file with index.html, so check for the glTF magic number ("glTF").
     if (!buf || new Uint8Array(buf)[0] !== 0x67) throw new Error(file);

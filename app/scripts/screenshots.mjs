@@ -76,7 +76,7 @@ for (const [size, opts] of Object.entries(sizes)) {
   await go('try-on');
   await page.evaluate(async (data) => {
     await new Promise((resolve, reject) => {
-      const req = indexedDB.open('huedrobe', 1);
+      const req = indexedDB.open('huedrobe-joe', 1);
       req.onupgradeneeded = () => req.result.createObjectStore('kv');
       req.onsuccess = () => {
         const tx = req.result.transaction('kv', 'readwrite');
