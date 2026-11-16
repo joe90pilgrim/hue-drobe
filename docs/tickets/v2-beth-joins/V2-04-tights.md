@@ -21,3 +21,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 ## Acceptance criteria
 - Passes the hard mesh checks under shorts on all bodies.
 - Beth's visual sign-off.
+
+## Status (16 Nov 2026): checks pass, waiting for B's sign-off
+Joe chose opaque **and** sheer, and under shorts only. Every hard mesh check passes on all eight bodies, with tights clearance 0.21 to 0.25 cm and 0 crossings with the body, shorts or any top. In the app, tights have their own Legs row, a colour and an opaque/sheer choice, can be saved, and are greyed out under trousers. The shorts moved slightly where they meet the tights, so Joe's `shorts.glb` changed. The ticket overran its 1-hour ceiling: Sonnet spent about 30 minutes on margin tweaks that could not work, and Opus finished. Record: `docs/decisions/2026-11-16-v2-04-tights.md`. Still to do: B's visual sign-off and the phone check.

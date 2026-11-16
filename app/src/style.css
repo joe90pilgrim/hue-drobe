@@ -295,6 +295,12 @@ button { font-family: inherit; }
 .o-slice.top { width: 64px; }
 .o-slice.bottom { width: 44px; }
 .o-slice.o-empty { box-shadow: none; }
+/* V2-04: tights, a thin strip under the bottom. */
+.o-slice.legs { width: 40px; height: 12px; }
+.o-stack .o-slice.legs { width: 58px; height: 16px; }
+.o-stack.big .o-slice.legs { width: 60px; height: 14px; }
+.layer-note { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 .o-stack.big .o-slice { height: 44px; }
 .o-stack.big .o-slice.top { width: 96px; }
 .o-stack.big .o-slice.bottom { width: 66px; }

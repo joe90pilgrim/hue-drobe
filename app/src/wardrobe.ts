@@ -7,6 +7,8 @@ export const GARMENTS = {
   sweatshirt: { label: 'sweatshirt', slot: 'Top', option: 'Sweatshirt' },
   trousers: { label: 'trousers', slot: 'Bottom', option: 'Trousers' },
   shorts: { label: 'shorts', slot: 'Bottom', option: 'Shorts' },
+  // V2-04: a layer of its own, under the shorts (never the trousers), so it has its own slot.
+  tights: { label: 'tights', slot: 'Legs', option: 'Tights' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 
@@ -24,6 +26,22 @@ export const DEFAULT_NECKLINE: Neckline = 'crew';
 export const isNeckline = (x: unknown): x is Neckline => typeof x === 'string' && Object.keys(NECKLINES).includes(x);
 /** Only the tee has necklines. */
 export const hasNecklines = (garment: GarmentId) => garment === 'tee';
+
+/** Only tights come opaque or sheer (V2-04, decided by Joe on 16 Nov 2026). Sheer is a display setting: the same mesh, partly see-through. */
+export const hasSheer = (garment: GarmentId) => garment === 'tights';
+/** The sheerness the Dress screen shows on the tights: true for sheer. */
+export const SHEER_KEY = 'sheer';
+/** Joe's decision (16 Nov 2026): tights go under shorts (and skirts in v3), never under trousers. */
+export const TIGHTS_BLOCKED_BY = 'Trousers';
+
+/**
+ * Keeps an outfit (slot -> option) to the layering rule: tights and trousers are never worn together. `changed` is the slot
+ * just set; the other one gives way, so wearing tights from the wardrobe takes the trousers off, and the other way round.
+ */
+export function keepLayers(outfit: Record<string, string>, changed?: string): Record<string, string> {
+  if (outfit.Legs !== GARMENTS.tights.option || outfit.Bottom !== TIGHTS_BLOCKED_BY) return outfit;
+  return changed === 'Legs' ? { ...outfit, Bottom: 'None' } : { ...outfit, Legs: 'None' };
+}
 
 /** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`. */
 export function meshName(garment: GarmentId, neckline: Neckline = DEFAULT_NECKLINE): string {
@@ -46,6 +64,8 @@ export interface SavedItem {
   garment: GarmentId;
   /** Tees only; absent on other garments. */
   neckline?: Neckline;
+  /** Tights only (V2-04): true when sheer, false when opaque; absent on other garments. No version bump: no older record holds tights. */
+  sheer?: boolean;
   /** Lower-case sRGB hex, such as `#2e5e8c`. */
   colour: string;
   name: string;
@@ -89,9 +109,9 @@ export function colourName(hex: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-/** The automatic name, such as 'Navy tee' or 'Navy V-neck tee'. */
-export function autoName(garment: GarmentId, hex: string, neckline?: Neckline): string {
-  const word = hasNecklines(garment) && neckline ? NECKLINES[neckline].name : '';
+/** The automatic name, such as 'Navy tee', 'Navy V-neck tee' or 'Black sheer tights'. */
+export function autoName(garment: GarmentId, hex: string, neckline?: Neckline, sheer?: boolean): string {
+  const word = hasNecklines(garment) && neckline ? NECKLINES[neckline].name : hasSheer(garment) && sheer ? 'sheer' : '';
   return `${colourName(hex)} ${word ? word + ' ' : ''}${GARMENTS[garment].label}`;
 }
 
@@ -113,50 +133,58 @@ export function cleanItems(value: unknown): SavedItem[] {
     const garment = r.garment as GarmentId;
     const colour = r.colour.toLowerCase();
     const neckline = hasNecklines(garment) ? (isNeckline(r.neckline) ? r.neckline : DEFAULT_NECKLINE) : undefined;
+    const sheer = hasSheer(garment) ? r.sheer === true : undefined;
     out.push({
       v: 2,
       id: r.id,
       garment,
       ...(neckline && { neckline }),
+      ...(sheer !== undefined && { sheer }),
       colour,
-      name: cleanName(typeof r.name === 'string' ? r.name : '', autoName(garment, colour, neckline)),
+      name: cleanName(typeof r.name === 'string' ? r.name : '', autoName(garment, colour, neckline, sheer)),
       savedAt: typeof r.savedAt === 'number' && Number.isFinite(r.savedAt) ? r.savedAt : 0,
     });
   }
   return out.sort((a, b) => a.savedAt - b.savedAt);
 }
 
-/** `neckline` applies to tees only and defaults to the crew neck; it is ignored for other garments. */
-export function newItem(garment: GarmentId, colour: string, now = Date.now(), neckline: Neckline = DEFAULT_NECKLINE): SavedItem {
+/** `neckline` applies to tees only and defaults to the crew neck; `sheer` applies to tights only and defaults to opaque. Both are ignored for other garments. */
+export function newItem(garment: GarmentId, colour: string, now = Date.now(), neckline: Neckline = DEFAULT_NECKLINE, sheer = false): SavedItem {
   const hex = colour.toLowerCase();
   const id = globalThis.crypto?.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2)}`;
   const n = hasNecklines(garment) ? neckline : undefined;
-  return { v: 2, id, garment, ...(n && { neckline: n }), colour: hex, name: autoName(garment, hex, n), savedAt: now };
+  const sh = hasSheer(garment) ? sheer : undefined;
+  return { v: 2, id, garment, ...(n && { neckline: n }), ...(sh !== undefined && { sheer: sh }), colour: hex, name: autoName(garment, hex, n, sh), savedAt: now };
 }
 
-/** The saved item for a garment in a colour (and, for a tee, a neckline). Adds it to the list if it is not there yet, so each is saved once. */
+/** The saved item for a garment in a colour (and, for a tee, a neckline; for tights, opaque or sheer). Adds it to the list if it is not there yet, so each is saved once. */
 export function ensureItem(
   list: SavedItem[],
   garment: GarmentId,
   colour: string,
   now = Date.now(),
   neckline: Neckline = DEFAULT_NECKLINE,
+  sheer = false,
 ): { list: SavedItem[]; item: SavedItem } {
   const hex = colour.toLowerCase();
-  const found = list.find((i) => i.garment === garment && i.colour === hex && (!hasNecklines(garment) || i.neckline === neckline));
+  const found = list.find(
+    (i) => i.garment === garment && i.colour === hex && (!hasNecklines(garment) || i.neckline === neckline) && (!hasSheer(garment) || i.sheer === sheer),
+  );
   if (found) return { list, item: found };
-  const item = newItem(garment, hex, now, neckline);
+  const item = newItem(garment, hex, now, neckline, sheer);
   return { list: [...list, item], item };
 }
 
-/** What a saved item is, for a list: 'T-shirt, V-neck' for a tee, otherwise just the garment. */
+/** What a saved item is, for a list: 'T-shirt, V-neck' for a tee, 'Tights, sheer' for tights, otherwise just the garment. */
 export function itemKind(item: SavedItem): string {
   const g = GARMENTS[item.garment].option;
-  return item.neckline ? `${g}, ${NECKLINES[item.neckline].words}` : g;
+  if (item.neckline) return `${g}, ${NECKLINES[item.neckline].words}`;
+  if (item.sheer !== undefined) return `${g}, ${item.sheer ? 'sheer' : 'opaque'}`;
+  return g;
 }
 
 export function renameItem(list: SavedItem[], id: string, name: string): SavedItem[] {
-  return list.map((i) => (i.id === id ? { ...i, name: cleanName(name, autoName(i.garment, i.colour, i.neckline)) } : i));
+  return list.map((i) => (i.id === id ? { ...i, name: cleanName(name, autoName(i.garment, i.colour, i.neckline, i.sheer)) } : i));
 }
 
 export function deleteItem(list: SavedItem[], id: string): SavedItem[] {
@@ -176,7 +204,8 @@ export async function wearItem(item: SavedItem): Promise<void> {
   const g = GARMENTS[item.garment];
   const outfit = await kvGet<Record<string, string>>('outfit', {});
   const colours = await kvGet<Record<string, string>>('colours', {});
-  await kvPut('outfit', { ...outfit, [g.slot]: g.option });
+  await kvPut('outfit', keepLayers({ ...outfit, [g.slot]: g.option }, g.slot));
   await kvPut('colours', { ...colours, [item.garment]: item.colour });
   if (item.neckline) await kvPut(NECKLINE_KEY, item.neckline);
+  if (item.sheer !== undefined) await kvPut(SHEER_KEY, item.sheer);
 }

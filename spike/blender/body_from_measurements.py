@@ -493,6 +493,30 @@ else:
     tr_mesh, tr_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=tr_ease, min_gap=tr_gap, hem_z=tr_hem_z,
                                          sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
 
+# --- V2-04: tights. The trouser template as a skin-close shell: 2.2 mm off the body (the checks need 2 mm), from the waist
+# line down to a hem a set height above the floor (the ankle; the feet are covered once shoes arrive). Nothing is calibrated:
+# the gap is the size, so the report compares the hip and ankle with the body itself (tights are skin-tight; the 2 cm landmark tolerance covers the gap).
+# Few smoothing passes: the trousers smooth 25 times so they drape, which on a skin-close shell pulls the ankle out towards the wider foot.
+# garments.json: tights = {"gap_cm", "hem_above_floor_cm", "waist_below_trousers_cm", "smooth_iterations"}
+TT = (G or {}).get("tights") if RG else None
+tg_mesh = tg_vids = tg_cal = None
+if TT:
+    tg_hem_z = zmin_f + TT["hem_above_floor_cm"] / 100.0
+    tg_gap = TT["gap_cm"] / 100.0
+    tg_top_z = tr_top_z - TT["waist_below_trousers_cm"] / 100.0  # the edge stays inside the shorts' waistband, not level with it
+    tg_mesh, tg_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=tg_gap, min_gap=tg_gap, hem_z=tg_hem_z,
+                                         sleeve_t=None, top_z=tg_top_z, fork_z=crotch_z + 0.03, smooth_iters=TT["smooth_iterations"], final_push=True,
+                                         fork_gap=0.0025)  # the shorts keep 1.5 mm off the centre plane; the tights, the inner layer, 2.5 mm: each thigh tube is nearer its own leg
+    _gt = bmesh.new()
+    _gt.from_mesh(tg_mesh)
+    tg_got = {"hip": circ_loop(_gt, hip_z), "ankle": circ_loop(_gt, tg_hem_z + 0.005, side=1)}
+    _gt.free()
+    tg_want = {"hip": circ_loop(body_final, hip_z),  # the hip section bridges the dips at the buttocks, so it is read against the body itself
+               "ankle": circ_loop(body_final, tg_hem_z + 0.005, side=1) + two_pi * TT["gap_cm"]}  # the ankle is near round: body plus the gap all round
+    print("CAL tights", {k: (round(tg_got[k], 1), round(tg_want[k], 1)) for k in tg_got})
+    tg_cal = {"converged": all(abs(tg_got[k] - tg_want[k]) < 1.0 for k in tg_got), "ease_at_floor": [],  # nothing is calibrated: 1 cm is half the landmark tolerance
+              "residual_cm": {k: round(tg_got[k] - tg_want[k], 2) for k in tg_got}}
+
 # --- V1.1-05: shorts. The trouser template with the trousers' calibrated ease, cut at a shorter inseam. Only the bottom
 # flare band is let out, so the leg opening is wider than the trousers at the same height; above the band the shorts are
 # the trousers' shell, so every top keeps the clearance it was built with over the trousers.
@@ -514,7 +538,8 @@ if HG:
 
     for it in range(6):
         sh_mesh, sh_vids = garment.build_tee(body_final, tr_faces, joints_final, ease=sh_ease, min_gap=tr_gap, hem_z=sh_hem_z,
-                                             sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03)
+                                             sleeve_t=None, top_z=tr_top_z, fork_z=crotch_z + 0.03,
+                                             extra_mesh=tg_mesh, extra_gap=0.0005, extra_trigger=-0.0006, extra_push=0.0012)  # V2-04: worn over tights; moves out only where they would touch
         _gt = bmesh.new()
         _gt.from_mesh(sh_mesh)
         _got = circ_loop(_gt, sh_hem_z + 0.01, side=1)
@@ -525,6 +550,14 @@ if HG:
         if sh_cal["converged"] or math.isnan(_got):
             break
         _flare = min(0.05, max(0.0, _flare + 1.6 * (sh_want - _got) / two_pi / 100.0))
+
+# --- V2-04: the shorts sit only 3 mm off the body and the tights 2.5 mm, so the two are drawn into place together: the shorts were
+# built over the tights (moving out only where they would touch), and now any part of the tights that bulges into the shorts (the
+# fold at the crotch, where the body is hollow) is drawn back towards the skin, never nearer than the gap.
+tg_tuck_left = None
+if TT and HG:
+    tg_mesh, tg_tuck_left = garment.tuck_inside(tg_mesh, sh_mesh, body_final, tg_gap)
+    print("TIGHTS tuck, triangles still crossing the shorts:", tg_tuck_left)
 
 # --- tee (built over the trousers)
 tee_hem_z = zmin_f + 0.49 * H_f
@@ -818,6 +851,18 @@ if HG:
                  "thigh_at_hem_circ_cm": round(circ_loop(body_final, sh_hem_z + 0.005, side=1), 1),
                  "hip_circ_cm": round(circ_loop(_gs, hip_z), 1), "waist_circ_cm": round(circ_loop(_gs, tr_top_z - 0.015), 1)}
     _gs.free()
+tg_report = None
+if TT:
+    _gg = bmesh.new()
+    _gg.from_mesh(tg_mesh)
+    _zr = (tg_hem_z + 0.01, tg_top_z - 0.01)
+    tg_report = {"template_faces": len(tr_faces), "calibration": tg_cal,
+                 "clipping": garment.clipping_report(body_final, tg_mesh, tg_vids, zrange=_zr),
+                 "clipping_ray": garment.clipping_report_ray(body_final, tg_mesh, tg_vids, zrange=_zr),
+                 "hem_height_cm": round((tg_hem_z - zmin_f) * 100, 1), "waist_height_cm": round((tg_top_z - zmin_f) * 100, 1),
+                 "gap_cm": TT["gap_cm"], "triangles_crossing_shorts_after_tuck": tg_tuck_left, "hip_circ_cm": round(tg_got["hip"], 1), "hip_target_circ_cm": round(tg_want["hip"], 1),
+                 "ankle_circ_cm": round(tg_got["ankle"], 1), "ankle_target_circ_cm": round(tg_want["ankle"], 1)}
+    _gg.free()
 tr_report["clipping_ray"] = garment.clipping_report_ray(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01))
 _zmin = zmin_f
 tr_report["body_self_intersections_crotch"] = garment.self_intersections_band(body_final, crotch_z - 0.10, crotch_z + 0.05)
@@ -873,8 +918,13 @@ if HG:
     add("shorts", "leg_opening_circ_cm (trousers at that height + extra)", sh_report["leg_opening_target_circ_cm"], sh_report["leg_opening_circ_cm"])
     add("shorts", "waist_circ_cm", RG["waist_circ_cm"], sh_report["waist_circ_cm"])
     add("shorts", "hip_circ_cm", RG["hip_circ_cm"], sh_report["hip_circ_cm"])
+if TT:
+    add("tights", "hem_height_cm (above the floor)", TT["hem_above_floor_cm"], tg_report["hem_height_cm"])
+    add("tights", "waist_height_cm (trousers' waist line less waist_below_trousers_cm)", round((tr_top_z - zmin_f) * 100 - TT["waist_below_trousers_cm"], 1), tg_report["waist_height_cm"])
+    add("tights", "hip_circ_cm (body)", tg_report["hip_target_circ_cm"], tg_report["hip_circ_cm"])
+    add("tights", "ankle_circ_cm (body + gap)", tg_report["ankle_target_circ_cm"], tg_report["ankle_circ_cm"])
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
+results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}), **({"tights": tg_report} if TT else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
 report = {"name": name, "sex_base": M["sex_base"], "body_only": bool(M.get("body_only", False)), "shape_by_eye": M.get("shape", {}), "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
@@ -934,6 +984,16 @@ if HG:  # V1.1-05: shorts.glb, same material setup as the trousers
     sh_ob.select_set(True)
     bpy.context.view_layer.objects.active = sh_ob
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_shorts.glb"), export_format="GLB", use_selection=True)
+if TT:  # V2-04: tights.glb, same material setup as the trousers (the app sets colour and sheerness)
+    tg_ob = bpy.data.objects.new(name + "_tights", tg_mesh)
+    mat5 = bpy.data.materials.new("tights"); mat5.use_nodes = True
+    mat5.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(TT.get("colour_srgb", [214, 214, 214]))
+    tg_mesh.materials.append(mat5)
+    bpy.context.scene.collection.objects.link(tg_ob)
+    bpy.ops.object.select_all(action="DESELECT")
+    tg_ob.select_set(True)
+    bpy.context.view_layer.objects.active = tg_ob
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tights.glb"), export_format="GLB", use_selection=True)
 for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, same material setup as the crew tee
     _vo = bpy.data.objects.new(f"{name}_tee_{_style}", _vm)
     _mv = bpy.data.materials.new(f"tee_{_style}"); _mv.use_nodes = True
@@ -950,7 +1010,8 @@ import mesh_checks
 report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z,
                                         sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None,
                                         tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
-                                        shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None)
+                                        shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None,
+                                        tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None)
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))

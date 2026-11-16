@@ -42,5 +42,12 @@
     "inseam_cm": 23,
     "leg_opening_extra_cm": 4,
     "flare_band_cm": 8
+  },
+  "tights": {
+    "_note": "Tights (V2-04): the trouser template as a skin-close shell, from the trousers' waist line to a hem above the floor. Worn under shorts (and skirts in v3), never under trousers. gap_cm is the distance from the skin; the hard checks need at least 0.2 cm, so 0.25 leaves a little for the cut edges. hem_above_floor_cm ends the tights at the ankle, because feet are bare until shoes arrive in v5. smooth_iterations is how often the shell is smoothed (the trousers use 25 so they drape; a skin-close shell needs few, or the ankle bulges towards the foot). waist_below_trousers_cm ends the tights just under the shorts' waistband, so the two top edges are not level (they crossed there). Opaque or sheer is a display setting in the app, not a different mesh.",
+    "gap_cm": 0.25,
+    "hem_above_floor_cm": 8,
+    "waist_below_trousers_cm": 1,
+    "smooth_iterations": 4
   }
 }

@@ -1,11 +1,13 @@
-// Preset outfits: a name and one saved item per slot (top, bottom). Stored on the device.
+// Preset outfits: a name and one saved item per slot (top, bottom, legs). Stored on the device.
 import { kvGet, kvPut } from './store';
-import { GARMENTS, NECKLINE_KEY, cleanName, type SavedItem } from './wardrobe';
+import { GARMENTS, NECKLINE_KEY, SHEER_KEY, cleanName, keepLayers, type SavedItem } from './wardrobe';
 
-/** A look made of saved items: one per slot (top, bottom). A slot with no item is empty. */
+/** A look made of saved items: one per slot (top, bottom, legs). A slot with no item is empty. */
 export interface OutfitLook {
   top?: SavedItem;
   bottom?: SavedItem;
+  /** V2-04: tights. */
+  legs?: SavedItem;
 }
 
 /**
@@ -18,6 +20,8 @@ export interface Outfit {
   name: string;
   top?: string;
   bottom?: string;
+  /** V2-04: the tights. Optional, so older outfits need no upgrade. */
+  legs?: string;
   /** Milliseconds since 1970; the list shows outfits in this order. */
   savedAt: number;
 }
@@ -27,13 +31,13 @@ const FALLBACK_NAME = 'Outfit';
 
 /** Auto-named from the items, such as 'Navy tee, Light grey trousers'. Editable, like saved items. */
 export function autoOutfitName(look: OutfitLook): string {
-  const names = [look.top, look.bottom].filter((i): i is SavedItem => !!i).map((i) => i.name);
+  const names = [look.top, look.bottom, look.legs].filter((i): i is SavedItem => !!i).map((i) => i.name);
   return cleanName(names.join(', '), FALLBACK_NAME);
 }
 
 export function newOutfit(look: OutfitLook, now = Date.now()): Outfit {
   const id = globalThis.crypto?.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2)}`;
-  return { v: 1, id, name: autoOutfitName(look), top: look.top?.id, bottom: look.bottom?.id, savedAt: now };
+  return { v: 1, id, name: autoOutfitName(look), top: look.top?.id, bottom: look.bottom?.id, ...(look.legs && { legs: look.legs.id }), savedAt: now };
 }
 
 /** Keeps only valid, unique outfits that point at something, oldest first. Anything else stored is dropped. */
@@ -46,13 +50,15 @@ export function cleanOutfits(value: unknown): Outfit[] {
     if (typeof r.id !== 'string' || !r.id || out.some((o) => o.id === r.id)) continue;
     const top = typeof r.top === 'string' && r.top ? r.top : undefined;
     const bottom = typeof r.bottom === 'string' && r.bottom ? r.bottom : undefined;
-    if (!top && !bottom) continue;
+    const legs = typeof r.legs === 'string' && r.legs ? r.legs : undefined;
+    if (!top && !bottom && !legs) continue;
     out.push({
       v: 1,
       id: r.id,
       name: cleanName(typeof r.name === 'string' ? r.name : '', FALLBACK_NAME),
       top,
       bottom,
+      ...(legs && { legs }),
       savedAt: typeof r.savedAt === 'number' && Number.isFinite(r.savedAt) ? r.savedAt : 0,
     });
   }
@@ -64,6 +70,7 @@ export function resolveOutfit(outfit: Outfit, items: SavedItem[]): OutfitLook {
   return {
     top: outfit.top ? items.find((i) => i.id === outfit.top) : undefined,
     bottom: outfit.bottom ? items.find((i) => i.id === outfit.bottom) : undefined,
+    legs: outfit.legs ? items.find((i) => i.id === outfit.legs) : undefined,
   };
 }
 
@@ -95,8 +102,9 @@ function optionFor(item: SavedItem | undefined): string {
 export async function wearOutfit(outfit: Outfit, items: SavedItem[]): Promise<void> {
   const look = resolveOutfit(outfit, items);
   const colours = await kvGet<Record<string, string>>('colours', {});
-  const used = [look.top, look.bottom].filter((i): i is SavedItem => !!i);
-  await kvPut('outfit', { Top: optionFor(look.top), Bottom: optionFor(look.bottom) });
+  const used = [look.top, look.bottom, look.legs].filter((i): i is SavedItem => !!i);
+  await kvPut('outfit', keepLayers({ Top: optionFor(look.top), Bottom: optionFor(look.bottom), Legs: optionFor(look.legs) }));
   await kvPut('colours', { ...colours, ...Object.fromEntries(used.map((i) => [i.garment, i.colour])) });
   if (look.top?.neckline) await kvPut(NECKLINE_KEY, look.top.neckline);
+  if (look.legs?.sheer !== undefined) await kvPut(SHEER_KEY, look.legs.sheer);
 }

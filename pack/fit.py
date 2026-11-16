@@ -83,4 +83,9 @@ def default_garments(m, cfg):
         h = cfg["shorts"]
         out["shorts"] = {"inseam_cm": h["inseam_cm"], "leg_opening_extra_cm": h["leg_opening_extra_cm"],
                          "flare_band_cm": h["flare_band_cm"], "colour_srgb": colour}
+    if "tights" in cfg:  # V2-04: the gap and the hem height are all the generator needs; the shell is the trousers' template
+        t_ = cfg["tights"]
+        out["tights"] = {"gap_cm": t_["gap_cm"], "hem_above_floor_cm": t_["hem_above_floor_cm"],
+                         "waist_below_trousers_cm": t_["waist_below_trousers_cm"],
+                         "smooth_iterations": t_["smooth_iterations"], "colour_srgb": colour}
     return out

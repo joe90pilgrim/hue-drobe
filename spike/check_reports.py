@@ -22,7 +22,10 @@ Stricter than the first version:
   (height, circumferences, extra_body_checks) only. Every garment is skipped. Used for a person whose garments are not built yet;
   the synthetic bodies and the shipped garments never use it.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts]
+- tights (V2-04), when the report has them, get exactly the trousers' mesh limits, and the shorts and every top are checked against
+  them with the tee-with-trousers limit. --tights makes missing tights a failure.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights]
 """
 import json, sys, pathlib
 
@@ -72,8 +75,9 @@ for f in reports:
         continue
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
     shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
-    for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts:
-        lim = "trousers" if g in ("trousers", "shorts") else "tee"  # the sweatshirt and the other necklines are held to the tee's limits, the shorts to the trousers'
+    tights = ("tights",) if "tights" in r or "--tights" in sys.argv else ()  # V2-04
+    for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts + tights:
+        lim = "trousers" if g in ("trousers", "shorts", "tights") else "tee"  # the sweatshirt and the other necklines are held to the tee's limits, the shorts to the trousers'
         if g not in r:
             check(False, f"{g} missing from report")
             continue
@@ -120,6 +124,15 @@ for f in reports:
                 continue
             n = r["mesh_checks"].get(f"{top}_vs_shorts_intersecting_pairs")
             check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{top}-through-shorts intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+        if tights:  # V2-04: tights are worn under the shorts (never the trousers), and under every top
+            if shorts:
+                n = r["mesh_checks"].get("tights_vs_shorts_intersecting_pairs")
+                check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"shorts-through-tights intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+            for top in ("tee", "sweatshirt") + variants:
+                if top not in r["mesh_checks"]:
+                    continue
+                n = r["mesh_checks"].get(f"{top}_vs_tights_intersecting_pairs")
+                check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{top}-through-tights intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
         for top in ("tee", "sweatshirt") + variants:
             if top not in r["mesh_checks"]:
                 continue

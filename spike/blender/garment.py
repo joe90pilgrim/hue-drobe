@@ -166,7 +166,8 @@ ARM = ("lup", "rup", "lfo", "rfo")
 
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
-              fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None):
+              fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None, final_push=False,
+              extra_trigger=-0.0015, extra_push=0.003):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
@@ -180,6 +181,12 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     hem_band, cuff_band: (band height m, gap m). Ribbing: within the band above the hem or before the cuff the cloth is drawn
     in to that gap (fading in over 3 cm) from the inner garment where there is one (hem), else from the body, then kept clear
     of the body and inner garment as everywhere else.
+    final_push (V2-04 tights): push the cloth clear of the body once more after the hem and top cuts. The cuts make new vertices on
+    straight lines between existing ones, which on a round ankle sit a little closer to the skin than the shell's own vertices;
+    a skin-close shell has no gap to spare.
+    extra_trigger, extra_push (inner garment, m): the final pass moves cloth out when an inner-garment vertex is less than
+    -extra_trigger inside it, by enough to put the inner vertex extra_push inside. The defaults (1.5 mm, 3 mm) suit a tee over trousers;
+    shorts over skin-close tights use 0.2 mm and 0.4 mm, so they move out only where the two would touch.
     Returns (mesh, list of body vertex ids still covered)."""
     segs, radius = _arm_segs(joints)
     bm.normal_update()
@@ -393,6 +400,8 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         for x in res["geom_cut"]:
             if isinstance(x, bmesh.types.BMVert) and x.is_valid:
                 x[layer] = 0
+    if final_push:
+        push_out()
     # straight sleeve ends
     for side, key in ((("l", "lfo"), ("r", "rfo")) if long_sleeves else (("l", "lup"), ("r", "rup"))) if sleeve_t is not None else ():
         a, b = segs[key]
@@ -447,8 +456,8 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                 if loc3 is None or d3 > 0.05:
                     continue
                 s_ = (p - loc3).dot(nor3)
-                if s_ > -0.0015:
-                    need = s_ + 0.003
+                if s_ > extra_trigger:
+                    need = s_ + extra_push
                     for fv in g.faces[fi3].verts:
                         fv.co += nor3 * need * 0.6
                     moved += 1
@@ -666,3 +675,97 @@ def self_intersections_band(body_bm_, z_lo, z_hi):
         if z_lo <= za <= z_hi and z_lo <= zb <= z_hi:
             seen.add((a, b))
     return len(seen)
+
+
+def _loop_tri_bm(mesh):
+    """A bmesh of the mesh split into the same triangles the glTF exporter writes (Blender's loop triangles)."""
+    mesh.calc_loop_triangles()
+    b = bmesh.new()
+    vs = [b.verts.new(v.co) for v in mesh.vertices]
+    for t in mesh.loop_triangles:
+        try:
+            b.faces.new([vs[k] for k in t.vertices])
+        except ValueError:
+            pass
+    b.verts.index_update(); b.faces.index_update(); b.faces.ensure_lookup_table(); b.normal_update()
+    return b
+
+
+def tuck_inside(inner_mesh, outer_mesh, body_bm_, body_gap, body_floor=0.00203, margin=0.0006, passes=6, reach=0.02, step=0.0002,
+                overlap_passes=40):
+    """V2-04: fit an inner garment (tights) under an outer one (shorts). Returns (mesh, left), where left is the number of inner
+    triangles still crossing the outer garment (0 when it worked).
+    1. Every inner vertex within `reach` of the outer garment is pulled to `margin` inside it, and kept body_gap off the body.
+    2. Nearest-point tests are unreliable in folds: at the front of the crotch a coarse outer triangle can cut through the inner wall
+       while every vertex of both is on its own side. So the same face-pair overlap test the checks use is run on exactly the triangles
+       that will be exported (the outer garment's loop triangles; the inner one is triangulated here), and only the inner triangles
+       that cross are pressed towards the skin, `step` at a time, never nearer than body_floor (the checks need 2 mm; 2.03 is used).
+       Inner triangles crossing the body are pushed back out the same way."""
+    g = bmesh.new()
+    g.from_mesh(inner_mesh)
+    bmesh.ops.triangulate(g, faces=list(g.faces))  # the exporter keeps triangles as they are, so what is fitted here is what ships
+    o = _loop_tri_bm(outer_mesh)
+    outer = BVHTree.FromBMesh(o)
+    body_bm_.normal_update()
+    body = BVHTree.FromBMesh(body_bm_)
+    _bm = bpy.data.meshes.new("body_tri")
+    body_bm_.to_mesh(_bm)
+    bt = _loop_tri_bm(_bm)  # the body's export triangles too
+    bpy.data.meshes.remove(_bm)
+    body_tri = BVHTree.FromBMesh(bt)
+
+    def guard(v, floor):
+        bl, bn, bf, bd = nearest(body, v.co)
+        db = (v.co - bl).dot(bn)
+        if db < floor:
+            v.co += bn * (floor - db)
+
+    for _ in range(passes):
+        for v in g.verts:
+            loc, nor, fi, d = nearest(outer, v.co)
+            if loc is not None and d <= reach:
+                s = (v.co - loc).dot(nor)
+                if s > -margin:
+                    v.co -= nor * (s + margin)
+            guard(v, body_gap)
+    left = 0
+    for _ in range(overlap_passes):
+        g.verts.index_update(); g.faces.index_update(); g.faces.ensure_lookup_table()
+        tree = BVHTree.FromBMesh(g)
+        crossing = {a for a, _b in tree.overlap(outer)}
+        through_body = {a for a, _b in tree.overlap(body_tri)}
+        left = len(crossing)
+        if not crossing and not through_body:
+            break
+        for a in crossing:
+            for v in g.faces[a].verts:
+                bl, bn, bf, bd = nearest(body, v.co)
+                v.co -= bn * step
+                guard(v, body_floor)
+        for a in through_body - crossing:
+            for v in g.faces[a].verts:
+                bl, bn, bf, bd = nearest(body, v.co)
+                v.co += bn * step
+    # Last, the clearance as the checks measure it: the straight distance to the nearest body point. In a cleft (the buttocks on
+    # Joe) a vertex pushed off one side along its normal ends up nearer the other side, so push straight away from the nearest
+    # point, a few times over, then count the crossings again.
+    for _ in range(10):
+        moved = 0
+        for v in g.verts:
+            bl, bn, bf, bd = body.find_nearest(v.co)
+            if bl is not None and bd < body_floor + 0.00005 and (v.co - bl).dot(bn) > 0:
+                v.co = bl + (v.co - bl).normalized() * (body_floor + 0.00005)
+                moved += 1
+        if not moved:
+            break
+    g.verts.index_update(); g.faces.index_update()
+    left = len({a for a, _b in BVHTree.FromBMesh(g).overlap(outer)})
+    bt.free()
+    g.normal_update()
+    me = bpy.data.meshes.new("garment")
+    g.to_mesh(me)
+    g.free()
+    o.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    return me, left

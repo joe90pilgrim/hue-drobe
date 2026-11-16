@@ -59,6 +59,8 @@ if (q) {
   load('/models/personal/' + q + '.glb');
   if (!hide.includes('tee')) load('/models/personal/' + q + '_tee.glb');
   if (!hide.includes('trousers')) load('/models/personal/' + q + '_trousers.glb');
+  // V2-04: more garments by name, for example ?m=b&hide=trousers&add=shorts,tights
+  for (const g of (new URLSearchParams(location.search).get('add') || '').split(',').filter(Boolean)) load('/models/personal/' + q + '_' + g + '.glb');
 }
 else load('/models/test_body.glb');
 

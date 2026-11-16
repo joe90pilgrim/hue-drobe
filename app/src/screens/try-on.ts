@@ -14,8 +14,12 @@ import {
   GARMENTS,
   NECKLINES,
   NECKLINE_KEY,
+  SHEER_KEY,
+  TIGHTS_BLOCKED_BY,
   ensureItem,
   hasNecklines,
+  hasSheer,
+  keepLayers,
   isNeckline,
   loadItems,
   meshName,
@@ -37,6 +41,8 @@ const SLOTS: Slot[] = [
   { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
   // Shorts (V1.1-05) are the trousers cut at a 23 cm inseam, so the tops sit over them exactly as over the trousers.
   { name: 'Bottom', options: ['Trousers', 'Shorts', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts' } },
+  // Tights (V2-04) are a layer under the shorts, so they have their own slot. Nothing by default; never with trousers.
+  { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
 ];
 
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
@@ -102,6 +108,11 @@ export function renderTryOn(el: HTMLElement): () => void {
           <span class="field-label" id="lbl-garment">Garment</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div>
         </div>
+        <p class="help layer-note" data-layer-note hidden>Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.</p>
+        <div class="field" data-sheer-field hidden>
+          <span class="field-label" id="lbl-sheer">Sheerness</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-sheer" data-sheers><button type="button" role="radio" aria-checked="false" tabindex="-1" data-sheer="opaque">Opaque</button><button type="button" role="radio" aria-checked="false" tabindex="-1" data-sheer="sheer">Sheer</button></div>
+        </div>
         <div class="field" data-neck-field hidden>
           <span class="field-label" id="lbl-neck">Neckline</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-neck" data-necklines>${(Object.keys(NECKLINES) as Neckline[])
@@ -137,6 +148,9 @@ export function renderTryOn(el: HTMLElement): () => void {
   const garmentGroup = editor.querySelector<HTMLElement>('[data-garment]')!;
   const neckField = editor.querySelector<HTMLElement>('[data-neck-field]')!;
   const neckGroup = editor.querySelector<HTMLElement>('[data-necklines]')!;
+  const sheerField = editor.querySelector<HTMLElement>('[data-sheer-field]')!;
+  const sheerGroup = editor.querySelector<HTMLElement>('[data-sheers]')!;
+  const layerNote = editor.querySelector<HTMLElement>('[data-layer-note]')!;
   const curSwatch = editor.querySelector<HTMLElement>('.cur-swatch')!;
   const controls = editor.querySelector<HTMLElement>('.ed-controls')!;
   const chooseBtn = editor.querySelector<HTMLButtonElement>('.choose')!;
@@ -172,6 +186,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
   const colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
   let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
+  let sheer = false; // the tights' sheerness (V2-04); like the neckline, the colour belongs to the tights either way
   let favourites: Favourite[] = []; // shared by every slot
   let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
   let editing: Slot | null = null; // the slot whose controls are open
@@ -180,12 +195,14 @@ export function renderTryOn(el: HTMLElement): () => void {
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
   const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || DEFAULT_COLOUR).toLowerCase();
-  const itemKey = (slot: Slot) => `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}`;
+  const itemKey = (slot: Slot) =>
+    `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
   const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
   /** The row's name: "T-shirt, crew neck", "Trousers" or "Nothing". */
   const nameOf = (slot: Slot) => {
     const g = garmentOf(slot) as GarmentId | undefined;
     if (!g) return 'Nothing';
+    if (hasSheer(g)) return `${outfit[slot.name]}, ${sheer ? 'sheer' : 'opaque'}`;
     return hasNecklines(g) ? `${outfit[slot.name]}, ${NECKLINES[neckline].words}` : outfit[slot.name];
   };
 
@@ -228,8 +245,18 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s) return;
     const g = garmentOf(s) as GarmentId | undefined;
     const current = colourOf(s);
+    // Tights cannot go under trousers: the option is greyed out, with a note saying why.
+    const blocked = s.name === 'Legs' && outfit.Bottom === TIGHTS_BLOCKED_BY;
     for (const b of garmentGroup.querySelectorAll<HTMLButtonElement>('[data-opt]')) {
       const on = b.dataset.opt === outfit[s.name];
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+      b.disabled = blocked && b.dataset.opt === 'Tights';
+    }
+    layerNote.hidden = !blocked;
+    sheerField.hidden = !g || !hasSheer(g);
+    for (const b of sheerGroup.querySelectorAll<HTMLButtonElement>('[data-sheer]')) {
+      const on = (b.dataset.sheer === 'sheer') === sheer;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
     }
@@ -262,6 +289,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   };
   const refresh = () => {
     SLOTS.forEach(apply);
+    viewer.setSheer('tights', sheer);
     renderRows();
     syncEditor();
   };
@@ -360,13 +388,22 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   bindRadioKeys(garmentGroup);
   bindRadioKeys(neckGroup);
+  bindRadioKeys(sheerGroup);
   garmentGroup.addEventListener('click', (e) => {
     const opt = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
     const s = editing;
     if (!s || !opt || opt === outfit[s.name]) return;
-    outfit[s.name] = opt;
+    // Putting trousers on takes the tights off (they are never worn together); the Legs panel greys tights out instead.
+    Object.assign(outfit, keepLayers({ ...outfit, [s.name]: opt }, s.name));
     refresh();
     void kvPut('outfit', { ...outfit });
+  });
+  sheerGroup.addEventListener('click', (e) => {
+    const v = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-sheer]')?.dataset.sheer;
+    if (!v || (v === 'sheer') === sheer) return;
+    sheer = v === 'sheer';
+    refresh();
+    void kvPut(SHEER_KEY, sheer);
   });
   neckGroup.addEventListener('click', (e) => {
     const n = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-neckline]')?.dataset.neckline;
@@ -409,7 +446,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s || !g || !(g in GARMENTS)) return;
     const key = itemKey(s);
     const items = await loadItems();
-    const r = ensureItem(items, g, colourOf(s), Date.now(), neckline); // one item per garment, colour and (for a tee) neckline
+    const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer); // one item per garment, colour and (for a tee) neckline or (for tights) sheerness
     if (r.list !== items) await saveItems(r.list);
     savedKey = key;
     syncEditor();
@@ -421,10 +458,13 @@ export function renderTryOn(el: HTMLElement): () => void {
     kvGet<Record<string, string>>('colours', {}),
     loadFavourites(),
     kvGet<unknown>(NECKLINE_KEY, DEFAULT_NECKLINE),
-  ]).then(([saved, savedColours, favs, savedNeckline]) => {
+    kvGet<unknown>(SHEER_KEY, false),
+  ]).then(([saved, savedColours, favs, savedNeckline, savedSheer]) => {
     if (gone) return;
     if (isNeckline(savedNeckline)) neckline = savedNeckline;
+    sheer = savedSheer === true;
     for (const s of SLOTS) if (saved[s.name] && s.options.includes(saved[s.name])) outfit[s.name] = saved[s.name];
+    Object.assign(outfit, keepLayers(outfit));
     for (const [g, hex] of Object.entries(savedColours)) {
       if (/^#[0-9a-f]{6}$/i.test(hex)) {
         colours[g] = hex;
@@ -442,12 +482,13 @@ export function renderTryOn(el: HTMLElement): () => void {
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
       if (!g) continue;
-      const r = ensureItem(items, g, colourOf(s), Date.now(), neckline);
+      const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
+      else if (s.name === 'Legs') look.legs = r.item;
       else look.bottom = r.item;
     }
-    if (!look.top && !look.bottom) return;
+    if (!look.top && !look.bottom && !look.legs) return;
     await saveItems(items);
     await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
     outfitBtn.textContent = 'Outfit saved';

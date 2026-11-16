@@ -3,17 +3,21 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /** Files of the avatar pack that the viewer loads. Joe's pack is served from private/pack/joe by the dev server only. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'sweatshirt.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb'];
+/** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
+export const SHEER_OPACITY = 0.45;
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
 const groupOf = (name: string) => name.split('_')[0];
 const PACK_URL = './pack/joe/';
 
 export interface Viewer {
-  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`, `shorts`) instantly. Works before it has loaded. */
+  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`, `shorts`, `tights`) instantly. Works before it has loaded. */
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;
+  /** Makes a garment partly see-through (V2-04: sheer tights) or opaque again. Works before it has loaded. */
+  setSheer: (name: string, sheer: boolean) => void;
   dispose: () => void;
 }
 
@@ -22,6 +26,21 @@ function paint(root: THREE.Object3D, hex: string) {
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) {
       for (const m of Array.isArray(o.material) ? o.material : [o.material]) (m as THREE.MeshStandardMaterial).color.set(hex);
+    }
+  });
+}
+
+/** Sheer: blended over the skin beneath, without writing depth, so the body shows through but the shorts still hide what they cover. */
+function sheerness(root: THREE.Object3D, sheer: boolean) {
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) {
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        const mat = m as THREE.MeshStandardMaterial;
+        mat.transparent = sheer;
+        mat.opacity = sheer ? SHEER_OPACITY : 1;
+        mat.depthWrite = !sheer;
+        mat.needsUpdate = true;
+      }
     }
   });
 }
@@ -63,6 +82,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   const garments = new Map<string, THREE.Object3D>();
   const wanted = new Map<string, boolean>();
   const colours = new Map<string, string>();
+  const sheers = new Map<string, boolean>();
   let bytes = 0;
   let disposed = false;
   const loader = new GLTFLoader();
@@ -79,6 +99,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     garments.set(name, gltf.scene);
     const colour = colours.get(groupOf(name));
     if (colour) paint(gltf.scene, colour);
+    if (sheers.get(name)) sheerness(gltf.scene, true);
     scene.add(gltf.scene);
   });
   onStatus('Getting your avatar ready…');
@@ -121,6 +142,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     setColour(name, hex) {
       colours.set(name, hex);
       for (const [n, g] of garments) if (groupOf(n) === name) paint(g, hex);
+    },
+    setSheer(name, sheer) {
+      sheers.set(name, sheer);
+      const g = garments.get(name);
+      if (g) sheerness(g, sheer);
     },
     dispose() {
       disposed = true;

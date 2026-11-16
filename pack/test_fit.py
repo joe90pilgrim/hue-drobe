@@ -43,6 +43,14 @@ class DefaultGarments(unittest.TestCase):
         self.assertLess(s["inseam_cm"], fit.default_garments(BODY, CFG)["trousers"]["inseam_cm"])
         self.assertEqual(s["colour_srgb"], CFG["colour_srgb"])
 
+    def test_tights_hug_the_skin_and_end_at_the_ankle(self):
+        # V2-04: as close as the hard checks allow (they need 0.2 cm clearance), hem at the ankle, not the knee
+        t = fit.default_garments(BODY, CFG)["tights"]
+        self.assertGreaterEqual(t["gap_cm"], 0.2)
+        self.assertLess(t["gap_cm"], 0.3)
+        self.assertLess(t["hem_above_floor_cm"], 15)
+        self.assertEqual(t["colour_srgb"], CFG["colour_srgb"])
+
     def test_ease_is_positive(self):
         g = fit.default_garments(BODY, CFG)
         self.assertGreater(g["tee"]["chest_circ_cm"], BODY["chest_cm"])

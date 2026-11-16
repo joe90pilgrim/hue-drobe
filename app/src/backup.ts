@@ -2,7 +2,7 @@
 import { kvDelete, kvGet, kvPut } from './store';
 import { cleanFavourites, FAVOURITES_KEY } from './favourites';
 import { cleanOutfits, OUTFITS_KEY } from './outfits';
-import { cleanItems, NECKLINE_KEY, WARDROBE_KEY } from './wardrobe';
+import { cleanItems, NECKLINE_KEY, SHEER_KEY, WARDROBE_KEY } from './wardrobe';
 
 export const BACKUP_FORMAT = 'huedrobe-backup';
 export const BACKUP_VERSION = 1;
@@ -24,6 +24,7 @@ const KEYS: Record<string, (v: unknown) => unknown> = {
   [OUTFIT_KEY]: cleanStringMap,
   [COLOURS_KEY]: cleanStringMap,
   [NECKLINE_KEY]: (v) => (typeof v === 'string' ? v : undefined),
+  [SHEER_KEY]: (v) => (typeof v === 'boolean' ? v : undefined),
 };
 
 export interface Backup {

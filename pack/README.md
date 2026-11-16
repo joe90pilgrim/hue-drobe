@@ -45,7 +45,7 @@ add-on folder from anything it starts. Run the script with the interpreter's ful
 
 `private/pack/joe/` (git-ignored, because `private/` is):
 
-- `body.glb`, `tee.glb`, `tee_v.glb`, `tee_scoop.glb`, `trousers.glb`, `shorts.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
+- `body.glb`, `tee.glb`, `tee_v.glb`, `tee_scoop.glb`, `trousers.glb`, `shorts.glb`, `tights.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
   `tee.glb` is the crew neck; `tee_v.glb` and `tee_scoop.glb` (V1.1-04) are the same shell cut with a deeper V or scoop front. The depths and widths are in `fit_config.json` under `tee.necklines`.
 - `manifest.json`: file sizes and SHA-256, Blender version, the fit config used, build time.
 
@@ -54,6 +54,10 @@ the app sets the colour. The sweatshirt (MVP-07) is an alternative top over the 
 The shorts (V1.1-05) are the trousers' shell cut at a 23 cm inseam, with the bottom 8 cm let out so the leg opening is 4 cm wider
 than the trousers at that height (`fit_config.json`, `shorts`). They get the trousers' hard mesh checks, and every top is checked
 for intersections with them as well as with the trousers.
+The tights (V2-04) are the trousers' template as a skin-close shell, 2.5 mm off the skin, from 1 cm below the waistband to 8 cm above
+the floor (`fit_config.json`, `tights`). The shorts are built over them, then the tights are tucked inside the shorts on the exported
+triangles (`garment.tuck_inside`). They get the trousers' hard mesh checks, and the shorts and every top are checked against them.
+Opaque or sheer is set in the app. Record: `docs/decisions/2026-11-16-v2-04-tights.md`.
 
 ## How the fit works
 

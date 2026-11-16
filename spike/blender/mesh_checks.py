@@ -95,10 +95,12 @@ def clearance_cm(cloth, body_tree):
     ds = []
     for v in cloth.verts:
         loc, nor, fi, d = body_tree.find_nearest(v.co)
-        ds.append(d * 100 if (v.co - loc).dot(nor) > 0 else -d * 100)
-    ds.sort()
+        ds.append((d * 100 if (v.co - loc).dot(nor) > 0 else -d * 100, v.co))
+    ds.sort(key=lambda t: t[0])
     n = len(ds)
-    return {"min": round(ds[0], 2), "p05": round(ds[n // 20], 2), "median": round(ds[n // 2], 2), "max": round(ds[-1], 2)}
+    lo = ds[0][1]
+    return {"min": round(ds[0][0], 2), "p05": round(ds[n // 20][0], 2), "median": round(ds[n // 2][0], 2), "max": round(ds[-1][0], 2),
+            "min_at_xyz_cm": [round(c * 100, 1) for c in (lo.x, lo.y, lo.z)]}
 
 
 def shoulder_gap(tee, body_tree, hps_z):
@@ -113,7 +115,11 @@ def shoulder_gap(tee, body_tree, hps_z):
             "max_cm": max((b["max"] for b in bands.values()), default=None)}
 
 
-def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=None):
+def tights_faces_z(bm, i):
+    return bm.faces[i].calc_center_median().z
+
+
+def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=None, tights=None):
     body, tee, trousers = merged(body), merged(tee), merged(trousers)
     bt, tt, rt = BVHTree.FromBMesh(body), BVHTree.FromBMesh(tee), BVHTree.FromBMesh(trousers)
     garments = [("tee", tee, tt), ("trousers", trousers, rt)]
@@ -130,6 +136,11 @@ def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=N
         shorts = merged(shorts)
         sht = BVHTree.FromBMesh(shorts)
         garments.append(("shorts", shorts, sht))
+    tit = None
+    if tights is not None:  # V2-04: a skin-close layer, held to the trousers' limits; worn under the shorts, never under the trousers
+        tights = merged(tights)
+        tit = BVHTree.FromBMesh(tights)
+        garments.append(("tights", tights, tit))
     floor = min(v.co.z for v in body.verts)  # heights below are reported above the floor
     R = {}
     for label, g, tree in garments:
@@ -147,7 +158,14 @@ def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=N
         for label, _g, tree in garments:
             if label not in ("trousers", "shorts"):
                 R[f"{label}_vs_shorts_intersecting_pairs"] = len(tree.overlap(sht))
+                if label == "tights":  # where, as the shorts-tights margin is only 0.5 mm: height above the floor and distance from the centre line
+                    R["tights_vs_shorts_at_z_x_cm"] = sorted({(round((tights_faces_z(tights, a) - floor) * 100), round(abs(tights.faces[a].calc_center_median().x) * 100)) for a, _ in tree.overlap(sht)})
         shorts.free()
+    if tights is not None:  # every other layer that can be worn over the tights must clear them
+        for label, _g, tree in garments:
+            if label not in ("trousers", "tights", "shorts"):  # shorts are covered above, as tights_vs_shorts
+                R[f"{label}_vs_tights_intersecting_pairs"] = len(tree.overlap(tit))
+        tights.free()
     if sweatshirt is not None:
         R["sweatshirt_vs_trousers_intersecting_pairs"] = len(st.overlap(rt))
         R["sweatshirt"]["shoulder_gap"] = shoulder_gap(sweatshirt, bt, hps_z)

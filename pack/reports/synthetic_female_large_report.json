@@ -1,6 +1,8 @@
 {
   "name": "synthetic_female_large",
   "sex_base": "female",
+  "body_only": false,
+  "shape_by_eye": {},
   "height_macro": 0.6016,
   "weight_macro": 1.0,
   "results": [
@@ -840,12 +842,12 @@
     },
     "clipping_ray": {
       "samples": 1506,
-      "showing_through_strict": 12,
-      "fraction_strict": 0.008,
-      "showing_through_excluding_edges": 12,
-      "fraction_excluding_edges": 0.008,
+      "showing_through_strict": 14,
+      "fraction_strict": 0.0093,
+      "showing_through_excluding_edges": 14,
+      "fraction_excluding_edges": 0.0093,
       "front_face_hits": 0,
-      "no_hit": 12,
+      "no_hit": 14,
       "where_z_x_y_kind_cm": [
         [
           81,
@@ -886,6 +888,12 @@
         [
           81,
           -1,
+          -8,
+          "miss"
+        ],
+        [
+          81,
+          -1,
           -5,
           "miss"
         ],
@@ -899,6 +907,12 @@
           81,
           -1,
           -3,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -8,
           "miss"
         ],
         [
@@ -927,8 +941,58 @@
     "trousers_at_same_height_circ_cm": 58.1,
     "leg_opening_target_circ_cm": 62.1,
     "thigh_at_hem_circ_cm": 43.8,
-    "hip_circ_cm": 116.8,
+    "hip_circ_cm": 117.1,
     "waist_circ_cm": 101.7
+  },
+  "tights": {
+    "template_faces": 3846,
+    "calibration": {
+      "converged": true,
+      "ease_at_floor": [],
+      "residual_cm": {
+        "hip": -0.15,
+        "ankle": 0.56
+      }
+    },
+    "clipping": {
+      "covered_body_verts": 1476,
+      "showing_through": 0,
+      "fraction": 0.0,
+      "worst_penetration_cm": 0.0,
+      "skipped_near_edge": 4,
+      "worst_at_z_x_depth_cm": []
+    },
+    "clipping_ray": {
+      "samples": 2906,
+      "showing_through_strict": 2,
+      "fraction_strict": 0.0007,
+      "showing_through_excluding_edges": 2,
+      "fraction_excluding_edges": 0.0007,
+      "front_face_hits": 0,
+      "no_hit": 2,
+      "where_z_x_y_kind_cm": [
+        [
+          81,
+          -1,
+          -5,
+          "miss"
+        ],
+        [
+          81,
+          1,
+          -5,
+          "miss"
+        ]
+      ]
+    },
+    "hem_height_cm": 8.0,
+    "waist_height_cm": 104.5,
+    "gap_cm": 0.25,
+    "triangles_crossing_shorts_after_tuck": 0,
+    "hip_circ_cm": 113.8,
+    "hip_target_circ_cm": 114.0,
+    "ankle_circ_cm": 24.2,
+    "ankle_target_circ_cm": 23.7
   },
   "sweatshirt": {
     "template_faces": 3084,
@@ -3296,8 +3360,44 @@
       "garment": "shorts",
       "measure": "hip_circ_cm",
       "target": 117,
-      "achieved": 116.8,
+      "achieved": 117.1,
+      "error": 0.1,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "tights",
+      "measure": "hem_height_cm (above the floor)",
+      "target": 8,
+      "achieved": 8.0,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "tights",
+      "measure": "waist_height_cm (trousers' waist line less waist_below_trousers_cm)",
+      "target": 104.5,
+      "achieved": 104.5,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "tights",
+      "measure": "hip_circ_cm (body)",
+      "target": 114.0,
+      "achieved": 113.8,
       "error": -0.2,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "tights",
+      "measure": "ankle_circ_cm (body + gap)",
+      "target": 23.7,
+      "achieved": 24.2,
+      "error": 0.5,
       "tolerance": 2.0,
       "pass": true
     }
@@ -3332,7 +3432,12 @@
         "min": 0.3,
         "p05": 0.33,
         "median": 1.52,
-        "max": 7.8
+        "max": 7.8,
+        "min_at_xyz_cm": [
+          -10.5,
+          1.7,
+          144.8
+        ]
       },
       "shoulder_gap": {
         "bands_by_cm_from_centre": {
@@ -3412,7 +3517,12 @@
         "min": 0.29,
         "p05": 0.4,
         "median": 2.09,
-        "max": 4.92
+        "max": 4.92,
+        "min_at_xyz_cm": [
+          -13.6,
+          -14.2,
+          105.4
+        ]
       }
     },
     "sweatshirt": {
@@ -3442,7 +3552,12 @@
         "min": 0.3,
         "p05": 0.32,
         "median": 1.58,
-        "max": 4.92
+        "max": 4.92,
+        "min_at_xyz_cm": [
+          43.2,
+          -13.9,
+          105.3
+        ]
       },
       "shoulder_gap": {
         "bands_by_cm_from_centre": {
@@ -3523,7 +3638,12 @@
         "min": 0.3,
         "p05": 0.34,
         "median": 1.52,
-        "max": 7.8
+        "max": 7.8,
+        "min_at_xyz_cm": [
+          -10.8,
+          1.7,
+          144.7
+        ]
       },
       "shoulder_gap": {
         "bands_by_cm_from_centre": {
@@ -3599,7 +3719,12 @@
         "min": 0.3,
         "p05": 0.35,
         "median": 1.54,
-        "max": 7.8
+        "max": 7.8,
+        "min_at_xyz_cm": [
+          -11.9,
+          -0.8,
+          144.2
+        ]
       },
       "shoulder_gap": {
         "bands_by_cm_from_centre": {
@@ -3653,7 +3778,7 @@
       "piece_faces_area": [
         {
           "faces": 1742,
-          "area_cm2": 5952.8,
+          "area_cm2": 5960.8,
           "z_cm": [
             57.6,
             105.4
@@ -3671,10 +3796,49 @@
       "self_intersecting_pairs": 0,
       "self_intersections_by_z_cm": [],
       "clearance_to_body_cm": {
-        "min": 0.29,
-        "p05": 0.35,
+        "min": 0.3,
+        "p05": 0.38,
         "median": 1.6,
-        "max": 4.12
+        "max": 4.12,
+        "min_at_xyz_cm": [
+          13.6,
+          -14.2,
+          105.4
+        ]
+      }
+    },
+    "tights": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 3158,
+          "area_cm2": 8831.9,
+          "z_cm": [
+            8.0,
+            104.4
+          ]
+        }
+      ],
+      "openings": 3,
+      "opening_lengths_cm": [
+        99.5,
+        25.1,
+        25.1
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.21,
+        "p05": 0.25,
+        "median": 0.27,
+        "max": 0.64,
+        "min_at_xyz_cm": [
+          -7.2,
+          -20.5,
+          104.4
+        ]
       }
     },
     "tee_vs_trousers_intersecting_pairs": 0,
@@ -3682,9 +3846,15 @@
     "sweatshirt_vs_shorts_intersecting_pairs": 0,
     "tee_v_vs_shorts_intersecting_pairs": 0,
     "tee_scoop_vs_shorts_intersecting_pairs": 0,
+    "tights_vs_shorts_intersecting_pairs": 0,
+    "tights_vs_shorts_at_z_x_cm": [],
+    "tee_vs_tights_intersecting_pairs": 0,
+    "sweatshirt_vs_tights_intersecting_pairs": 0,
+    "tee_v_vs_tights_intersecting_pairs": 0,
+    "tee_scoop_vs_tights_intersecting_pairs": 0,
     "sweatshirt_vs_trousers_intersecting_pairs": 0,
     "tee_v_vs_trousers_intersecting_pairs": 0,
     "tee_scoop_vs_trousers_intersecting_pairs": 0
   },
-  "fit_config_sha256": "96d319ad8022430d208b7cc2f2f41fd0e3e41c136c0c1484bb1b41ce19838ff1"
+  "fit_config_sha256": "d06cee7834ff81332956676e485cbdb12380a64b06b80c996318f7a92da3796e"
 }

@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
 /** Opens the change-a-piece panel for a slot (V1.2-04) and waits for it. */
-export async function openSlot(page: Page, slot: 'Top' | 'Bottom') {
+export async function openSlot(page: Page, slot: 'Top' | 'Bottom' | 'Legs') {
   await page.locator(`.wear-row[data-row="${slot}"]`).click();
   await expect(page.getByRole('dialog', { name: slot })).toBeVisible();
 }

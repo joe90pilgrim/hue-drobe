@@ -3,7 +3,7 @@
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build J and B from private/measurements_<person>.json (joe, b) into private/pack, check them, and write each pack
-             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, sweatshirt.glb, manifest.json).
+             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, tights.glb, sweatshirt.glb, manifest.json).
              A pack is written only if every check passes. A person whose file is missing is skipped. A measurements file with
              "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json).
   --only     build just one body (a fixture name such as synthetic_medium, or a person: 'joe' or 'b'); use this to try a change on one body first
@@ -32,7 +32,8 @@ CFG = json.load(open(DEFAULT_CONFIG))  # replaced in main() when --config is giv
 PEOPLE_FIT = json.load(open(HERE / "fit_people.json"))  # V2-03: per-person overrides laid over CFG for J and B only
 PEOPLE = ["joe", "b"]  # private bodies: J and B. A person is built when private/measurements_<person>.json exists.
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
-              "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb"}
+              "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb",
+              "tights": "{n}_tights.glb"}
 
 
 def arg(flag, default=None):
@@ -98,7 +99,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts", "--tights"]).returncode
 
 
 def config_hash(cfg):
@@ -134,7 +135,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "body_only": body_only,
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
-                     "sweatshirt": {"fit": "regular"}},
+                     "sweatshirt": {"fit": "regular"},
+                     "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts"]}},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),
         "fit_overrides": {k: v for k, v in PEOPLE_FIT.get(name, {}).items() if not k.startswith("_")},
