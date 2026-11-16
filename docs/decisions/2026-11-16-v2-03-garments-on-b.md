@@ -75,8 +75,31 @@ What this shows:
 
 Untried: much stronger smoothing (dozens of passes or Blender's Corrective Smooth), or a real bra garment for the tops to sit over.
 
+## Tried: a bra garment (J's call, three attempts, taken out)
+
+A strapless bra on every female body, built like the other garments: the torso shell cut at the underbust (9 cm below the bust apex) and 5 cm above the apex, its cups held in front of a smooth dome, and every top built over the trousers and the bra. New checks: one piece, two openings, the shared body and clearance limits, and no top through the bra.
+
+| Attempt | Change | Bra's own checks | Tops on B |
+| --- | --- | --- | --- |
+| 1 | As above | All pass: 0 body pairs, 0 self pairs, clearance 0.27 cm | 20 failures: tops through the bra (138 to 158 pairs) and the trousers (187 to 191); chest calibration flips between 94.8 and 112 cm |
+| 2 | Stop laying the bra's top 5 cm onto the body while the tops are built (that step exists for the trouser waistband, and it was flattening the upper cups) | All pass | 23 failures: tops through the bra down to 6 to 12 pairs; chest calibration still flips (94.7 or 108 cm); tops through the trousers 190 to 193 |
+| 3 | Tighter curve at the sides of the cups (2.5 cm) | All pass | Identical to attempt 2, so the cup sides were not the cause |
+
+Cross-sections of the exported meshes (attempt 2, `measure_glb.torso_circumference_cm`):
+
+| Height (cm) | 109 | 110 | 111 | 112 | 113 |
+| --- | --- | --- | --- | --- | --- |
+| Body | 89.0 | 91.5 | 90.6 | 89.9 | 147.1 (arms join) |
+| Bra | 98.9 | 101.3 | 101.1 | 61.8 | 58.6 |
+| Tee | 106.6 | 108.4 | 109.1 | 161.2 | 148.0 |
+
+- **The cause, I think:** B is short, and her bust line (110.5 cm) is only 2 to 3 cm below her armpits. The bra's top is a straight cut all the way round, 5 cm above the apex, so under the arms it rides up into the armpit. Smoothing bridges the hollow there, which makes the bra 10 cm bigger round than the body at the bust. The tee is meant to be 99.4 cm at that height, so it cannot fit over the bra, its calibration has no answer, and the tee ends up too small at the waistband (the trousers clash) and folded near the armpit (self-intersections at 115 cm).
+- **Next step if wanted:** shape the bra's top edge the way real bras are cut: high over the cups in front, low (about the bust line or below) under the arms and across the back. Not tried, because of the three-strikes rule.
+
+The patch and the check logs are in `private/experiments/` (`v2-03-bra-garment-attempt3.patch`, `b_bragar1.txt` to `b_bragar3.txt`). Nothing of it is in the tree, and B's pack was rebuilt from the committed code.
+
 ## Next
 
-- J chooses how to go on with the bust: stronger smoothing, a bra garment, wait for V2-07, or accept for now.
+- J chooses how to go on with the bust: a fourth try at the bra with a shaped top edge, wait for V2-07, or accept for now.
 - B's visual sign-off in the viewer, front, side and back (not yet done).
 - Refit the trousers and shorts when B's tape hips arrive.
