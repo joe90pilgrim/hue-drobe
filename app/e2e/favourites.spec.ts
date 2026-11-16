@@ -8,7 +8,7 @@ const QUESTIONS = data.questions.length as number;
 /** Takes the quiz, answering every question with its last option, and waits for the result. */
 async function takeQuiz(page: Page) {
   await page.goto('/#/colours');
-  await page.getByRole('button', { name: 'Start the quiz' }).click();
+  await page.getByRole('button', { name: 'Take the quiz' }).click();
   for (let i = 1; i <= QUESTIONS; i++) {
     await page.getByRole('radio').last().click();
     await page.getByRole('button', { name: i < QUESTIONS ? 'Next' : 'See my result' }).click();
@@ -19,16 +19,15 @@ async function takeQuiz(page: Page) {
 test('saves a palette colour from the quiz, applies it to the tee, and keeps it after a reload', async ({ page }) => {
   await takeQuiz(page);
   // The season's own palette; a close second season (V1.1-07) has its own, hidden, inside #close-second-detail.
-  const mainToggles = page.locator('.palette:not(#close-second-detail *) .fav-toggle');
+  const mainToggles = page.locator('.palette:not(#close-second-detail *) .swatch');
   const first = mainToggles.first();
   const hex = (await first.getAttribute('data-fav'))!.toLowerCase();
   await first.click();
-  await expect(first).toHaveText('Saved');
   await expect(first).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
 
-  await expect(mainToggles.first()).toHaveText('Saved');
+  await expect(mainToggles.first()).toHaveAttribute('aria-pressed', 'true');
 
   await page.getByRole('link', { name: 'Try on' }).click();
 

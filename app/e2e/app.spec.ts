@@ -9,7 +9,7 @@ test('opens on Try on and moves between the three screens', async ({ page }) => 
   await page.getByRole('link', { name: 'My colours' }).click();
   await expect(page).toHaveURL(/#\/colours$/);
   await expect(page.getByRole('heading', { name: 'My colours' })).toBeVisible();
-  await expect(page.getByText('Find your season')).toBeVisible();
+  await expect(page.getByText('Find the colours that suit you')).toBeVisible();
 
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await expect(page).toHaveURL(/#\/wardrobe$/);

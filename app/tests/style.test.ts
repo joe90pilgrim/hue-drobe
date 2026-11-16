@@ -39,7 +39,7 @@ describe('style.css colours', () => {
 
   it('gives every swatch the faint inner edge', () => {
     expect(css).toMatch(/--swatch-edge:\s*inset 0 0 0 1px rgba\(0,\s*0,\s*0,\s*\.1\)/);
-    for (const sel of ['.chip', '.w-tile', '.d-swatch', '.o-slice', '.fav-tile', '.cur-swatch']) {
+    for (const sel of ['.swatch', '.w-tile', '.d-swatch', '.o-slice', '.fav-tile', '.cur-swatch']) {
       const rule = css.split('\n').find((l) => l.startsWith(sel + ' '));
       expect(rule, sel).toContain('var(--swatch-edge)');
     }
