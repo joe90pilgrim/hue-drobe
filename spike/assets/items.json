@@ -1,0 +1,21 @@
+{
+  "_note": "V2-07: the pack items the spike fits. 'name' is the asset folder name inside the pack, per sex of the body base (male|female). 'extra' items are run for comparison but are not one of the six items the ticket asks for. All six packs are CC0 (read from each item's own mhclo header and the pack's packs/<pack>.json; see the report).",
+  "items": [
+    {"id": "shirt", "category": "Shirts 01", "pack": "shirts01", "kind": "clothes", "role": "top",
+     "name": {"male": "toigo_basic_tucked_t-shirt", "female": "toigo_basic_tucked_t-shirt"}},
+    {"id": "shirt_crude", "category": "Shirts 01", "pack": "shirts01", "kind": "clothes", "role": "top", "extra": true,
+     "name": {"male": "elvs_crude_t-shirt_male", "female": "joepal_crude_t-shirt_female"}},
+    {"id": "pants", "category": "Pants 01", "pack": "pants01", "kind": "clothes", "role": "bottom",
+     "name": {"male": "toigo_wool_pants", "female": "toigo_wool_pants"}},
+    {"id": "skirt", "category": "Skirts 01", "pack": "skirts01", "kind": "clothes", "role": "bottom",
+     "name": {"male": "toigo_long_full_skirt", "female": "toigo_long_full_skirt"}},
+    {"id": "skirt_mini", "category": "Skirts 01", "pack": "skirts01", "kind": "clothes", "role": "bottom", "extra": true,
+     "name": {"male": "frankyaye_mini_skirt_01", "female": "frankyaye_mini_skirt_01"}},
+    {"id": "dress", "category": "Dress 01", "pack": "dress01", "kind": "clothes", "role": "dress",
+     "name": {"male": "toigo_shift_dress", "female": "toigo_shift_dress"}},
+    {"id": "shoes", "category": "Shoes 01", "pack": "shoes01", "kind": "clothes", "role": "shoes",
+     "name": {"male": "toigo_ankle_boots_male", "female": "toigo_ankle_boots_female"}},
+    {"id": "hair", "category": "Hair 01", "pack": "hair01", "kind": "hair", "role": "hair",
+     "name": {"male": "cortu_short_messy_hair", "female": "toigo_blunt_bob"}}
+  ]
+}

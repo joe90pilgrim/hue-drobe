@@ -1,6 +1,6 @@
 # V2-07 Spike: free MakeHuman asset packs
 
-**Status:** ready. Run before V3-00, because its result decides whether the cloth experiment is still needed.
+**Status:** done 16 November 2026, awaiting Joe's decisions. Write-up: `docs/decisions/2026-11-16-v2-07-asset-pack-spike.md`. Run before V3-00, because its result decides whether the cloth experiment is still needed.
 
 **Ceiling:** 2 hours (hard stop). The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 **Worker:** Sonnet, high. Mostly loading, fitting, checking and rendering with tools that already exist. Escalate to Opus only on three strikes.

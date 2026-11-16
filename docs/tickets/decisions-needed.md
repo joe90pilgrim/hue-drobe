@@ -36,9 +36,10 @@ No open decisions for 1.2.
 - ~~**V2-05** Individual logins: Can Joe and Beth see each other's avatar and wardrobe?~~ Decided 16 Nov 2026: not for now.
 - ~~**V2-05** Individual logins: Staying signed in: how long before you are asked to sign in again?~~ Decided 16 Nov 2026: 30 days.
 - ~~**V2-06** Profiles and per-person data: Does your data stay on each device, or sync between devices?~~ Decided 16 Nov 2026 (asked during V2-05): sync through a small Firestore database written in the background, with IAP for sign-in (the server writes for the signed-in person; no Firebase sign-in). Changes the blueprint's on-device, no-backend principle. See `docs/decisions/2026-11-16-v2-05-logins.md`.
-- **V2-07** Spike: free MakeHuman asset packs: per category, adopt pack assets, keep our own method, or mix.
-- **V2-07** Spike: free MakeHuman asset packs: is a mix of pack and own garments acceptable if the styles differ slightly?
-- **V2-07** Spike: free MakeHuman asset packs: may any category carry texture (ties to the garment texture decision below)?
+- **V2-07** Spike: free MakeHuman asset packs: per category, adopt pack assets, keep our own method, or mix. Recommendation (spike ran 16 Nov 2026, none of 32 fits passes the hard checks): keep our own method for tops, trousers and skirts; mix for dresses, if body hiding is accepted; use the pack for shoes (V5-01) and hair (V5-04). Hats and jewellery were not tested. See `docs/decisions/2026-11-16-v2-07-asset-pack-spike.md`.
+- **V2-07** Spike: free MakeHuman asset packs: is a mix of pack and own garments acceptable if the styles differ slightly? Recommendation: yes for dresses, shoes and hair, but pack and own garments clip into each other (0 to 2038 face pairs), so a mix needs layering rules first.
+- **V2-07** Spike: free MakeHuman asset packs: may any category carry texture (ties to the garment texture decision below)? Recommendation: hair and shoes only, with textures shrunk to about 1024 px; plain colour for everything else (keeps clothes near 1 MB and recolouring exact).
+- **V2-07** Spike: free MakeHuman asset packs: may a pack garment hide the body underneath it (MPFB's delete group), with the hard body-clipping check changed to test the body as drawn? Recommendation: yes. It decides the dress and shoes.
 - **V2-08** Bug: the tops show a point at each breast: if the fix is a bra garment, is it shown in the app when no top is worn? Recommendation: yes, as part of the body, with no menu entry.
 
 ## v3-loose-clothes
