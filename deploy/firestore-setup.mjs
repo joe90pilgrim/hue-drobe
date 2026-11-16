@@ -45,7 +45,7 @@ export async function setUpFirestore({ project, region }) {
 
   const email = `${RUN_ACCOUNT}@${project}.iam.gserviceaccount.com`;
   if (g(['iam', 'service-accounts', 'describe', email], { inherit: false, quietErrors: true }).status !== 0) {
-    if (g(['iam', 'service-accounts', 'create', RUN_ACCOUNT, '--display-name=Hue-drobe server']).status !== 0) fail('create the server service account');
+    if (g(['iam', 'service-accounts', 'create', RUN_ACCOUNT, '--display-name=Hue-drobe-server']).status !== 0) fail('create the server service account');
   }
   if (g(['projects', 'add-iam-policy-binding', project, `--member=serviceAccount:${email}`, '--role=roles/datastore.user', '--condition=None'], { inherit: false }).status !== 0) {
     fail('give the server service account Firestore access');
