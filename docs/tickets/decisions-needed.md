@@ -42,7 +42,7 @@ No open decisions for 1.2.
 - ~~**V2-07** Spike: free MakeHuman asset packs: may a pack garment hide the body underneath it (MPFB's delete group), with the hard body-clipping check changed to test the body as drawn? Recommendation: yes. It decides the dress and shoes.~~ **Decided 16 Nov 2026:** as recommended. See `docs/decisions/2026-11-16-v2-07-joe-decisions.md`.
 - ~~**V2-08** Bug: the tops show a point at each breast: if the fix is a bra garment, is it shown in the app when no top is worn? Recommendation: yes, as part of the body, with no menu entry.~~ **Closed 16 Nov 2026:** no bra garment was needed. Joe agreed the "no point" limits instead (`spike/tolerances.json` `bust_shape`). See `docs/decisions/2026-11-16-v2-08-bust-shape.md`.
 
-- **V2-09** Archive the free asset packs: where to keep the zips? Recommendation: a private Google Cloud Storage bucket plus a copy on Joe's machine.
+- ~~**V2-09** Archive the free asset packs: where to keep the zips? Recommendation: a private Google Cloud Storage bucket plus a copy on Joe's machine.~~ **Decided 16 Nov 2026:** as recommended. Bucket `huedrobe-joe-4821-asset-packs`, europe-west2.
 
 ## v3-loose-clothes
 

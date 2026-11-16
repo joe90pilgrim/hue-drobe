@@ -54,3 +54,7 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Use the real Python, not the Microsoft Store `python` alias.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done and what's left.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start V3-06.
+
+## Done (16 Nov 2026)
+All eight packs downloaded, CRC-tested and hashed; stored in `assets/packs/zips/` and `gs://huedrobe-joe-4821-asset-packs/asset-packs/` (europe-west2), cloud copies verified identical. Six spike hashes match; see `assets/packs/MANIFEST.md`.
+Note: `shoes01` has one CC-BY item (`culturalibre_heroine_boots_4`); the rest are CC0.

@@ -11,3 +11,6 @@ app/test-results/
 app/playwright-report/
 pack/out/
 deploy/out/
+
+# V2-09 archived asset-pack zips
+assets/packs/zips/

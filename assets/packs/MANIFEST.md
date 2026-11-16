@@ -1,0 +1,27 @@
+# Archived MakeHuman asset packs (V2-09)
+
+Our own verified copies of the free MakeHuman community packs, kept because the community site is shutting down. Downloaded whole on **16 November 2026** from `https://files.makehumancommunity.org/asset_packs/<pack>/<pack>_cc0.zip`. Every zip passes a CRC test (`zipfile.testzip()`).
+
+Stored in two places (zips are never committed):
+
+- Local: `assets/packs/zips/` (git-ignored).
+- Cloud: `gs://huedrobe-joe-4821-asset-packs/asset-packs/` (europe-west2, same region as Cloud Run; uniform access, public access prevention enforced). Downloaded back and compared: identical to the local copies.
+
+Rebuild or check with `python -I assets/packs/fetch_packs.py` (`--check` to verify only, `--upload gs://...` to copy to the bucket).
+
+| Pack | Size (bytes) | sha256 | Licence (per pack json) | Use |
+| --- | ---: | --- | --- | --- |
+| shirts01 | 24,479,483 | `a5a723b0e84a109bb190fcfeac7f1de4138d875da3e30fe5b3340eac9f38bcd3` | CC0 (10 items) | Tops. Spike used `joepal_crude_t-shirt_female` / `elvs_crude_t-shirt_male`. |
+| pants01 | 21,908,723 | `e4e0ec60db34f279be291a83cfd7b342a7c5cf09bb7676682a5f39f4f6ac4ad9` | CC0 (4 items) | Trousers and shorts. |
+| skirts01 | 29,554,534 | `293fa0c15e28e8dcea8dfff20cae31aa4b0d1268a6e6ba0a53a92ebb0f36c882` | CC0 (6 items) | Skirts. |
+| dress01 | 46,598,791 | `f49ba54a3c93acd3c3307cc5a96cfc65daf8abfed9212a7e580791d821c9e93a` | CC0 (13 items) | Dresses. Spike used `toigo_shift_dress`. |
+| shoes01 | 82,953,569 | `ded3f70428505eabbf1f6d7b5f61196a7366ef20757103d276ad0ed336c35ada` | CC0 except one item, see below (23 items) | Shoes. Spike used `toigo_ankle_boots_male` / `_female`. |
+| hair01 | 227,775,853 | `49445d69848a313ec41a9970f6a0fe4bcf925c9f1c6ef40a76f119c2e07940c9` | CC0 (25 items) | Hair. Spike used `cortu_short_messy_hair` / `toigo_blunt_bob`. |
+| hats01 | 6,636,192 | `97b70d7bd90e74ee87a49faeb7c4a1b2762b311902974db575851daaae05b50e` | CC0 (6 items) | Hats, for later tickets. |
+| underwear01 | 60,561,755 | `8c3b51cf18d26ea096cb92b79a7a379d1a00273ef029b5779715486180fd47d5` | CC0 (19 items) | Underwear, stockings, sleeves, for later tickets. |
+
+The six spike packs match the sha256 prefixes recorded in `docs/decisions/2026-11-16-v2-07-asset-pack-spike.md`.
+
+## Licence exception
+
+`shoes01_cc0.zip` is not wholly CC0. In `packs/shoes01.json`, `culturalibre_heroine_boots_4` (author culturalibre) is **CC-BY**, which needs credit. Do not use that item unless we add the credit. The other 22 shoes are CC0. All other packs list CC0 for every item.
