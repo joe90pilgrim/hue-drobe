@@ -24,24 +24,37 @@ function remember(person: string) {
   }
 }
 
-/**
- * Asks the server who is signed in. Falls back to the person last seen on this device when the server cannot be reached
- * (offline, or an expired sign-in that redirects to Google). Returns null when neither is known.
- */
-export async function findPerson(): Promise<string | null> {
+/** How long the app waits for /api/me before starting as the remembered person. Online it answers in well under this. */
+export const PERSON_WAIT_MS = 1500;
+
+/** Asks the server who is signed in. Null when it cannot say (offline, or an expired sign-in that redirects to Google). */
+async function askServer(): Promise<string | null> {
   try {
     const res = await fetch('./api/me', { cache: 'no-store', credentials: 'same-origin' });
-    if (res.ok) {
-      const person = cleanPerson(((await res.json()) as { person?: unknown }).person);
-      if (person) {
-        remember(person);
-        return person;
-      }
-    }
+    if (!res.ok) return null;
+    const person = cleanPerson(((await res.json()) as { person?: unknown }).person);
+    if (person) remember(person);
+    return person;
   } catch {
-    /* offline or signed out: use the remembered person */
+    return null;
   }
-  return remembered();
+}
+
+/**
+ * Who is signed in. The server's answer when it comes quickly; otherwise the person last seen on this device, so a phone
+ * whose network hangs (aeroplane mode) still opens at once. If the server later names someone else, `onLateChange` runs
+ * (the app reloads as them). With no one remembered it waits for the server, and returns null if the server cannot say.
+ */
+export async function findPerson(onLateChange: () => void = () => location.reload(), waitMs = PERSON_WAIT_MS): Promise<string | null> {
+  const known = remembered();
+  const server = askServer();
+  if (!known) return server;
+  const first = await Promise.race([server, new Promise<undefined>((r) => setTimeout(r, waitMs))]);
+  if (first) return first;
+  void server.then((p) => {
+    if (p && p !== known) onLateChange();
+  });
+  return known;
 }
 
 let current: string | null = null;

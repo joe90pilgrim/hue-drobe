@@ -78,16 +78,40 @@ self.addEventListener('activate', (e) => {
       .then(() => self.clients.claim())
   );
 });
-// Pages and the pack: ask the server first (so a new deploy shows up, and an expired sign-in goes to Google), use the cache when offline.
-async function networkFirst(req, name) {
-  const cache = await caches.open(name);
-  try {
-    const res = await fetch(req);
-    if (name === PACK_CACHE ? isGlb(res) : res.ok) await cache.put(req, res.clone());
+// How long a page waits for the server before the cached copy is used. A phone in aeroplane mode can leave a request
+// hanging rather than failing, so waiting for the failure could take minutes (V2-06 phone check).
+const PAGE_WAIT_MS = 2500;
+const fallbackPage = async (req) => (await caches.match(req, { ignoreSearch: true })) || (await caches.match('./'));
+// Pages: ask the server first (so a new deploy shows up, and an expired sign-in goes to Google). Use the cache when the
+// request fails, or when it is slow and a cached copy exists. A slow answer still updates the cache when it arrives.
+async function pageFirst(req) {
+  const cache = await caches.open(CACHE);
+  const network = fetch(req).then(async (res) => {
+    if (res.ok) await cache.put(req, res.clone());
     return res;
-  } catch {
-    return (await cache.match(req, { ignoreSearch: true })) || (req.mode === 'navigate' && (await caches.match('./'))) || Response.error();
+  });
+  network.catch(() => {});
+  if (!navigator.onLine) return (await fallbackPage(req)) || network.catch(() => Response.error());
+  const slow = new Promise((resolve) => setTimeout(resolve, PAGE_WAIT_MS, 'slow'));
+  const first = await Promise.race([network, slow]).catch(() => 'failed');
+  if (first !== 'slow' && first !== 'failed') return first;
+  return (await fallbackPage(req)) || network.catch(() => Response.error());
+}
+// The pack: the cached copy at once, so the avatar shows offline without waiting, then a fresh copy in the background
+// for next time (packs change only when rebuilt). With nothing cached yet, it waits for the server.
+async function packCacheFirst(e) {
+  const req = e.request;
+  const cache = await caches.open(PACK_CACHE);
+  const network = fetch(req).then(async (res) => {
+    if (isGlb(res)) await cache.put(req, res.clone());
+    return res;
+  });
+  const cached = await cache.match(req, { ignoreSearch: true });
+  if (cached) {
+    e.waitUntil(network.catch(() => {}));
+    return cached;
   }
+  return network.catch(() => Response.error());
 }
 // Built files have hashed names, so the cached copy is always right.
 async function cacheFirst(req) {
@@ -98,8 +122,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   // Who is signed in is never cached: the page falls back to the person it remembers when this fails.
   if (new URL(req.url).pathname.includes('/api/')) return;
-  if (new URL(req.url).pathname.includes('/pack/')) e.respondWith(networkFirst(req, PACK_CACHE));
-  else if (req.mode === 'navigate') e.respondWith(networkFirst(req, CACHE));
+  if (new URL(req.url).pathname.includes('/pack/')) e.respondWith(packCacheFirst(e));
+  else if (req.mode === 'navigate') e.respondWith(pageFirst(req));
   else e.respondWith(cacheFirst(req));
 });
 `,
