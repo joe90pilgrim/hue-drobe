@@ -17,6 +17,14 @@ Every open implementation decision across the roadmap tickets, by version. Tick 
 - **V1.1-07** Show a close second season: Wording and threshold. What should the line say, and how close counts as borderline? Recommendation: show it when the runner-up is within 15% of the top score.
 - **V1.1-07** Show a close second season: Can you save favourites (V1.1-01) from the second season's palette too? Recommendation: yes.
 
+## v1.2-redesign
+
+- ~~**V1.2-00** Redesign brief: Which issues are in scope for 1.2, and which wait?~~ Decided 15 Nov 2026: all of them. Lighting, wardrobe search and undo go to the ideas list (19 to 21).
+- ~~**V1.2-00** Redesign brief: Does the visual style change, or only layout and flow?~~ Decided 15 Nov 2026: keep the look, change to true neutrals with ink, add the name, logo and Bricolage Grotesque headings. See `docs/decisions/2026-11-15-v1.2-design-decisions.md`.
+- ~~**V1.2-05** Colour chooser: In 1.2 or later?~~ Decided 15 Nov 2026: in 1.2, with the colour code field.
+
+No open decisions for 1.2.
+
 ## v2-beth-joins
 
 - **V2-01** Beth's measurements and photos: Beth agrees to what is stored and where, and to her avatar being on the hosted app behind its password.

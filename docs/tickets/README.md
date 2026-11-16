@@ -46,6 +46,22 @@ Versions 1.1 and 2 are full tickets. Later versions are outlines, marked as such
 | V1.1-06 | [Back up and restore your data (recommended addition)](v1.1-make-it-mine/V1.1-06-backup.md) | V1.1-02, V1.1-03 | Sonnet, low |
 | V1.1-07 | [Show a close second season](v1.1-make-it-mine/V1.1-07-borderline-quiz-result.md) | MVP quiz | Haiku, high |
 
+### Version 1.2: Redesign
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V1.2-00 | [Redesign brief](v1.2-redesign/V1.2-00-redesign-brief.md) (done) | Version 1.1 done | No agent: Joe with a design specialist |
+| V1.2-01 | [Look and feel foundations](v1.2-redesign/V1.2-01-look-and-feel.md) (done) | V1.1 done | Haiku, high |
+| V1.2-02 | [App shell and navigation](v1.2-redesign/V1.2-02-app-shell.md) | V1.2-01 | Sonnet, medium |
+| V1.2-03 | [Try on layout](v1.2-redesign/V1.2-03-try-on-layout.md) | V1.2-02 | Sonnet, medium |
+| V1.2-04 | [Change a piece](v1.2-redesign/V1.2-04-change-a-piece.md) | V1.2-03 | Sonnet, medium |
+| V1.2-05 | [Colour chooser](v1.2-redesign/V1.2-05-colour-chooser.md) | V1.2-04 | Sonnet, medium |
+| V1.2-06 | [Wardrobe](v1.2-redesign/V1.2-06-wardrobe.md) | V1.2-02 | Sonnet, medium |
+| V1.2-07 | [My colours](v1.2-redesign/V1.2-07-my-colours.md) | V1.2-02 | Sonnet, low |
+| V1.2-08 | [Final check against the designs](v1.2-redesign/V1.2-08-final-check.md) | V1.2-01 to 07 | Haiku, high |
+
+Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1.2-01 to 07 are pieces B1 to B7 in `brief.md`). Work them in number order; V1.2-06 and V1.2-07 may go before V1.2-03 if wanted, since they only need V1.2-02. Decisions: `docs/decisions/2026-11-15-v1.2-design-decisions.md`.
+
 ### Version 2: Beth joins
 
 | # | Ticket | Depends on | Worker |

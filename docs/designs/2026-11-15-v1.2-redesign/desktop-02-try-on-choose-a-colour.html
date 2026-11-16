@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hue-drobe 1.2 – Desktop – Try on, choosing a colour</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:inherit}a:hover{color:#000}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:28px;border-radius:14px;margin:0;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:3px solid #161616;box-shadow:0 1px 4px rgba(0,0,0,.3);cursor:pointer}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:3px solid #161616;cursor:pointer}
+</style>
+<style></style>
+</head>
+<body>
+<div class="frame"><div style="min-height: 800px; display: flex; flex-wrap: wrap; background: #F5F5F5; color: #161616; font-family: Inter, system-ui, sans-serif">
+
+<aside style="flex: 1 1 232px; box-sizing: border-box; background: #FFFFFF; border-right: 1px solid #E2E2E2; padding: 20px 12px; display: flex; flex-direction: column; gap: 24px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 0 10px">
+<span aria-hidden="true" style="width: 26px; height: 26px; border-radius: 50%; background: conic-gradient(#E4572E, #F3A712, #A8C256, #29A19C, #3B6FB6, #8E5BB5, #E4572E); display: flex; align-items: center; justify-content: center"><span style="width: 11px; height: 11px; border-radius: 50%; background: #FFFFFF"></span></span>
+<span style="font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 23px; font-weight: 700; letter-spacing: -0.01em">Hue-drobe</span>
+</div>
+<nav aria-label="Main" style="display: flex; flex-direction: column; gap: 4px">
+<a href="desktop-01-try-on.html" aria-current="page" style="height: 44px; padding: 0 12px; border-radius: 12px; background: #EDEDED; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 15px; font-weight: 600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 6a2 2 0 1 1 3 1.7c-.6.4-1 .9-1 1.6V10"></path><path d="M12 10 3 17h18z"></path></svg>Try on</a>
+<a href="desktop-04-wardrobe-clothes.html" style="height: 44px; padding: 0 12px; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 15px; color: #3D3D3D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg>Wardrobe</a>
+<a href="desktop-08-my-colours-result.html" style="height: 44px; padding: 0 12px; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 15px; color: #3D3D3D"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><circle cx="8.5" cy="10" r="1.3"></circle><circle cx="12" cy="7.5" r="1.3"></circle><circle cx="15.5" cy="10" r="1.3"></circle></svg>My colours</a>
+</nav>
+<a href="desktop-03-back-up.html" style="margin-top: auto; height: 44px; padding: 0 12px; border-radius: 12px; display: flex; align-items: center; gap: 12px; text-decoration: none; font-size: 14px; color: #3D3D3D"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg>Back up and restore</a>
+</aside>
+
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 24px; display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch">
+<div style="flex: 999 1 420px; min-height: 752px; position: relative; border-radius: 24px; background: #E3E3E3; display: flex; align-items: center; justify-content: center">
+<svg width="320" height="672" viewBox="0 0 200 420" role="img" aria-label="Avatar, changing colour as you choose">
+<ellipse cx="100" cy="404" rx="72" ry="8" fill="#000" fill-opacity="0.08"></ellipse>
+<path d="M56 88 C44 122 40 172 38 232" stroke="#BDBDBD" stroke-width="17" stroke-linecap="round" fill="none"></path>
+<path d="M144 88 C156 122 160 172 162 232" stroke="#BDBDBD" stroke-width="17" stroke-linecap="round" fill="none"></path>
+<ellipse cx="100" cy="36" rx="21" ry="26" fill="#BDBDBD"></ellipse>
+<rect x="91" y="56" width="18" height="20" rx="5" fill="#BDBDBD"></rect>
+<path d="M62 194 L138 194 L142 390 L108 390 L100 250 L92 390 L58 390 Z" fill="#6B4F3A"></path>
+<ellipse cx="76" cy="396" rx="19" ry="6" fill="#9E9E9E"></ellipse>
+<ellipse cx="124" cy="396" rx="19" ry="6" fill="#9E9E9E"></ellipse>
+<path id="tee" d="M72 72 Q100 82 128 72 L160 90 L152 126 L136 118 L138 206 L62 206 L64 118 L48 126 L40 90 Z" fill="#1e2959"></path>
+<ellipse cx="100" cy="76" rx="13" ry="5" fill="#BDBDBD"></ellipse>
+</svg>
+<p style="position: absolute; left: 0; right: 0; bottom: 14px; margin: 0; text-align: center; font-size: 13px; color: #4F4F4F">Drag to turn · scroll to zoom</p>
+</div>
+
+<section aria-label="What you're wearing" style="flex: 1 1 360px; max-width: 420px; box-sizing: border-box; background: #FFFFFF; border: 1px solid #E2E2E2; border-radius: 24px; padding: 20px; display: flex; flex-direction: column; gap: 14px">
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', Inter, sans-serif; font-size: 22px; font-weight: 700">What you're wearing</h1>
+
+<div style="display: flex; flex-direction: column; gap: 12px; padding: 14px; border-radius: 16px; background: #F7F7F7; border: 1px solid #E8E8E8">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<a href="desktop-01-try-on.html" style="min-height: 36px; display: flex; align-items: center; gap: 4px; text-decoration: none; font-size: 16px; font-weight: 600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"></path></svg>Top colour</a>
+<a href="desktop-01-try-on.html" style="min-height: 36px; padding: 0 4px; display: flex; align-items: center; font-size: 14px; font-weight: 600; text-decoration: none">Done</a>
+</div>
+
+<div style="display: flex; align-items: center; gap: 8px">
+<span id="swatch" role="img" aria-label="Chosen colour" style="width: 44px; height: 44px; flex: 0 0 44px; border-radius: 10px; background: #1e2959; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.1)"></span>
+<label style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5C5C5C">Colour code</span>
+<input type="text" value="#1E2959" id="code" maxlength="7" spellcheck="false" style="width: 100%; box-sizing: border-box; height: 28px; padding: 0; border: 0; border-bottom: 1px solid #D6D6D6; font: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #161616; background: transparent">
+</label>
+<button type="button" aria-pressed="true" id="fav" style="height: 40px; padding: 0 12px; border: 1px solid #161616; border-radius: 10px; background: #FFFFFF; color: #161616; font: inherit; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="#161616" stroke="#161616" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"></path></svg>Favourite</button>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 500; color: #5C5C5C">Favourites</span>
+<div role="group" aria-label="Favourite colours" style="display: flex; gap: 8px; flex-wrap: wrap">
+
+<button type="button" aria-label="Navy" title="Navy" data-hex="#1f2a5a" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #1f2a5a; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="True red, from your palette" title="True red, from your palette" data-hex="#ce1249" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #ce1249; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Royal blue, from your palette" title="Royal blue, from your palette" data-hex="#0b5cad" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #0b5cad; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Emerald, from your palette" title="Emerald, from your palette" data-hex="#108a5d" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #108a5d; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Charcoal" title="Charcoal" data-hex="#2b2b2b" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #2b2b2b; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span style="font-size: 13px; font-weight: 500; color: #5C5C5C">Basics</span>
+<div role="group" aria-label="Basic colours" style="display: flex; gap: 8px; flex-wrap: wrap">
+
+<button type="button" aria-label="White" title="White" data-hex="#ffffff" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #ffffff; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Cream" title="Cream" data-hex="#f2ede3" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #f2ede3; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Beige" title="Beige" data-hex="#c8b89a" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #c8b89a; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Mid grey" title="Mid grey" data-hex="#8c8c8c" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #8c8c8c; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Black" title="Black" data-hex="#1a1a1a" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #1a1a1a; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+<button type="button" aria-label="Brown" title="Brown" data-hex="#5b4636" style="width: 40px; height: 40px; border: 0; border-radius: 9px; background: #5b4636; box-shadow: inset 0 0 0 1px rgba(0,0,0,0.12)"></button>
+
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<label style="display: flex; flex-direction: column; gap: 4px">
+<span style="font-size: 13px; font-weight: 500; color: #3D3D3D">Colour</span>
+<input type="range" min="0" max="359" value="229" id="h" style="background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)">
+</label>
+<label style="display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 500; color: #3D3D3D">Strength</span><span style="color: #5C5C5C">greyer to richer</span></span>
+<input type="range" min="0" max="100" value="66" id="s" style="background: linear-gradient(to right, #595959, #001059)">
+</label>
+<label style="display: flex; flex-direction: column; gap: 4px">
+<span style="display: flex; justify-content: space-between; font-size: 13px"><span style="font-weight: 500; color: #3D3D3D">Lightness</span><span style="color: #5C5C5C">darker to lighter</span></span>
+<input type="range" min="0" max="100" value="35" id="v" style="background: linear-gradient(to right, #000000, #5776ff)">
+</label>
+</div>
+</div>
+
+<button type="button" style="display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 0 14px; border: 1px solid #E2E2E2; border-radius: 16px; background: #FFFFFF; color: #161616; font: inherit; text-align: left">
+<span style="width: 36px; height: 36px; flex: 0 0 36px; border-radius: 9px; background: #6B4F3A"></span>
+<span style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 12px; color: #5C5C5C">Bottom</span><span style="font-size: 15px; font-weight: 600">Trousers</span></span>
+<span style="font-size: 14px; color: #5C5C5C">Change</span>
+</button>
+
+<button type="button" style="margin-top: auto; height: 48px; border: 0; border-radius: 14px; background: #161616; color: #FFFFFF; font: inherit; font-size: 15px; font-weight: 600">Save outfit</button>
+</section>
+</main>
+</div></div>
+<script>const CHOOSER = {"size": 40, "radius": 9, "ringBg": "#F7F7F7"};
+(function () {
+  const st = { h: 229, s: 66, v: 35, favs: ['#1f2a5a', '#ce1249', '#0b5cad', '#108a5d', '#2b2b2b'] };
+  const NAMES = { '#1f2a5a': 'Navy', '#ce1249': 'True red, from your palette', '#0b5cad': 'Royal blue, from your palette', '#108a5d': 'Emerald, from your palette', '#2b2b2b': 'Charcoal', '#ffffff': 'White', '#f2ede3': 'Cream', '#c8b89a': 'Beige', '#8c8c8c': 'Mid grey', '#1a1a1a': 'Black', '#5b4636': 'Brown' };
+  const $ = (id) => document.getElementById(id);
+  function hsvToHex(h, s, v) {
+    s /= 100; v /= 100;
+    const f = (n) => { const k = (n + h / 60) % 6; return v - v * s * Math.max(0, Math.min(k, 4 - k, 1)); };
+    const to = (x) => Math.round(x * 255).toString(16).padStart(2, '0');
+    return '#' + to(f(5)) + to(f(3)) + to(f(1));
+  }
+  function hexToHsv(hex) {
+    const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+    let h = 0;
+    if (d) {
+      if (max === r) h = ((g - b) / d) % 6; else if (max === g) h = (b - r) / d + 2; else h = (r - g) / d + 4;
+      h *= 60; if (h < 0) h += 360;
+    }
+    return { h: Math.round(h), s: max ? Math.round((d / max) * 100) : 0, v: Math.round(max * 100) };
+  }
+  const favGroup = document.querySelector('[aria-label="Favourite colours"]');
+  function tileHtml(x) {
+    return '<button type="button" data-hex="' + x + '" aria-label="' + (NAMES[x] || x) + '" style="width: ' + CHOOSER.size + 'px; height: ' + CHOOSER.size + 'px; border: 0; border-radius: ' + CHOOSER.radius + 'px; background: ' + x + '"></button>';
+  }
+  function draw() {
+    const hex = hsvToHex(st.h, st.s, st.v);
+    $('swatch').style.background = hex;
+    $('tee').setAttribute('fill', hex);
+    if (document.activeElement !== $('code')) $('code').value = hex.toUpperCase();
+    $('h').value = st.h; $('s').value = st.s; $('v').value = st.v;
+    $('s').style.background = 'linear-gradient(to right, ' + hsvToHex(st.h, 0, st.v) + ', ' + hsvToHex(st.h, 100, st.v) + ')';
+    $('v').style.background = 'linear-gradient(to right, #000000, ' + hsvToHex(st.h, st.s, 100) + ')';
+    favGroup.innerHTML = st.favs.map(tileHtml).join('');
+    document.querySelectorAll('[data-hex]').forEach((b) => {
+      const on = b.dataset.hex === hex;
+      b.style.boxShadow = on ? '0 0 0 2px ' + CHOOSER.ringBg + ', 0 0 0 4px #161616' : 'inset 0 0 0 1px rgba(0,0,0,0.12)';
+      b.setAttribute('aria-label', (NAMES[b.dataset.hex] || b.dataset.hex) + (on ? ', chosen' : ''));
+    });
+    const isFav = st.favs.includes(hex);
+    const fav = $('fav');
+    fav.setAttribute('aria-pressed', String(isFav));
+    fav.style.border = isFav ? '1px solid #161616' : '1px solid #D6D6D6';
+    fav.querySelector('svg').setAttribute('fill', isFav ? '#161616' : 'none');
+  }
+  ['h', 's', 'v'].forEach((k) => $(k).addEventListener('input', (e) => { st[k] = +e.target.value; draw(); }));
+  $('code').addEventListener('input', (e) => {
+    let t = e.target.value.trim();
+    if (t && t[0] !== '#') t = '#' + t;
+    if (/^#[0-9a-fA-F]{6}$/.test(t)) { Object.assign(st, hexToHsv(t.toLowerCase())); draw(); }
+  });
+  $('code').addEventListener('blur', draw);
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-hex]');
+    if (b) { Object.assign(st, hexToHsv(b.dataset.hex)); draw(); }
+  });
+  $('fav').addEventListener('click', () => {
+    const hex = hsvToHex(st.h, st.s, st.v);
+    st.favs = st.favs.includes(hex) ? st.favs.filter((x) => x !== hex) : st.favs.concat(hex);
+    draw();
+  });
+  draw();
+})();
+</script>
+</body>
+</html>

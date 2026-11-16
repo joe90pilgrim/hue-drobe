@@ -11,6 +11,7 @@ Joe's avatar on phone and desktop; tee, trousers and sweatshirt with a colour pi
 | Version | Theme | Ideas (number from the ideas list) |
 | --- | --- | --- |
 | 1.1 | Make it mine | 10 favourite colours in the picker, 1 preset outfits, 9 saved clothes library, 4 other necklines, shorts |
+| 1.2 | Redesign | UI and navigation improvements from Joe's screenshots and issues list |
 | 2 | Beth joins | 7 woman's body, 16 individual logins, tights |
 | 3 | Loose clothes and layers | Dresses, skirts, shirts, jackets, coats, 2 multiple top layers |
 | 4 | Your real wardrobe | 15 photo to nearest item, 5 URL to nearest item, 12 create a packing list |
@@ -24,6 +25,13 @@ Cheap, because it reuses what the MVP already does.
 - **Preset outfits (1) and saved clothes library (9):** save a garment in a colour as a named item ("navy tee"), and save combinations of items as outfits. Both are simple saving features.
 - **Other necklines (4):** V-neck and scoop as variations of the tee template.
 - **Shorts:** the trouser template with a shorter leg.
+
+### 1.2 Redesign
+Comes before version 2 so the new screens for logins and profiles are built once, in the new design, and so Beth's first experience is the improved app.
+- Scope comes from Joe's screenshots and UX/UI issues, worked through with a design specialist; the resulting brief becomes the 1.2 tickets.
+- UI and navigation only, no new features. The navigation leaves room for profiles (v2) and more clothing types (v3) without building them.
+- Every ticket has a ceiling and Joe's visual sign-off, like the rest.
+- Designed and ticketed 15 Nov 2026: brief and designs in `docs/designs/2026-11-15-v1.2-redesign/`, tickets V1.2-01 to V1.2-08 in `docs/tickets/v1.2-redesign/`. Three findings went to the ideas list rather than 1.2 (19 to 21).
 
 ### 2 Beth joins
 The product was always meant for two people, so this comes early.
@@ -84,3 +92,7 @@ Ideas are numbered in the order they were raised, not by priority. New ideas get
 15. Upload a photo to find the nearest item in the library (4)
 16. Individual logins (2)
 17. Starter outfits that come with the app, as well as saved ones (unassigned, to consider later)
+18. Redesign of the UI and navigation (1.2)
+19. Neutral lighting for the avatar: the hemisphere light's ground colour is warm and tints the lower part of each garment (unassigned; found in the 1.2 redesign, a viewer change)
+20. Search and more filters in the Wardrobe, once there are enough clothes to need them (unassigned; from the 1.2 redesign)
+21. Undo after deleting a piece or outfit, in place of the confirmation (unassigned; from the 1.2 redesign)
