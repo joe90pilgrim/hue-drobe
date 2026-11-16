@@ -22,5 +22,5 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Every garment passes the hard mesh checks on Beth, Joe and the synthetic bodies.
 - Beth's visual sign-off: no body showing through, front, side and back.
 
-## Progress (16 Nov 2026, not closed)
-Same templates and fit per person decided (`pack/fit_people.json`, both entries empty). Every garment passes the hard checks on B, J and the six synthetic bodies; J's pack is byte-identical. Open: B's visual sign-off, and the tops trace B's bust and navel (a fix failed three times). See `docs/decisions/2026-11-16-v2-03-garments-on-b.md`.
+## Done (16 Nov 2026, accepted by Joe with a known bug)
+Same templates as Joe, and fit per person (`pack/fit_people.json`, both entries empty). Every garment passes the hard mesh checks on B, Joe and the six synthetic bodies, and Joe's pack is byte-identical. No body shows through, front, side or back (checked by Claude in the spike viewer; B has not looked yet). Joe accepted the tops tracing B's bust for now; it is bug [V2-08](V2-08-bust-shape-bug.md). Record: `docs/decisions/2026-11-16-v2-03-garments-on-b.md`.

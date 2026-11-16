@@ -94,7 +94,7 @@ Cross-sections of the exported meshes (attempt 2, `measure_glb.torso_circumferen
 | Tee | 106.6 | 108.4 | 109.1 | 161.2 | 148.0 |
 
 - **The cause, I think:** B is short, and her bust line (110.5 cm) is only 2 to 3 cm below her armpits. The bra's top is a straight cut all the way round, 5 cm above the apex, so under the arms it rides up into the armpit. Smoothing bridges the hollow there, which makes the bra 10 cm bigger round than the body at the bust. The tee is meant to be 99.4 cm at that height, so it cannot fit over the bra, its calibration has no answer, and the tee ends up too small at the waistband (the trousers clash) and folded near the armpit (self-intersections at 115 cm).
-- **Next step if wanted:** shape the bra's top edge the way real bras are cut: high over the cups in front, low (about the bust line or below) under the arms and across the back. Not tried, because of the three-strikes rule.
+- **Next step tried:** shape the bra's top edge the way real bras are cut, high over the cups and low under the arms (the fourth try, below).
 
 ### Fourth try (approved by J): shaped top edge
 
@@ -108,6 +108,6 @@ What a bra would need: real cup geometry (two rounded cups, each shaped around i
 
 ## Next
 
-- J chooses how to go on with the bust: accept for now (B signs off on "no body showing through"), or wait for V2-07 and look for a ready-made bra or tops there.
-- B's visual sign-off in the viewer, front, side and back (not yet done).
+- **Decided (J, 16 Nov 2026): accept for now.** V2-03 is closed with the bust shape as bug V2-08 (`docs/tickets/v2-beth-joins/V2-08-bust-shape-bug.md`), for Fable, last in version 2 after V2-07.
+- B to look at her garments in the viewer, front, side and back (not yet done).
 - Refit the trousers and shorts when B's tape hips arrive.

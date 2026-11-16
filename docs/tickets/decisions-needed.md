@@ -36,6 +36,7 @@ No open decisions for 1.2.
 - **V2-05** Individual logins: Can Joe and Beth see each other's avatar and wardrobe? For example, to plan matching outfits. Recommendation: yes, read-only.
 - **V2-05** Individual logins: Staying signed in: how long before you are asked to sign in again?
 - **V2-06** Profiles and per-person data: Does your data stay on each device, or sync between devices? Staying on the device keeps the blueprint's 'no backend' principle, but your phone and laptop show different wardrobes. Syncing needs a database (for example Firestore) and Firebase sign-in (V2-05 option B). Recommendation: stay on the device for v2, and use backup (V1.1-06) to move data; revisit syncing at v4.
+- **V2-08** Bug: the tops show a point at each breast: if the fix is a bra garment, is it shown in the app when no top is worn? Recommendation: yes, as part of the body, with no menu entry.
 
 ## v3-loose-clothes
 
