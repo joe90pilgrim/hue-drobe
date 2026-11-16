@@ -9,12 +9,15 @@
 //   PUBLIC_DIR     folder to serve (default ./public next to this file)
 //   PORT           port to listen on (Cloud Run sets this; default 8080)
 //   LOCAL_PERSON   local trial only: act as this person without IAP. Refused on Cloud Run (K_SERVICE set).
+//                  Synced data then goes to data.json next to this file.
+//   FIRESTORE_PROJECT  project whose Firestore holds synced data (V2-06b; deploy.mjs sets it). Without it, no sync.
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
 import { createPublicKey, verify } from 'node:crypto';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { MAX_VALUE_BYTES, SYNC_KEYS, createFileStore, createFirestoreStore } from './datastore.mjs';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -149,7 +152,23 @@ function kidOf(token) {
   }
 }
 
-export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson }) {
+/** Reads a request body as text, or null once it passes `limit` bytes. */
+function readBody(req, limit) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    // Past the limit the rest is read and dropped (not kept), so the 413 answer can still be sent.
+    req.on('data', (c) => {
+      size += c.length;
+      if (size <= limit) chunks.push(c);
+    });
+    req.on('end', () => resolve(size > limit ? null : Buffer.concat(chunks).toString('utf8')));
+    req.on('error', reject);
+  });
+}
+
+/** `store` (deploy/datastore.mjs) holds synced data; without one, /api/data is 404 and the app keeps data on the device only. */
+export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson, store }) {
   if (!localPerson && !audience) throw new Error('IAP_AUDIENCE is not set');
   if (!(allowed instanceof Map) || allowed.size === 0) throw new Error('ALLOWED_USERS is not set');
   if (localPerson && ![...allowed.values()].includes(localPerson)) throw new Error(`LOCAL_PERSON "${localPerson}" is not in ALLOWED_USERS`);
@@ -162,6 +181,46 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     await keys.ensure(kidOf(token));
     const who = verifyIapJwt(token, { keyFor: keys.keyFor, audience });
     return (who && allowed.get(who.email)) ?? null;
+  }
+
+  const json = (send, code, body) => send(code, { 'Content-Type': 'application/json; charset=utf-8' }, JSON.stringify(body));
+
+  /** GET /api/data: every synced key. PUT /api/data/{key} with { value, baseUpdatedAt }: writes one key, last write wins. */
+  async function handleData(req, urlPath, person, send) {
+    if (!store) return send(404, {}, 'Not found');
+    // Writes only from the app's own pages. Browsers send this header; a request from another site says so.
+    const site = req.headers['sec-fetch-site'];
+    if (req.method !== 'GET' && site !== undefined && site !== 'same-origin') return send(403, {}, 'Not allowed');
+    try {
+      if (urlPath === '/api/data') {
+        if (req.method !== 'GET') return send(405, { Allow: 'GET' });
+        return json(send, 200, { data: await store.list(person) });
+      }
+      const key = urlPath.slice('/api/data/'.length);
+      if (!SYNC_KEYS.includes(key)) return send(404, {}, 'Not found');
+      if (req.method !== 'PUT') return send(405, { Allow: 'PUT' });
+      if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) return send(415, {}, 'JSON only');
+      const text = await readBody(req, MAX_VALUE_BYTES + 1024);
+      if (text === null) return send(413, {}, 'Too large');
+      let body;
+      try {
+        body = JSON.parse(text);
+      } catch {
+        return send(400, {}, 'Bad JSON');
+      }
+      if (!body || typeof body !== 'object' || !('value' in body)) return send(400, {}, 'No value');
+      if (Buffer.byteLength(JSON.stringify(body.value)) > MAX_VALUE_BYTES) return send(413, {}, 'Too large');
+      const base = typeof body.baseUpdatedAt === 'string' ? body.baseUpdatedAt : null;
+      const stored = await store.get(person, key);
+      if (stored && stored.updatedAt !== base) {
+        // Someone else's write reached the server since this device last synced this key. Last write wins; logged to see if it matters.
+        console.warn(JSON.stringify({ severity: 'WARNING', message: 'sync clash', person, key, base, stored: stored.updatedAt }));
+      }
+      return json(send, 200, { updatedAt: await store.put(person, key, body.value) });
+    } catch (e) {
+      console.error(JSON.stringify({ severity: 'ERROR', message: 'sync store failed', person, error: e.message }));
+      return send(503, {}, 'Try again later');
+    }
   }
 
   return async function handle(req, res) {
@@ -179,9 +238,14 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     const person = await personFor(req);
     if (!person) return send(403, { 'Content-Type': 'text/plain; charset=utf-8' }, 'Not allowed');
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { Allow: 'GET, HEAD' });
-
     const urlPath = (req.url ?? '/').split('?')[0];
+
+    // Synced data (V2-06b). Always the signed-in person's own: the person comes from the checked header, never the request.
+    if (urlPath === '/api/data' || urlPath.startsWith('/api/data/')) {
+      return handleData(req, urlPath, person, send);
+    }
+
+    if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { Allow: 'GET, HEAD' });
 
     // Who is signed in, for the app (V2-06 uses this to load the right person's data).
     if (urlPath === '/api/me') {
@@ -233,6 +297,11 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     allowed: parseAllowedUsers(process.env.ALLOWED_USERS),
     root,
     localPerson,
+    store: localPerson
+      ? createFileStore(fileURLToPath(new URL('./data.json', import.meta.url)))
+      : process.env.FIRESTORE_PROJECT
+        ? createFirestoreStore({ project: process.env.FIRESTORE_PROJECT })
+        : undefined,
   });
   const port = Number(process.env.PORT ?? 8080);
   createServer(app).listen(port, () => console.log(`Serving ${root} on port ${port}${localPerson ? ` as ${localPerson} (local trial, no sign-in)` : ''}`));

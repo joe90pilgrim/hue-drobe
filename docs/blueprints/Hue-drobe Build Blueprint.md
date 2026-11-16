@@ -15,7 +15,7 @@ It does three jobs:
 Principles that settle trade-offs:
 
 - **Accuracy over breadth.** Ten garment templates that fit and drape correctly beat fifty that look wrong. Fit, colour, body proportions and personal colouring all matter, and none is traded away for speed.
-- **Local first.** Photos, measurements and the avatar stay on the device. No accounts and no backend in early milestones.
+- **Local first.** The app reads and writes its data on the device and works fully offline. Photos and measurements are never uploaded. Wardrobe, outfits, favourites and quiz answers sync between each person's own devices through a small backend on Cloud Run, behind Google sign-in (IAP). (Changed 16 Nov 2026, V2-06b: see `docs/decisions/2026-11-16-v2-06-data-model.md`.)
 - **Risk first.** The 3D questions that could sink the idea are answered by a time-boxed spike before the app is built around them.
 - **Stylised, not uncanny.** The aim is a believable Create-a-Sim-style figure, not a photoreal clone.
 
@@ -34,8 +34,8 @@ These came out of the planning interview. Claude Code should treat them as settl
 | Wardrobe input | One photo per item, with background removal and colour extraction |
 | Colour theory | 12-season analysis from a guided questionnaire plus colour pickers |
 | Inspiration | Combos from the wardrobe, gap analysis, and user-saved reference images matched against the wardrobe |
-| AI use | Minimal and mostly local; no API key or backend needed |
-| Storage | On-device (IndexedDB) first; Firebase is a possible later addition |
+| AI use | Minimal and mostly local; no API key needed |
+| Storage | IndexedDB on the device, synced to a private Firestore database through our own server (V2-06b) |
 | Process | Staged and iterative; the spike is time-boxed and runs this weekend |
 
 ## Scope
@@ -57,7 +57,7 @@ The first usable version is small on purpose: one body model, a handful of garme
 - Saved reference images matched against the wardrobe
 - Photo-assisted skin, hair and eye tone estimation
 - More garment types, shoes and accessories
-- Optional cloud sync through Firebase
+- Sync between each person's devices through our own server and Firestore (built in V2-06b)
 
 **Out of scope for now**
 
@@ -175,7 +175,7 @@ Your real photos and measurements stay out of the repository. Committed tests us
 
 ## Data model
 
-The data model describes garments as shape plus colour, never as a renderer-specific asset, so the 3D renderer can be swapped later without touching a user's wardrobe. Everything lives in IndexedDB on the device and can be exported as one backup file.
+The data model describes garments as shape plus colour, never as a renderer-specific asset, so the 3D renderer can be swapped later without touching a user's wardrobe. Everything lives in IndexedDB on the device, is synced in the background to a private Firestore database through our own server, and can be exported as one backup file.
 
 | Entity | Key fields | Notes |
 | --- | --- | --- |
@@ -199,7 +199,7 @@ The biggest risk is that accurate fit and drape across body shapes costs too muc
 | Phone performance or download size | 3D with several garments can be heavy for a mobile browser | Compress meshes and textures, limit visible layers, and test on the real phone early |
 | Colour from phone photos is unreliable | Lighting and white balance shift colours, hurting garment colour accuracy | Show extracted colour for the user to correct; encourage daylight and a reference background; add white balance correction later |
 | Seasonal analysis is self-reported | A questionnaire is only as accurate as the answers and the lighting used to judge them | Present the season as a starting point; add a draping check later to confirm |
-| Local-only data is lost if the browser is cleared | Photos and measurements could disappear | Offer a one-tap export and import of a backup file; consider Firebase later |
+| Local-only data is lost if the browser is cleared | Photos and measurements could disappear | One-tap export and import of a backup file; wardrobe and quiz data also sync through Firestore (V2-06b) |
 | 3D proves unworkable | The whole premise rests on it | Revisit a stylised 2D layered avatar, keeping the same data model |
 
 ## Working agreement for Claude Code
@@ -211,7 +211,7 @@ Paste this section into the repo as `CLAUDE.md`, or point Claude Code at this do
 - **Measure, never assert.** Every accuracy claim comes with a number, a script that produced it and a screenshot. Do not describe a result as good without the comparison.
 - **Scripts over manual steps.** Blender work runs headlessly from Python so anyone can re-run it from the repo. Record Blender and library versions.
 - **Plain, reviewable output.** Small commits, short READMEs for each script, and no dependency added without saying why and checking its licence.
-- **Privacy by default.** No network calls, analytics or uploads of photos or measurements. Everything stays on the device.
+- **Privacy by default.** No analytics, and no uploads of photos or measurements. The only network calls are to our own server, behind Google sign-in, which keeps each person's synced data private to them. (Changed 16 Nov 2026, V2-06b: see `docs/decisions/2026-11-16-v2-06-data-model.md`.)
 - **Ask before choosing for me** on anything that changes the data model, the licence position or the garment library scope.
 
 ### Open questions

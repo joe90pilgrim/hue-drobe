@@ -31,8 +31,8 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - Avatar built from measurements, body-shape presets, photo assistance and manual skin, hair and eye colour pickers.
 - Garments are generic templates. Shape comes from the nearest template, colour and pattern from the item photo.
 - Accuracy comes first: fit and drape, garment colour, body proportions, and personal colouring. Do not trade fit accuracy away for speed or breadth.
-- Data stays on the device (IndexedDB). Firebase is a possible later addition, not now.
-- AI use is minimal and mostly local. No API keys and no backend.
+- Data lives on the device (IndexedDB) and syncs in the background to a private Firestore database through our own server (changed in V2-06b; see `docs/decisions/2026-11-16-v2-06-data-model.md`). Photos and measurements are never uploaded.
+- AI use is minimal and mostly local. No API keys in the app. The only backend is the small Cloud Run server behind IAP (`deploy/`).
 - Garments are described as shape plus colour, never as a renderer-specific asset, so the renderer can be swapped later.
 
 ## How to work
@@ -59,7 +59,7 @@ Colour tolerances are not set yet. The spike should record what colour extractio
 
 ## Privacy
 
-Real photos and measurements for Joe and his wife must never be committed. They live in the git-ignored `private/` folder, and scripts should read from there when run locally. Committed tests use synthetic bodies and sample garments. Make no network calls, add no analytics, and upload nothing.
+Real photos and measurements for Joe and his wife must never be committed. They live in the git-ignored `private/` folder, and scripts should read from there when run locally. Committed tests use synthetic bodies and sample garments. Add no analytics and upload no photos or measurements. The app talks only to our own server.
 
 ## Repo layout
 

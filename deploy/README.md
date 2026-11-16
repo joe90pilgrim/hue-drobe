@@ -6,7 +6,10 @@ Puts the app on **Cloud Run** behind **Identity-Aware Proxy (IAP)**. Google does
 - `deploy.mjs` builds the app, copies each person's pack in from `private/pack/<person>/` (never committed), deploys with IAP on, and grants access to the emails in `private/users.json` (never committed).
 - Staging goes in `deploy/out/` (git-ignored).
 
-The server makes one outgoing call: it fetches Google's IAP public keys from `https://www.gstatic.com/iap/verify/public_key-jwk`, about once an hour.
+- `datastore.mjs` holds each person's synced data (V2-06b): Firestore on Cloud Run, a JSON file for local trials, memory for tests. `GET /api/data` returns the signed-in person's data and `PUT /api/data/{key}` writes one key. The person always comes from IAP's signed header, never from the request.
+- `firestore-setup.mjs` is run by `deploy.mjs`: it creates the Firestore database, deploys rules that refuse everything, and makes the server's own service account.
+
+The server makes two kinds of outgoing call: it fetches Google's IAP public keys from `https://www.gstatic.com/iap/verify/public_key-jwk` about once an hour, and it reads and writes Firestore (`firestore.googleapis.com`) with a token from Cloud Run's metadata server.
 
 ## One-off setup
 
@@ -54,11 +57,12 @@ node deploy/deploy.mjs
 Each run:
 
 1. Builds and stages the app.
-2. Turns on the IAP and Cloud Resource Manager APIs (the IAP access commands need the second), then deploys with `--iap --no-allow-unauthenticated` and drops the old basic-auth password secret from the service.
-3. Lets IAP's service agent call the service, and removes the MVP's "anyone may call" setting.
-4. Gives the two emails the "IAP-secured Web App User" role.
-5. Sets sign-in to expire after 30 days.
-6. Prints who may sign in. Check that the list shows exactly two users.
+2. Sets up Firestore (`firestore-setup.mjs`): turns on its APIs, creates the `(default)` database in the region if missing (native mode; the region cannot change later), deploys deny-all security rules, and makes the `huedrobe-run` service account with only the Firestore read and write role (`roles/datastore.user`). It then checks that Firestore refuses a request without credentials, and stops if not.
+3. Turns on the IAP and Cloud Resource Manager APIs (the IAP access commands need the second), then deploys with `--iap --no-allow-unauthenticated`, as `huedrobe-run`, with `FIRESTORE_PROJECT` set, and drops the old basic-auth password secret from the service.
+4. Lets IAP's service agent call the service, and removes the MVP's "anyone may call" setting.
+5. Gives the two emails the "IAP-secured Web App User" role.
+6. Sets sign-in to expire after 30 days.
+7. Prints who may sign in. Check that the list shows exactly two users.
 
 Defaults: region `europe-west2` (London), service `huedrobe`, at most one instance, 256 MiB. Change them with `--region`, `--service` and `--project`.
 
@@ -90,16 +94,17 @@ then, in PowerShell:
 $env:LOCAL_PERSON='joe'; $env:ALLOWED_USERS=(Get-Content private/users.json -Raw); node deploy/out/server.mjs
 ```
 
-and open http://localhost:8080. `LOCAL_PERSON` skips the sign-in and acts as that person. The server refuses it on Cloud Run.
+and open http://localhost:8080. `LOCAL_PERSON` skips the sign-in and acts as that person. The server refuses it on Cloud Run. Synced data goes to `deploy/out/data.json` (git-ignored), not Firestore.
 
 ## Tests
 
-`node --test deploy/server.test.mjs` (also part of `npm run check`). It uses a key pair made in the test in place of Google's keys, and synthetic emails. It covers:
+`node --test deploy/server.test.mjs deploy/sync.test.mjs` (also part of `npm run check`). It uses a key pair made in the test in place of Google's keys, and synthetic emails. It covers:
 
 - good, forged, expired, wrong-audience, wrong-issuer and `alg` swapped tokens
 - strangers and missing sign-in on every path, including the avatar files
 - each person's pack hidden from the other, including `..` tricks
 - key refresh, path traversal and the https redirect
+- synced data (`sync.test.mjs`): each person reads and writes only their own, unknown keys, other sites, non-JSON and oversized values refused, last write wins with clashes logged, a failing store, and the Firestore REST calls checked against a stand-in
 
 ## Signing in and the installed app
 

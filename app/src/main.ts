@@ -6,6 +6,7 @@ import { routeFromHash, type Route } from './route';
 import { createBackupDialog } from './backup-ui';
 import { findPerson, setPerson } from './person';
 import { moveLegacyData } from './store';
+import { startSync } from './sync';
 
 /** Screens in tab order. A fourth entry here adds a tab to the phone bar and the sidebar with no layout change. */
 const screens: Record<Route, { label: string; icon: string; render: (el: HTMLElement) => () => void }> = {
@@ -82,7 +83,28 @@ document.getElementById('menu-btn')!.addEventListener('click', backup.open);
 document.getElementById('backup-btn')!.addEventListener('click', backup.open);
 
 // Who is signed in decides whose data and avatar load (V2-06), so nothing renders until that is known.
+/** True while someone is in the middle of something a redraw would throw away: an open panel, sheet or dialog, or typing. */
+function busy(): boolean {
+  if (document.querySelector('dialog[open]')) return true;
+  const editor = document.getElementById('editor');
+  if (editor && !editor.hidden) return true;
+  const focused = document.activeElement;
+  return focused instanceof HTMLInputElement || focused instanceof HTMLTextAreaElement;
+}
+
+let shown = false;
+/** The server's copy changed something here: redraw the open screen with it, but never under someone's fingers. */
+function refreshWhenIdle() {
+  if (!shown) return; // the first draw is still to come and will read the new data
+  if (busy()) setTimeout(refreshWhenIdle, 1000);
+  else show();
+}
+
+/** How long, in all, the start may wait on the server (who is signed in, then the first sync) before drawing from the device copy. */
+const START_WAIT_MS = 1500;
+
 async function start() {
+  const t0 = performance.now();
   const who = await findPerson();
   if (!who) {
     main.innerHTML = '<p class="start-error" role="alert">Could not tell who is signed in. Connect to the internet and reload.</p>';
@@ -91,7 +113,13 @@ async function start() {
   setPerson(who);
   document.documentElement.dataset.person = who;
   await moveLegacyData(who);
+  // Background sync between devices (V2-06b). The first round gets whatever time is left of the start budget, so the
+  // first screen usually shows the other device's changes; offline or slow, the device copy shows and sync carries on.
+  const syncNow = startSync(refreshWhenIdle);
+  const left = START_WAIT_MS - (performance.now() - t0);
+  if (left > 0 && navigator.onLine) await Promise.race([syncNow(), new Promise((r) => setTimeout(r, left))]);
   window.addEventListener('hashchange', show);
+  shown = true;
   show();
 }
 void start();

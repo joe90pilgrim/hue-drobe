@@ -1,4 +1,5 @@
-// Small key-value store in IndexedDB, shared by the screens. Data stays on the device.
+// Small key-value store in IndexedDB, shared by the screens. The device copy is always the one the app reads and writes;
+// V2-06b sends it to the server in the background (src/sync.ts).
 // One database per person (V2-06): `huedrobe-joe`, `huedrobe-b`. The owner of a record is the database it lives in.
 
 import { person } from './person';
@@ -33,15 +34,38 @@ export async function kvGet<T>(key: string, fallback: T): Promise<T> {
   }
 }
 
+// Sync bookkeeping (V2-06b) lives beside the data, under reserved keys, so a save and its "not yet sent" mark commit together:
+//   __dirty:<key>   set by every local save; a number that changes each time. Cleared once that exact save reaches the server.
+//   __synced:<key>  the server's update time for the copy this device last sent or took.
+const DIRTY = '__dirty:';
+const SYNCED = '__synced:';
+let stamp = 0;
+const nextStamp = () => (stamp = Math.max(Date.now(), stamp + 1));
+
+let onLocalWrite: (() => void) | undefined;
+/** Called after every local save or delete (the sync module uses it to send soon). */
+export function setLocalWriteListener(fn: (() => void) | undefined) {
+  onLocalWrite = fn;
+}
+
+/** Runs one read-write transaction on the signed-in person's store. */
+async function write(fn: (kv: IDBObjectStore) => void): Promise<void> {
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    fn(tx.objectStore('kv'));
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 export async function kvDelete(key: string): Promise<void> {
   try {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').delete(key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+    await write((kv) => {
+      kv.delete(key);
+      kv.put(nextStamp(), DIRTY + key);
     });
+    onLocalWrite?.();
   } catch {
     /* storage unavailable */
   }
@@ -50,16 +74,70 @@ export async function kvDelete(key: string): Promise<void> {
 /** Resolves once the write has committed, so a reload straight after will not lose it. */
 export async function kvPut(key: string, value: unknown): Promise<void> {
   try {
-    const db = await openDb();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction('kv', 'readwrite');
-      tx.objectStore('kv').put(value, key);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
+    await write((kv) => {
+      kv.put(value, key);
+      kv.put(nextStamp(), DIRTY + key);
     });
+    onLocalWrite?.();
   } catch {
     /* storage unavailable: nothing is remembered */
   }
+}
+
+export interface SyncState {
+  values: Map<string, unknown>;
+  /** Keys saved here and not yet sent, with the stamp of the latest save. */
+  dirty: Map<string, number>;
+  /** The server update time of each key as this device last knew it. */
+  synced: Map<string, string>;
+}
+
+/** Everything the sync needs, read in one go. */
+export async function readSyncState(): Promise<SyncState> {
+  const all = await readAll(await openDb());
+  const state: SyncState = { values: new Map(), dirty: new Map(), synced: new Map() };
+  for (const [k, v] of all) {
+    const key = String(k);
+    if (key.startsWith(DIRTY)) state.dirty.set(key.slice(DIRTY.length), v as number);
+    else if (key.startsWith(SYNCED)) state.synced.set(key.slice(SYNCED.length), v as string);
+    else if (!key.startsWith('__')) state.values.set(key, v);
+  }
+  return state;
+}
+
+/** Marks a key as needing to be sent, without changing it (data saved before sync existed). */
+export async function markDirty(key: string): Promise<void> {
+  await write((kv) => kv.put(nextStamp(), DIRTY + key));
+}
+
+/** A save reached the server. Clears the mark only if no newer save happened meanwhile, so that one is still sent. */
+export async function markSent(key: string, sentStamp: number, updatedAt: string): Promise<void> {
+  await write((kv) => {
+    const q = kv.get(DIRTY + key);
+    q.onsuccess = () => {
+      if (q.result === sentStamp) kv.delete(DIRTY + key);
+    };
+    kv.put(updatedAt, SYNCED + key);
+  });
+}
+
+/**
+ * Takes the server's copy of a key (null means cleared). Skipped if the key was saved here in the meantime, since that
+ * save will be sent and win. Resolves true when the local copy changed.
+ */
+export async function takeRemote(key: string, value: unknown, updatedAt: string): Promise<boolean> {
+  let taken = false;
+  await write((kv) => {
+    const q = kv.get(DIRTY + key);
+    q.onsuccess = () => {
+      if (q.result !== undefined) return;
+      if (value === null) kv.delete(key);
+      else kv.put(value, key);
+      kv.put(updatedAt, SYNCED + key);
+      taken = true;
+    };
+  });
+  return taken;
 }
 
 /** Every key and value in a database, as a map. */

@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULTS, gcloudValue, parseFlags, resolveProject, run } from './gcloud.mjs';
 import { parseAllowedUsers } from './server.mjs';
+import { setUpFirestore } from './firestore-setup.mjs';
 
 const flags = parseFlags(process.argv.slice(2));
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -48,6 +49,7 @@ const out = here('./out');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out + '/public', { recursive: true });
 cpSync(here('./server.mjs'), out + '/server.mjs');
+cpSync(here('./datastore.mjs'), out + '/datastore.mjs');
 cpSync(here('./Dockerfile'), out + '/Dockerfile');
 cpSync(here('../app/dist'), out + '/public', { recursive: true });
 for (const person of people) {
@@ -70,7 +72,7 @@ if (!projectNumber) {
 }
 const audience = `/projects/${projectNumber}/locations/${region}/services/${service}`;
 // YAML accepts JSON strings, which keeps the quoting safe. A file avoids passing commas and emails through the Windows shell.
-writeFileSync(out + '/env.yaml', `IAP_AUDIENCE: ${JSON.stringify(audience)}\nALLOWED_USERS: ${JSON.stringify(usersJson.trim().replace(/\s+/g, ' '))}\n`);
+writeFileSync(out + '/env.yaml', `IAP_AUDIENCE: ${JSON.stringify(audience)}\nALLOWED_USERS: ${JSON.stringify(usersJson.trim().replace(/\s+/g, ' '))}\nFIRESTORE_PROJECT: ${JSON.stringify(project)}\n`);
 
 const g = (args) => run('gcloud', [...args, '--project', project, '--quiet']);
 const must = (r, what) => {
@@ -79,6 +81,9 @@ const must = (r, what) => {
     process.exit(r.status || 1);
   }
 };
+
+console.log('3/4 Firestore for synced data (V2-06b)');
+const runAccount = await setUpFirestore({ project, region });
 
 console.log(`3/4 Deploying ${service} to ${project} (${region}) with IAP on`);
 // IAP itself, and Cloud Resource Manager, which `gcloud iap web add-iam-policy-binding` needs.
@@ -93,6 +98,8 @@ must(g([
   '--max-instances', '1',
   '--memory', '256Mi',
   '--env-vars-file', out + '/env.yaml',
+  // Its own account, which can only read and write Firestore (firestore-setup.mjs).
+  '--service-account', runAccount,
   // Drops the old basic-auth password (MVP-10).
   '--clear-secrets',
 ]), 'deploy (the first time IAP is turned on needs the one-off Console step in deploy/README.md)');

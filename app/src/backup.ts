@@ -27,6 +27,9 @@ const KEYS: Record<string, (v: unknown) => unknown> = {
   [SHEER_KEY]: (v) => (typeof v === 'boolean' ? v : undefined),
 };
 
+/** The keys that sync between devices (V2-06b): the same as the backup. The server's list in deploy/datastore.mjs must match. */
+export const SYNCED_KEYS = Object.keys(KEYS);
+
 export interface Backup {
   format: typeof BACKUP_FORMAT;
   version: number;
