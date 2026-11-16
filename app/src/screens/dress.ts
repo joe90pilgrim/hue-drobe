@@ -43,7 +43,6 @@ const DEFAULT_COLOUR = '#d6d6d6';
 
 export function renderDress(el: HTMLElement): () => void {
   el.innerHTML = `
-    <header class="header"><h1>Dress</h1></header>
     <div class="dress">
       <div class="stage" id="stage">
         <span class="stage-hint"></span>

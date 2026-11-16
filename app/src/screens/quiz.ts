@@ -17,7 +17,7 @@ function isComplete(a: unknown): a is Answers {
 
 export function renderQuiz(el: HTMLElement): () => void {
   el.innerHTML = `
-    <header class="header"><h1>Colour</h1></header>
+    <h1 class="page-title">My colours</h1>
     <section class="card quiz" id="quiz"></section>`;
   const card = el.querySelector<HTMLElement>('#quiz')!;
   const n = quiz.questions.length;

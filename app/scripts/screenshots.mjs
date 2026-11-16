@@ -38,7 +38,7 @@ for (const [size, opts] of Object.entries(sizes)) {
   await shot('wardrobe-empty');
 
   // Dress: default, then a coloured look
-  await go('dress');
+  await go('try-on');
   await shot('dress-default');
   await page.getByLabel('Top colour').fill('#1f2a5a');
   await page.getByLabel('Bottom colour').fill('#6b4f3a');
@@ -73,7 +73,7 @@ for (const [size, opts] of Object.entries(sizes)) {
   }
 
   // Colour quiz: intro, a question, a later question, result, close second
-  await go('colour');
+  await go('colours');
   await shot('colour-intro');
   await page.getByRole('button', { name: 'Start the quiz' }).click();
   await shot('colour-question-1');
@@ -104,7 +104,7 @@ for (const [size, opts] of Object.entries(sizes)) {
   }
 
   // Dress again: palette colours now appear as favourites
-  await page.getByRole('link', { name: 'Dress' }).click();
+  await page.getByRole('link', { name: 'Try on' }).click();
   await shot('dress-palette-favourites');
 
   await ctx.close();

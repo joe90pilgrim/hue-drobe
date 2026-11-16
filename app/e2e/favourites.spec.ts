@@ -6,7 +6,7 @@ const QUESTIONS = data.questions.length as number;
 
 /** Takes the quiz, answering every question with its last option, and waits for the result. */
 async function takeQuiz(page: Page) {
-  await page.goto('/#/colour');
+  await page.goto('/#/colours');
   await page.getByRole('button', { name: 'Start the quiz' }).click();
   for (let i = 1; i <= QUESTIONS; i++) {
     await page.getByRole('radio').last().click();
@@ -28,7 +28,7 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
   await page.reload();
   await expect(mainToggles.first()).toHaveText('Saved');
 
-  await page.getByRole('link', { name: 'Dress' }).click();
+  await page.getByRole('link', { name: 'Try on' }).click();
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const tile = top.getByRole('button', { name: hex });
   await expect(tile).toBeVisible();
@@ -43,7 +43,7 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
 });
 
 test('saves a picked colour with the star, shows it in every slot, and removes it in edit mode', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const bottom = page.getByRole('group', { name: 'Bottom favourite colours' });
   const star = (group: typeof top) => group.getByRole('button', { name: 'Save this colour to favourites' });
@@ -68,7 +68,7 @@ test('saves a picked colour with the star, shows it in every slot, and removes i
 });
 
 test('shows the first 12 favourites and a more option for the rest', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   for (let i = 1; i <= 13; i++) {
     await page.getByLabel('Top colour').fill(`#0a0${i.toString(16).padStart(1, '0')}00`);
@@ -82,7 +82,7 @@ test('shows the first 12 favourites and a more option for the rest', async ({ pa
 });
 
 test('after removing the last favourite in edit mode, the star still saves a new one', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const star = top.getByRole('button', { name: 'Save this colour to favourites' });
 

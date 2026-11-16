@@ -1,7 +1,17 @@
-export type Route = 'dress' | 'wardrobe' | 'colour';
+export type Route = 'try-on' | 'wardrobe' | 'colours';
 
-/** Maps a location hash such as "#/colour" to a screen. Anything unknown is the Dress screen. */
+/**
+ * Maps a location hash such as "#/colours" to a screen. The old links #/dress and #/colour still work.
+ * Anything unknown is the Try on screen.
+ */
 export function routeFromHash(hash: string): Route {
-  const r = hash.replace('#/', '');
-  return r === 'colour' || r === 'wardrobe' ? r : 'dress';
+  switch (hash.replace('#/', '')) {
+    case 'wardrobe':
+      return 'wardrobe';
+    case 'colours':
+    case 'colour':
+      return 'colours';
+    default:
+      return 'try-on';
+  }
 }

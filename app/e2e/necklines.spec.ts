@@ -5,7 +5,7 @@ const pressed = (page: import('@playwright/test').Page, name: string) =>
   necks(page).getByRole('button', { name, exact: true });
 
 test('offers the necklines on the tee only, defaults to crew, and remembers the choice after a reload', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   await expect(necks(page)).toBeVisible();
   await expect(pressed(page, 'Crew')).toHaveAttribute('aria-pressed', 'true');
 
@@ -30,7 +30,7 @@ test('offers the necklines on the tee only, defaults to crew, and remembers the 
 });
 
 test('keeps the colour when the neckline changes', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   await page.getByLabel('Top colour').fill('#2e5e8c');
   await pressed(page, 'V-neck').click();
   await expect(page.getByLabel('Top colour')).toHaveValue('#2e5e8c');
@@ -39,7 +39,7 @@ test('keeps the colour when the neckline changes', async ({ page }) => {
 });
 
 test('saves a V-neck tee next to a crew-neck tee of the same colour, and wears each with its neckline', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   await page.getByLabel('Top colour').fill('#1f2a5a');
   const save = page.locator('[data-save="Top"]');
   await save.click(); // crew
@@ -66,7 +66,7 @@ test('saves a V-neck tee next to a crew-neck tee of the same colour, and wears e
 });
 
 test('an outfit remembers the tee neckline it was saved with', async ({ page }) => {
-  await page.goto('/#/dress');
+  await page.goto('/#/try-on');
   await pressed(page, 'Scoop').click();
   await page.getByRole('button', { name: 'Save outfit' }).click();
   await expect(page.getByRole('button', { name: 'Outfit saved' })).toBeVisible();

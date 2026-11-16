@@ -1,4 +1,3 @@
-import { backupFileName, exportBackup, importBackup, parseBackup } from '../backup';
 import { deleteItem, itemKind, loadItems, renameItem, saveItems, wearItem, type SavedItem } from '../wardrobe';
 import {
   autoOutfitName,
@@ -19,26 +18,16 @@ const slotSwatch = (item?: SavedItem) =>
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
-    <header class="header"><h1>Wardrobe</h1></header>
+    <h1 class="page-title">Wardrobe</h1>
     <div class="card wardrobe">
       <h2 class="w-heading">Clothes</h2>
-      <p class="help" id="w-empty" hidden>Nothing saved yet. On the Dress screen, choose a garment and colour, then tap Save.</p>
+      <p class="help" id="w-empty" hidden>Nothing saved yet. On the Try on screen, choose a garment and colour, then tap Save.</p>
       <ul class="w-list" id="w-list"></ul>
     </div>
     <div class="card wardrobe">
       <h2 class="w-heading">Outfits</h2>
-      <p class="help" id="o-empty" hidden>No outfits yet. On the Dress screen, put a look together and tap Save outfit.</p>
+      <p class="help" id="o-empty" hidden>No outfits yet. On the Try on screen, put a look together and tap Save outfit.</p>
       <ul class="w-list" id="o-list"></ul>
-    </div>
-    <div class="card wardrobe">
-      <h2 class="w-heading">Back up</h2>
-      <p class="help">Save your clothes, outfits, favourite colours, colour quiz result and current look to a file. Importing replaces what is on this device.</p>
-      <div class="w-item">
-        <button type="button" id="b-export">Export backup</button>
-        <button type="button" id="b-import">Import backup</button>
-        <input type="file" id="b-file" accept="application/json,.json" hidden>
-      </div>
-      <p class="help" id="b-msg" role="status"></p>
     </div>`;
   const list = el.querySelector<HTMLElement>('#w-list')!;
   const empty = el.querySelector<HTMLElement>('#w-empty')!;
@@ -125,7 +114,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     switch (b.dataset.act) {
       case 'wear':
         await wearItem(item);
-        location.hash = '#/dress';
+        location.hash = '#/try-on';
         break;
       case 'rename':
         renaming = id;
@@ -160,7 +149,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     switch (b.dataset.oact) {
       case 'wear':
         await wearOutfit(outfit, items);
-        location.hash = '#/dress';
+        location.hash = '#/try-on';
         break;
       case 'rename':
         renamingOutfit = id;
@@ -184,41 +173,6 @@ export function renderWardrobe(el: HTMLElement): () => void {
       renamingOutfit = null;
       drawOutfits();
     }
-  });
-
-  const msg = el.querySelector<HTMLElement>('#b-msg')!;
-  const file = el.querySelector<HTMLInputElement>('#b-file')!;
-  el.querySelector('#b-export')!.addEventListener('click', async () => {
-    const blob = new Blob([JSON.stringify(await exportBackup(), null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = backupFileName();
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    msg.textContent = 'Backup saved.';
-  });
-  el.querySelector('#b-import')!.addEventListener('click', () => file.click());
-  file.addEventListener('change', async () => {
-    const f = file.files?.[0];
-    if (!f) return;
-    const text = await f.text();
-    file.value = '';
-    const parsed = parseBackup(text);
-    if (!parsed.ok) {
-      msg.textContent = parsed.error;
-      return;
-    }
-    if (!confirm('Replace everything on this device with this backup?')) {
-      msg.textContent = 'Import cancelled.';
-      return;
-    }
-    await importBackup(parsed.data);
-    items = await loadItems();
-    outfits = await loadOutfits();
-    renaming = null;
-    renamingOutfit = null;
-    draw();
-    msg.textContent = 'Backup restored.';
   });
 
   Promise.all([loadItems(), loadOutfits()]).then(([loadedItems, loadedOutfits]) => {

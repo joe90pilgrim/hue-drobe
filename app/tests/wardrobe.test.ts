@@ -108,6 +108,6 @@ describe('necklines', () => {
 describe('routes', () => {
   it('knows the wardrobe screen', () => {
     expect(routeFromHash('#/wardrobe')).toBe('wardrobe');
-    expect(routeFromHash('#/nonsense')).toBe('dress');
+    expect(routeFromHash('#/nonsense')).toBe('try-on');
   });
 });

@@ -10,7 +10,7 @@ test('headings use the self-hosted Bricolage Grotesque, with no request leaving 
     if (r.url().endsWith('.woff2')) fonts.push(r.url());
   });
   await page.goto('/');
-  const heading = page.getByRole('heading', { name: 'Dress' });
+  const heading = page.locator('.topbar .wordmark');
   await expect(heading).toBeVisible();
   expect(await heading.evaluate((el) => getComputedStyle(el).fontFamily)).toContain('Bricolage Grotesque');
   // The font really loaded (not a fallback), and it came from this origin.
@@ -51,10 +51,10 @@ test('the avatar stage is exactly #E3E3E3 and no text is under 12 px', async ({ 
       return out;
     });
   expect(await small()).toEqual([]);
-  await page.getByRole('link', { name: 'Colour' }).click();
-  await expect(page.getByRole('heading', { name: 'Colour' })).toBeVisible();
+  await page.getByRole('link', { name: 'My colours' }).click();
+  await expect(page.getByRole('heading', { name: 'My colours' })).toBeVisible();
   expect(await small()).toEqual([]);
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await expect(page.getByRole('heading', { name: 'Wardrobe' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Wardrobe', level: 1 })).toBeVisible();
   expect(await small()).toEqual([]);
 });

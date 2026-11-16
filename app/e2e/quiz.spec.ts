@@ -5,7 +5,7 @@ const data = JSON.parse(readFileSync(new URL('../src/data/colour-quiz.json', imp
 const QUESTIONS = data.questions.length as number;
 
 test('takes the quiz, sees a season with its palette and advice, and keeps it after a reload', async ({ page }) => {
-  await page.goto('/#/colour');
+  await page.goto('/#/colours');
   await expect(page.getByRole('heading', { name: 'Find your season' })).toBeVisible();
   await page.getByRole('button', { name: 'Start the quiz' }).click();
 
