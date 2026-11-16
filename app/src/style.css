@@ -132,6 +132,8 @@ button { font-family: inherit; }
 .fav-btn[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
 .fav-btn[aria-pressed="true"] .heart { fill: currentColor; }
 .fav-btn:disabled { opacity: .5; }
+.fav-label { margin-top: 6px; }
+.fav-label[hidden] { display: none; }
 .fav-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .fav-row:empty { display: none; }
 .fav-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }

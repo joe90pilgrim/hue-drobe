@@ -115,6 +115,7 @@ export function renderTryOn(el: HTMLElement): () => void {
             <button type="button" class="secondary choose" aria-haspopup="true">Choose a colour</button>
             <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
           </div>
+          <span class="field-label fav-label" hidden>Favourites</span>
           <div class="fav-row" role="group" aria-label="Your favourite colours"></div>
           <div class="fav-foot">
             <span class="legend" hidden><span class="legend-dot"></span>From your colour palette</span>
@@ -143,6 +144,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const backText = backBtn.querySelector<HTMLElement>('.editor-back-text')!;
   const favBtn = editor.querySelector<HTMLButtonElement>('.fav-btn')!;
   const favRow = editor.querySelector<HTMLElement>('.fav-row')!;
+  const favLabel = editor.querySelector<HTMLElement>('.fav-label')!;
   const legend = editor.querySelector<HTMLElement>('.legend')!;
   const moreBtn = editor.querySelector<HTMLButtonElement>('[data-more]')!;
   const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
@@ -211,6 +213,7 @@ export function renderTryOn(el: HTMLElement): () => void {
           `<button type="button" class="fav-tile${f.hex === current ? ' on' : ''}" data-hex="${f.hex}" aria-pressed="${f.hex === current}" aria-label="${f.hex}${f.fromPalette ? ', from your palette' : ''}" style="background:${f.hex}" ${!g ? 'disabled' : ''}>${f.fromPalette ? '<span class="palette-dot"></span>' : ''}</button>`,
       )
       .join('');
+    favLabel.hidden = shown.length === 0;
     legend.hidden = !shown.some((f) => f.fromPalette);
     moreBtn.hidden = favourites.length <= SHOWN_FIRST;
     moreBtn.textContent = showAll ? 'Show fewer' : 'Show all';
