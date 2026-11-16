@@ -64,5 +64,26 @@ class DefaultGarments(unittest.TestCase):
             fit.default_garments({"height_cm": 170}, CFG)
 
 
+class PerPersonFit(unittest.TestCase):
+    """V2-03: a person's overrides from fit_people.json laid over the shared config."""
+
+    def test_empty_override_is_the_shared_fit(self):
+        self.assertEqual(fit.merge(CFG, {}), CFG)
+
+    def test_override_changes_only_its_own_key(self):
+        cfg = fit.merge(CFG, {"tee": {"chest_ease_cm": 12}, "_note": "ignored"})
+        self.assertEqual(cfg["tee"]["chest_ease_cm"], 12)
+        self.assertEqual(cfg["tee"]["necklines"], CFG["tee"]["necklines"])
+        self.assertEqual(cfg["trousers"], CFG["trousers"])
+        self.assertNotIn("_note", {k: v for k, v in cfg.items() if k not in CFG})
+        self.assertEqual(CFG["tee"]["chest_ease_cm"], 8, "the shared config must not be changed by a merge")
+
+    def test_people_file_is_valid(self):
+        people = json.load(open(HERE / "fit_people.json"))
+        for name, over in people.items():
+            if not name.startswith("_"):
+                fit.default_garments(BODY, fit.merge(CFG, over))
+
+
 if __name__ == "__main__":
     unittest.main()

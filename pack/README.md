@@ -7,6 +7,7 @@ It wraps the spike's Blender scripts (`spike/blender/`) and checker (`spike/chec
 | --- | --- |
 | `build_pack.py` | The command. Builds, checks, and (with `--private`) writes Joe's pack. |
 | `fit_config.json` | The default fit: ease and proportions per garment type, and the neutral garment colour. One place to change a fit. |
+| `fit_people.json` | Per-person fit (V2-03): overrides for Joe and B laid over `fit_config.json` (`fit.merge`). Both are empty for now, so both use the default fit. The synthetic bodies never read it. Each pack's `manifest.json` records the fit used and the overrides. |
 | `fit.py` | Turns a body's measurements and the config into garment sizes. No Blender needed. |
 | `test_fit.py` | Unit tests for `fit.py`; run by `npm run check`. |
 | `measure_glb.py` | Measures an exported body GLB against its tape measurements, with numpy only (no Blender, none of the generator's code). `python pack/measure_glb.py private/pack/b/body.glb private/measurements_b.json private/pack/build/b_report.json` |
@@ -25,8 +26,8 @@ Joe as well, from `private/measurements_joe.json`. If every check passes, his pa
 python pack/build_pack.py --private
 ```
 B (V2-02) is built from `private/measurements_b.json` and packed to `private/pack/b/`. The same command builds her whenever the file exists;
-`python pack/build_pack.py --private --only b` builds just her. Her file has `"body_only": true`, so until her garments are fitted (V2-03)
-the build, the checker and the pack cover the body alone (`body.glb` and `manifest.json`). Delete that line in V2-03 to put her through the full garment checks.
+`python pack/build_pack.py --private --only b` builds just her. Since V2-03 she gets every garment and every garment check, like Joe.
+A measurements file with `"body_only": true` is still accepted: the build, the checker and the pack then cover the body alone.
 Try a different fit without editing the committed file: `python pack/build_pack.py --config path/to/my_fit.json --only synthetic_large`.
 After changing `fit_config.json` itself, refresh the committed reports (all six bodies, committed config only), then commit them with the config:
 ```

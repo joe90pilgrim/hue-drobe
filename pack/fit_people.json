@@ -1,0 +1,5 @@
+{
+  "_note": "Per-person fit (V2-03, decided by Joe on 16 Nov 2026): each person's garments use pack/fit_config.json with that person's entry here laid over it (pack/fit.py merge: nested objects merge key by key, other values replace; keys starting with '_' are notes). The synthetic bodies always use fit_config.json alone. An empty entry means the shared default fit. Ease values are not personal measurements, so this file is committed; changing it is a reviewed edit, then rebuild that person with build_pack.py --private --only <person>. Example: {\"b\": {\"tee\": {\"chest_ease_cm\": 10}}}.",
+  "joe": {},
+  "b": {}
+}

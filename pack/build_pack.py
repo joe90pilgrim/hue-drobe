@@ -5,15 +5,15 @@ Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config 
   --private  also build J and B from private/measurements_<person>.json (joe, b) into private/pack, check them, and write each pack
              (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, sweatshirt.glb, manifest.json).
              A pack is written only if every check passes. A person whose file is missing is skipped. A measurements file with
-             "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json); V2-02 uses this for B until her
-             garments are fitted in V2-03.
+             "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json).
   --only     build just one body (a fixture name such as synthetic_medium, or a person: 'joe' or 'b'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3)
   --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
   --reports-to  after every check passes, copy the synthetic bodies' reports to DIR (use pack/reports to refresh the ones `npm run check`
              validates). Each report is stamped with the SHA-256 of the fit config it was built from.
 Blender is found from the BLENDER environment variable, else the default Windows install path for Blender 5.3.
-Garment sizes come from pack/fit_config.json and the body's own measurements (pack/fit.py). Exit code 0 only if every build and check passed.
+Garment sizes come from pack/fit_config.json and the body's own measurements (pack/fit.py). J and B each also get their own
+overrides from pack/fit_people.json laid over it (V2-03); the synthetic bodies never do. Exit code 0 only if every build and check passed.
 """
 import datetime, hashlib, json, os, pathlib, shutil, subprocess, sys
 from concurrent.futures import ThreadPoolExecutor
@@ -29,6 +29,7 @@ CHECKER = ROOT / "spike" / "check_reports.py"
 TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
 DEFAULT_CONFIG = HERE / "fit_config.json"
 CFG = json.load(open(DEFAULT_CONFIG))  # replaced in main() when --config is given
+PEOPLE_FIT = json.load(open(HERE / "fit_people.json"))  # V2-03: per-person overrides laid over CFG for J and B only
 PEOPLE = ["joe", "b"]  # private bodies: J and B. A person is built when private/measurements_<person>.json exists.
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
               "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb"}
@@ -59,6 +60,11 @@ def ensure_mpfb():
     return 1
 
 
+def person_cfg(name):
+    """The fit a body is built with: the shared config, plus the person's overrides from fit_people.json (synthetic bodies have none)."""
+    return fit.merge(CFG, PEOPLE_FIT.get(name, {})) if name in PEOPLE else CFG
+
+
 def is_body_only(meas):
     """True if the measurements file asks for the body alone (V2-02: B's garments are fitted in V2-03)."""
     return bool(json.load(open(meas)).get("body_only", False))
@@ -73,7 +79,7 @@ def build(job):
     if is_body_only(meas):  # the generator then uses its own throwaway garments, which the checker skips and the pack leaves out
         gar = None
     else:
-        json.dump(fit.default_garments(json.load(open(meas)), CFG), open(gar, "w"), indent=2)
+        json.dump(fit.default_garments(json.load(open(meas)), person_cfg(name)), open(gar, "w"), indent=2)
     report = out / f"{name}_report.json"
     report.unlink(missing_ok=True)  # Blender exits 0 even when the script raises, so a missing report is the failure signal
     cmd = [BLENDER, "--background", "--python", str(SCRIPT), "--", str(meas), str(out), name] + ([str(gar)] if gar else [])
@@ -83,7 +89,7 @@ def build(job):
         rc = 1
     if rc == 0:
         data = json.load(open(report))
-        data["fit_config_sha256"] = config_hash(CFG)
+        data["fit_config_sha256"] = config_hash(person_cfg(name))
         json.dump(data, open(report, "w"), indent=2)
     print(f"{name}: {'built' if rc == 0 else 'BUILD FAILED, see ' + str(out / (name + '_build.log'))}", flush=True)
     return rc
@@ -127,10 +133,11 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "total_bytes": total,
         "body_only": body_only,
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
-                     "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": CFG["shorts"]["inseam_cm"]},
+                     "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"}},
-        "garment_colour_srgb": CFG["colour_srgb"],
-        "fit_config": CFG,
+        "garment_colour_srgb": person_cfg(name)["colour_srgb"],
+        "fit_config": person_cfg(name),
+        "fit_overrides": {k: v for k, v in PEOPLE_FIT.get(name, {}).items() if not k.startswith("_")},
         "checks": "body measures passed; garments not built (body_only)" if body_only else "all passed (spike/check_reports.py)",
     }
     json.dump(manifest, open(pack_dir / "manifest.json", "w"), indent=2)

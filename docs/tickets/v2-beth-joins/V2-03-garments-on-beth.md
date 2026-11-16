@@ -21,3 +21,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 ## Acceptance criteria
 - Every garment passes the hard mesh checks on Beth, Joe and the synthetic bodies.
 - Beth's visual sign-off: no body showing through, front, side and back.
+
+## Progress (16 Nov 2026, not closed)
+Same templates and fit per person decided (`pack/fit_people.json`, both entries empty). Every garment passes the hard checks on B, J and the six synthetic bodies; J's pack is byte-identical. Open: B's visual sign-off, and the tops trace B's bust and navel (a fix failed three times). See `docs/decisions/2026-11-16-v2-03-garments-on-b.md`.

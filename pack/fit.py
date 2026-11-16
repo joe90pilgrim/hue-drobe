@@ -13,6 +13,17 @@ def config_hash(cfg):
     return hashlib.sha256(json.dumps(cfg, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
+def merge(base, over):
+    """V2-03: a person's fit is the shared fit_config.json with that person's overrides from fit_people.json laid over it.
+    Nested objects merge key by key; any other value replaces the default. Keys starting with '_' (notes) are ignored."""
+    out = dict(base)
+    for k, v in over.items():
+        if k.startswith("_"):
+            continue
+        out[k] = merge(base[k], v) if isinstance(v, dict) and isinstance(base.get(k), dict) else v
+    return out
+
+
 def _r(x):
     return round(x, 1)
 
