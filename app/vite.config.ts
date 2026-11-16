@@ -5,6 +5,9 @@ import { defineConfig, type Plugin } from 'vite';
 // The avatar pack files the viewer loads (keep in step with PACK_FILES in src/viewer.ts).
 const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'sweatshirt'];
 
+// Self-hosted heading font files in public/fonts/ (Bricolage Grotesque, SIL OFL 1.1). Public files are not in the bundle, so list them for the precache.
+const FONT_FILES = ['bricolage-grotesque-latin-600-normal.woff2', 'bricolage-grotesque-latin-700-normal.woff2'];
+
 // Dev and preview only: serves Joe's private avatar pack at /pack/joe/. It is never copied into a build.
 function servePrivatePack(): Plugin {
   const root = fileURLToPath(new URL('../private/pack/joe/', import.meta.url));
@@ -29,7 +32,7 @@ function precacheServiceWorker(): Plugin {
     apply: 'build',
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).map((f) => `./${f}`);
-      const extras = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+      const extras = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', ...FONT_FILES.map((f) => `./fonts/${f}`)];
       const urls = JSON.stringify([...new Set([...extras, ...files])]);
       const version = Date.now().toString(36);
       this.emitFile({

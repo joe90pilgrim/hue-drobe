@@ -17,14 +17,16 @@ async function takeQuiz(page: Page) {
 
 test('saves a palette colour from the quiz, applies it to the tee, and keeps it after a reload', async ({ page }) => {
   await takeQuiz(page);
-  const first = page.locator('.fav-toggle').first();
+  // The season's own palette; a close second season (V1.1-07) has its own, hidden, inside #close-second-detail.
+  const mainToggles = page.locator('.palette:not(#close-second-detail *) .fav-toggle');
+  const first = mainToggles.first();
   const hex = (await first.getAttribute('data-fav'))!.toLowerCase();
   await first.click();
   await expect(first).toHaveText('Saved');
   await expect(first).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
-  await expect(page.locator('.fav-toggle').first()).toHaveText('Saved');
+  await expect(mainToggles.first()).toHaveText('Saved');
 
   await page.getByRole('link', { name: 'Dress' }).click();
   const top = page.getByRole('group', { name: 'Top favourite colours' });

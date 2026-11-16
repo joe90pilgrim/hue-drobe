@@ -33,7 +33,8 @@ test('takes the quiz, sees a season with its palette and advice, and keeps it af
   const name = (await season.textContent()) ?? '';
   const known = data.seasons.find((s: { name: string }) => s.name === name);
   expect(known, `season "${name}" is in the content`).toBeTruthy();
-  await expect(page.locator('.chip')).toHaveCount(known.palette.length);
+  // The season's own palette; a close second season (V1.1-07) has its own, hidden, inside #close-second-detail.
+  await expect(page.locator('.palette:not(#close-second-detail *) .chip')).toHaveCount(known.palette.length);
   await expect(page.getByRole('heading', { name: 'Colours that flatter you' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Neutrals' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Colours to approach with care' })).toBeVisible();
