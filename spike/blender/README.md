@@ -16,7 +16,8 @@ Headless Blender scripts. Tested with Blender 5.3.0 and MPFB 2.0.18.
 & "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --python spike/blender/body_from_measurements.py -- spike/fixtures/synthetic_medium.json spike/out synthetic_medium
 python spike/check_reports.py spike/out
 ```
-Rebuild every fixture (and, with `--private`, Joe and Beth into `private/out`) and run the checker:
+A measurements file may carry an optional `"shape"` block (V2-02) for proportions that a tape does not pin down, chosen by eye: a macro (`muscle`, `proportions`, `cupsize`, `firmness`, 0 to 1), a fixed `"weight"`, or a signed MPFB target pair such as `"torso-scale-horiz": 0.7` (-1 to 1). The solver still sets the measured circumferences, so it refuses the keys it controls. The block is written into the report as `shape_by_eye`, and the build log gets a `SOLVER` line with the fine-control values (a value near +/-1 means the tape numbers are being met by an extreme setting).
+Rebuild every fixture (and, with `--private`, J and B into `private/out`) and run the checker:
 ```
 python spike/build_all.py --jobs 4
 ```

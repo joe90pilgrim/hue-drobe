@@ -129,8 +129,23 @@ def bisect(f, target, lo, hi, tol, iters=14):
 gender = 1.0 if M["sex_base"] == "male" else 0.0
 macros = TargetService.get_default_macro_info_dict()
 macros["gender"] = gender
+# Optional "shape" block in the measurements file (V2-02): proportions that tape measurements do not pin down. These are chosen by eye,
+# not measured, and are listed in the report. Macro keys (muscle, proportions, cupsize, firmness; 0..1, default 0.5) are set when the
+# body is created. Any other key is a signed MPFB target pair (-1..1), e.g. torso-scale-depth. The tape-driven solver below
+# still sets the weight macro, measure-*-circ, stomach-pregnant and hip-scale-horiz itself, so those four are not allowed here.
+SHAPE = {k: v for k, v in M.get("shape", {}).items() if not k.startswith("_")}
+for _k in tuple(s for s, _, _ in TORSO.values()) + ("stomach-pregnant", "hip-scale-horiz"):
+    assert _k not in SHAPE, f"shape.{_k} is set by the tape-measurement solver"
+WEIGHT_FIXED = SHAPE.pop("weight", None)  # a fixed weight macro replaces the solved one (the solver otherwise picks it from the mean tape circumference)
+for _k in ("muscle", "proportions", "cupsize", "firmness"):
+    if _k in SHAPE:
+        macros[_k] = SHAPE.pop(_k)
 h = HumanService.create_human(scale=0.1, macro_detail_dict=macros)
 load_torso_targets(h)
+for _stem, _v in SHAPE.items():
+    for _sfx in ("-decr", "-incr"):
+        TargetService.load_target(h, TargetService.target_full_path(_stem + _sfx), weight=0.0, name=_stem + _sfx)
+    set_signed(h, _stem, _v)
 
 # 1. height via macro
 set_height_macro(h, 0.5)
@@ -195,7 +210,12 @@ def mean_circ(h):
 
 circ_keys = [k for k in TORSO if k in M]
 target_mean = sum(M[k] for k in circ_keys) / len(circ_keys)
-if circ_keys:
+if WEIGHT_FIXED is not None:
+    wv = WEIGHT_FIXED
+    set_macro(h, "weight", wv)
+    hv = bisect(lambda v: (set_height_macro(h, v), height_cm(eval_bm(h)))[1], M["height_cm"], 0.0, 1.0, 0.05, 16)
+    set_height_macro(h, hv)
+elif circ_keys:
     wv = bisect(lambda v: (set_macro(h, "weight", v), mean_circ(h))[1], target_mean, 0.0, 1.0, 0.2, 14)
     set_macro(h, "weight", wv)
     # weight changes height slightly: re-solve height
@@ -307,6 +327,21 @@ for _pass in range(3):
             return c
         set_signed(h, "hip-scale-horiz", bisect(fh, M["hips_cm"], -1.0, 1.0, 0.1, 12))
     # height may drift slightly after torso edits; leave as measured and report it
+
+
+def _tv(stem):
+    """Signed value (-1..1) of a decr/incr target pair, or None if it was never loaded."""
+    try:
+        return round(TargetService.get_target_value(h, stem + "-incr") - TargetService.get_target_value(h, stem + "-decr"), 3)
+    except Exception:
+        return None
+
+
+# The fine controls saturate at +/-1; a value near it means the tape numbers are being met by an extreme target (found for B, V2-02)
+print("SOLVER", json.dumps({"weight_macro": round(wv, 4), "height_macro": round(hv, 4),
+                            **{s: _tv(s) for s in ("measure-waist-circ", "measure-bust-circ", "measure-hips-circ", "stomach-pregnant", "hip-scale-horiz",
+                                                  "torso-scale-depth", "torso-scale-horiz", "torso-scale-vert", "torso-trans-backward", "pelvis-tone",
+                                                  "stomach-tone")}}))
 
 bm = eval_bm(h)
 hgt = height_cm(bm)
@@ -842,7 +877,7 @@ bpy.data.objects.remove(ref)
 results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
-report = {"name": name, "sex_base": M["sex_base"], "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
+report = {"name": name, "sex_base": M["sex_base"], "body_only": bool(M.get("body_only", False)), "shape_by_eye": M.get("shape", {}), "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 
 def _lin(rgb):

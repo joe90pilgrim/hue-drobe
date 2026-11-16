@@ -9,6 +9,8 @@ It wraps the spike's Blender scripts (`spike/blender/`) and checker (`spike/chec
 | `fit_config.json` | The default fit: ease and proportions per garment type, and the neutral garment colour. One place to change a fit. |
 | `fit.py` | Turns a body's measurements and the config into garment sizes. No Blender needed. |
 | `test_fit.py` | Unit tests for `fit.py`; run by `npm run check`. |
+| `measure_glb.py` | Measures an exported body GLB against its tape measurements, with numpy only (no Blender, none of the generator's code). `python pack/measure_glb.py private/pack/b/body.glb private/measurements_b.json private/pack/build/b_report.json` |
+| `test_measure_glb.py` | Unit tests for `measure_glb.py` on small synthetic tubes. |
 | `test_reports.py` | Fails if the committed reports in `reports/` were not built from the current `fit_config.json`; run by `npm run check`. |
 | `reports/` | The six synthetic bodies' reports, built by `build_pack.py` from `fit_config.json`. `npm run check` validates these, so it checks the garments the app ships. |
 
@@ -22,6 +24,9 @@ Joe as well, from `private/measurements_joe.json`. If every check passes, his pa
 ```
 python pack/build_pack.py --private
 ```
+B (V2-02) is built from `private/measurements_b.json` and packed to `private/pack/b/`. The same command builds her whenever the file exists;
+`python pack/build_pack.py --private --only b` builds just her. Her file has `"body_only": true`, so until her garments are fitted (V2-03)
+the build, the checker and the pack cover the body alone (`body.glb` and `manifest.json`). Delete that line in V2-03 to put her through the full garment checks.
 Try a different fit without editing the committed file: `python pack/build_pack.py --config path/to/my_fit.json --only synthetic_large`.
 After changing `fit_config.json` itself, refresh the committed reports (all six bodies, committed config only), then commit them with the config:
 ```

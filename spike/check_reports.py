@@ -18,6 +18,10 @@ Stricter than the first version:
 - shorts (V1.1-05), when the report has them, get exactly the trousers' mesh limits, and every top is checked against them with
   the tee-with-trousers limit. --shorts makes missing shorts a failure.
 
+- a report with "body_only": true (copied from the measurements file by the generator, V2-02) is judged on the body's own measures
+  (height, circumferences, extra_body_checks) only. Every garment is skipped. Used for a person whose garments are not built yet;
+  the synthetic bodies and the shipped garments never use it.
+
 Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts]
 """
 import json, sys, pathlib
@@ -63,6 +67,9 @@ for f in reports:
         err = m["achieved"] - m["target"]
         check(abs(err) <= tol["circumference_cm"], f"{k}: target {m['target']} got {m['achieved']} (error {err:+.1f}, tol {tol['circumference_cm']})")
 
+    if r.get("body_only"):  # V2-02: the measurements file says "body_only": true, so the body is judged on its own
+        print("  info garments not judged: this body is marked body_only (its garments are V2-03)")
+        continue
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
     shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
     for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts:

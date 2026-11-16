@@ -1,7 +1,7 @@
 """Rebuild every synthetic body in spike/fixtures (with its garments file) into spike/out, then run check_reports.py.
 
 Usage: python spike/build_all.py [--jobs N] [--private] [--drape]
-  --private  also build Joe and Beth from private/ into private/out (local only, never committed)
+  --private  also build J and B from private/ into private/out (local only, never committed)
   --drape    settle the tee with Blender cloth (task 5, drape.py) instead of keeping the offset shell
 Blender is found from the BLENDER environment variable, else the default Windows install path for Blender 5.3.
 Each build's log goes to <out>/<name>_build.log. Exit code is check_reports.py's.
@@ -21,7 +21,7 @@ for m in sorted((root / "spike" / "fixtures").glob("*.json")):
     gar = m.with_name(m.stem + "_garments.json")
     builds.append((m, gar if gar.exists() else None, root / "spike" / "out", m.stem))
 if "--private" in sys.argv:
-    for person in ("joe", "beth"):
+    for person in ("joe", "b"):
         m = root / "private" / f"measurements_{person}.json"
         gar = root / "private" / f"garments_{person}.json"
         if m.exists():

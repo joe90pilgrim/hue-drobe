@@ -2,9 +2,12 @@
 
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
-  --private  also build Joe from private/measurements_joe.json into private/pack, check him, and write his pack
-             (private/pack/joe/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, sweatshirt.glb, manifest.json). The pack is written only if every check passes.
-  --only     build just one body (a fixture name such as synthetic_medium, or 'joe'); use this to try a change on one body first
+  --private  also build J and B from private/measurements_<person>.json (joe, b) into private/pack, check them, and write each pack
+             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, sweatshirt.glb, manifest.json).
+             A pack is written only if every check passes. A person whose file is missing is skipped. A measurements file with
+             "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json); V2-02 uses this for B until her
+             garments are fitted in V2-03.
+  --only     build just one body (a fixture name such as synthetic_medium, or a person: 'joe' or 'b'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3)
   --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
   --reports-to  after every check passes, copy the synthetic bodies' reports to DIR (use pack/reports to refresh the ones `npm run check`
@@ -26,6 +29,7 @@ CHECKER = ROOT / "spike" / "check_reports.py"
 TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
 DEFAULT_CONFIG = HERE / "fit_config.json"
 CFG = json.load(open(DEFAULT_CONFIG))  # replaced in main() when --config is given
+PEOPLE = ["joe", "b"]  # private bodies: J and B. A person is built when private/measurements_<person>.json exists.
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
               "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb"}
 
@@ -55,15 +59,24 @@ def ensure_mpfb():
     return 1
 
 
+def is_body_only(meas):
+    """True if the measurements file asks for the body alone (V2-02: B's garments are fitted in V2-03)."""
+    return bool(json.load(open(meas)).get("body_only", False))
+
+
 def build(job):
     """job: (measurements path, out dir, name). Writes the default-fit garments file, runs Blender, returns 0 on success."""
     meas, out, name = job
     out.mkdir(parents=True, exist_ok=True)
     gar = out / f"{name}_garments.json"
-    json.dump(fit.default_garments(json.load(open(meas)), CFG), open(gar, "w"), indent=2)
+    gar.unlink(missing_ok=True)
+    if is_body_only(meas):  # the generator then uses its own throwaway garments, which the checker skips and the pack leaves out
+        gar = None
+    else:
+        json.dump(fit.default_garments(json.load(open(meas)), CFG), open(gar, "w"), indent=2)
     report = out / f"{name}_report.json"
     report.unlink(missing_ok=True)  # Blender exits 0 even when the script raises, so a missing report is the failure signal
-    cmd = [BLENDER, "--background", "--python", str(SCRIPT), "--", str(meas), str(out), name, str(gar)]
+    cmd = [BLENDER, "--background", "--python", str(SCRIPT), "--", str(meas), str(out), name] + ([str(gar)] if gar else [])
     with open(out / f"{name}_build.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT).returncode
     if rc == 0 and not report.exists():
@@ -92,13 +105,15 @@ def blender_version():
     return first[0].strip() if first else "unknown"
 
 
-def write_pack(name, build_dir, pack_dir):
+def write_pack(name, build_dir, pack_dir, body_only=False):
     """Copy the checked GLBs to a stable layout and write the manifest. Fails if the pack is over the phone download limit."""
     if pack_dir.exists():
         shutil.rmtree(pack_dir)
     pack_dir.mkdir(parents=True)
     files = {}
     for key, pattern in PACK_FILES.items():
+        if body_only and key != "body":
+            continue
         src = build_dir / pattern.format(n=name)
         dst = pack_dir / f"{key}.glb"
         shutil.copyfile(src, dst)
@@ -110,12 +125,13 @@ def write_pack(name, build_dir, pack_dir):
         "blender": blender_version(),
         "files": files,
         "total_bytes": total,
-        "garments": {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
+        "body_only": body_only,
+        "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": CFG["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"}},
         "garment_colour_srgb": CFG["colour_srgb"],
         "fit_config": CFG,
-        "checks": "all passed (spike/check_reports.py)",
+        "checks": "body measures passed; garments not built (body_only)" if body_only else "all passed (spike/check_reports.py)",
     }
     json.dump(manifest, open(pack_dir / "manifest.json", "w"), indent=2)
     limit = TOLERANCES["phone_max_load_mb"] * 1024 * 1024
@@ -134,15 +150,16 @@ def main():
         print(f"Using fit config {arg('--config')} (sha256 {config_hash(CFG)[:12]})")
     synthetic = [(m, ROOT / "pack" / "out", m.stem) for m in sorted((ROOT / "spike" / "fixtures").glob("*.json"))
                  if not m.stem.endswith("_garments")]
-    joe = (ROOT / "private" / "measurements_joe.json", ROOT / "private" / "pack" / "build", "joe")
-    if "--private" in sys.argv and not joe[0].exists():
-        print(f"--private given but {joe[0]} does not exist")
+    people = [(ROOT / "private" / f"measurements_{p}.json", ROOT / "private" / "pack" / "build", p) for p in PEOPLE]
+    people = [j for j in people if j[0].exists()]
+    if "--private" in sys.argv and not people:
+        print(f"--private given but no measurements_<person>.json exists in {ROOT / 'private'}")
         return 1
-    groups = [synthetic] + ([[joe]] if "--private" in sys.argv else [])
+    groups = [synthetic] + ([people] if "--private" in sys.argv else [])
     if only:
         groups = [[j for j in g if j[2] == only] for g in groups]
         if not any(groups):
-            print(f"no body called {only!r} (with --private, 'joe' is available)")
+            print(f"no body called {only!r} (with --private, {' and '.join(repr(p) for p in PEOPLE)} are available)")
             return 1
     jobs_all = [j for g in groups for j in g]
     stop = ensure_mpfb()
@@ -176,8 +193,9 @@ def main():
             for j in synthetic:
                 shutil.copyfile(j[1] / f"{j[2]}_report.json", dest / f"{j[2]}_report.json")
             print(f"Reports copied to {dest}")
-    if any(j[2] == "joe" for j in jobs_all):
-        rc |= write_pack("joe", joe[1], ROOT / "private" / "pack" / "joe")
+    for j in jobs_all:
+        if j[2] in PEOPLE:
+            rc |= write_pack(j[2], j[1], ROOT / "private" / "pack" / j[2], is_body_only(j[0]))
     print("\nPACK BUILD " + ("FAILED" if rc else "OK"))
     return rc
 
