@@ -1,5 +1,5 @@
 import './style.css';
-import { renderDress } from './screens/dress';
+import { renderTryOn } from './screens/try-on';
 import { renderWardrobe } from './screens/wardrobe';
 import { renderQuiz } from './screens/quiz';
 import { routeFromHash, type Route } from './route';
@@ -10,7 +10,7 @@ const screens: Record<Route, { label: string; icon: string; render: (el: HTMLEle
   'try-on': {
     label: 'Try on',
     icon: '<path d="M10 6a2 2 0 1 1 3 1.7c-.6.4-1 .9-1 1.6V10"/><path d="M12 10 3 17h18z"/>',
-    render: renderDress,
+    render: renderTryOn,
   },
   wardrobe: {
     label: 'Wardrobe',

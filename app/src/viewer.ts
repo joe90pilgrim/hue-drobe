@@ -81,10 +81,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     if (colour) paint(gltf.scene, colour);
     scene.add(gltf.scene);
   });
-  onStatus('Loading avatar…');
+  onStatus('Getting your avatar ready…');
   Promise.all(loads).then(
     () => onStatus(null),
-    () => onStatus('Avatar pack not found. Run: python pack/build_pack.py --private'),
+    // The developer instruction is for `?debug` only; Joe and his wife see a plain message.
+    () => onStatus(debug ? 'Avatar pack not found. Run: python pack/build_pack.py --private' : "The avatar couldn't load. Try reloading the page."),
   );
 
   const resize = () => {

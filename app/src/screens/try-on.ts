@@ -41,17 +41,23 @@ const SLOTS: Slot[] = [
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
 const DEFAULT_COLOUR = '#d6d6d6';
 
-export function renderDress(el: HTMLElement): () => void {
+export function renderTryOn(el: HTMLElement): () => void {
   el.innerHTML = `
-    <div class="dress">
+    <div class="try-on">
       <div class="stage" id="stage">
-        <span class="stage-hint"></span>
+        <p class="stage-status" role="status"></p>
+        <span class="stage-hint" hidden>${matchMedia('(pointer: coarse)').matches ? 'Drag to turn · pinch to zoom' : 'Drag to turn · scroll to zoom'}</span>
       </div>
-      <div class="rail" aria-label="Outfit slots">
+      <section class="panel" aria-labelledby="wearing-title">
+        <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
         ${SLOTS.map(
           (s) => `<div class="slot">
-            <div class="slot-label">${s.name}</div>
-            <div class="slot-item" data-slot="${s.name}">${s.options[0]}</div>
+            <button type="button" class="wear-row" data-row="${s.name}" aria-expanded="false" aria-controls="edit-${s.name}">
+              <span class="wear-swatch" data-row-swatch="${s.name}"></span>
+              <span class="wear-text"><span class="slot-label">${s.name}</span><span class="wear-name" data-slot="${s.name}"></span></span>
+              <span class="wear-change" aria-hidden="true">Change ›</span>
+            </button>
+            <div class="slot-edit" id="edit-${s.name}" role="group" aria-label="${s.name}" hidden>
             ${
               Object.values(s.garments).some((g) => hasNecklines(g as GarmentId))
                 ? `<div class="neckline-row" role="group" aria-label="Neckline" data-necklines hidden>${(Object.keys(NECKLINES) as Neckline[])
@@ -66,19 +72,37 @@ export function renderDress(el: HTMLElement): () => void {
               <button aria-label="Next ${s.name.toLowerCase()}" ${s.options.length < 2 ? 'disabled' : ''}>&rsaquo;</button>
             </div>
             <button type="button" class="slot-save" data-save="${s.name}">Save</button>
+            </div>
           </div>`,
         ).join('')}
-        <button type="button" class="slot-save outfit-save" id="save-outfit">Save outfit</button>
-      </div>
+        <button type="button" class="primary outfit-save" id="save-outfit">Save outfit</button>
+      </section>
     </div>`;
 
   const stage = el.querySelector<HTMLElement>('#stage')!;
   const hint = stage.querySelector<HTMLElement>('.stage-hint')!;
+  const status = stage.querySelector<HTMLElement>('.stage-status')!;
   const outfitBtn = el.querySelector<HTMLButtonElement>('#save-outfit')!;
+  let dragged = false; // the turn hint goes away after the first drag
   const viewer = createViewer(stage, (msg) => {
-    hint.textContent = msg ?? '';
-    hint.hidden = msg === null;
+    status.textContent = msg ?? '';
+    status.hidden = msg === null;
+    hint.hidden = msg !== null || dragged;
   });
+  stage.addEventListener('pointermove', (e) => {
+    if (e.buttons > 0 && !dragged) {
+      dragged = true;
+      hint.hidden = true;
+    }
+  });
+  // A row opens the controls for its slot (V1.2-04 replaces these with a sheet and a side panel).
+  for (const row of el.querySelectorAll<HTMLButtonElement>('.wear-row')) {
+    row.addEventListener('click', () => {
+      const open = row.getAttribute('aria-expanded') !== 'true';
+      row.setAttribute('aria-expanded', String(open));
+      el.querySelector<HTMLElement>(`#${row.getAttribute('aria-controls')}`)!.hidden = !open;
+    });
+  }
 
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
   let colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
@@ -87,6 +111,12 @@ export function renderDress(el: HTMLElement): () => void {
   let editing = false; // while true, tapping a favourite removes it instead of applying it
   let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
+  /** The row's name: "T-shirt, crew neck", "Trousers" or "Nothing". */
+  const nameOf = (slot: Slot) => {
+    const g = garmentOf(slot) as GarmentId | undefined;
+    if (!g) return 'Nothing';
+    return hasNecklines(g) ? `${outfit[slot.name]}, ${NECKLINES[neckline].words}` : outfit[slot.name];
+  };
   const pickerOf = (slot: Slot) => el.querySelector<HTMLInputElement>(`[aria-label="${slot.name} colour"]`)!;
   const favRowOf = (slot: Slot) => el.querySelector<HTMLElement>(`[data-favs="${slot.name}"]`)!;
 
@@ -97,6 +127,9 @@ export function renderDress(el: HTMLElement): () => void {
     for (const s of SLOTS) {
       const g = garmentOf(s);
       const row = favRowOf(s);
+      const sw = el.querySelector<HTMLElement>(`[data-row-swatch="${s.name}"]`)!;
+      sw.classList.toggle('o-empty', !g);
+      sw.style.background = g ? pickerOf(s).value : '';
       const current = pickerOf(s).value.toLowerCase();
       const isFav = hasFavourite(favourites, current);
       const shown = showAll ? favourites : favourites.slice(0, SHOWN_FIRST);
@@ -118,14 +151,14 @@ export function renderDress(el: HTMLElement): () => void {
   };
 
   const apply = (slot: Slot) => {
-    el.querySelector(`[data-slot="${slot.name}"]`)!.textContent = outfit[slot.name];
+    el.querySelector(`[data-slot="${slot.name}"]`)!.textContent = nameOf(slot);
     // Show exactly one mesh: the chosen garment, with the chosen neckline if it has them.
     for (const [opt, id] of Object.entries(slot.garments)) {
       const shown = meshName(id as GarmentId, neckline);
       for (const mesh of meshesOf(id as GarmentId)) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
     }
     const g = garmentOf(slot);
-    const necks = el.querySelector<HTMLElement>(`[data-slot="${slot.name}"] ~ [data-necklines]`);
+    const necks = el.querySelector<HTMLElement>(`#edit-${slot.name} [data-necklines]`);
     if (necks) {
       necks.hidden = !g || !hasNecklines(g as GarmentId);
       for (const b of necks.querySelectorAll<HTMLButtonElement>('[data-neckline]')) b.setAttribute('aria-pressed', String(b.dataset.neckline === neckline));
@@ -167,7 +200,7 @@ export function renderDress(el: HTMLElement): () => void {
     el.querySelector(`[aria-label="Previous ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(-1));
     el.querySelector(`[aria-label="Next ${s.name.toLowerCase()}"]`)!.addEventListener('click', step(1));
 
-    el.querySelector(`[data-slot="${s.name}"] ~ [data-necklines]`)?.addEventListener('click', (e) => {
+    el.querySelector(`#edit-${s.name} [data-necklines]`)?.addEventListener('click', (e) => {
       const n = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-neckline]')?.dataset.neckline;
       if (!isNeckline(n) || n === neckline) return;
       neckline = n;

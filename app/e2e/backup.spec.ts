@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { openRows } from './helpers';
 import { writeFileSync } from 'node:fs';
 
 // V1.1-06: export, clear the app's storage, import, and everything comes back.
 test('backs up and restores saved clothes and outfits', async ({ page }, info) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   await page.getByLabel('Top colour').fill('#1f2a5a');
   await page.getByRole('button', { name: 'Save', exact: true }).first().click();
   await page.getByRole('button', { name: 'Save outfit' }).click();
@@ -44,6 +46,7 @@ test('backs up and restores saved clothes and outfits', async ({ page }, info) =
       }),
   );
   await page.reload();
+  await openRows(page);
   await expect(page.getByRole('button', { name: 'Wear Navy tee' })).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Menu' }).click();

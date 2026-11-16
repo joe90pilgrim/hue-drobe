@@ -1,8 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { openRows } from './helpers';
 
 // V1.1-05: shorts are a Bottom option with their own colour, and can be saved and worn like the trousers.
 test('offers shorts as a bottom with their own colour, and remembers the choice after a reload', async ({ page }) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   const bottom = page.locator('[data-slot="Bottom"]');
   await expect(bottom).toHaveText('Trousers');
   await expect(page.getByLabel('Bottom colour')).toBeEnabled();
@@ -19,11 +21,13 @@ test('offers shorts as a bottom with their own colour, and remembers the choice 
   await expect(page.getByLabel('Bottom colour')).toHaveValue('#1f2a5a');
 
   await page.reload();
+
+  await openRows(page);
   await expect(bottom).toHaveText('Shorts');
   await expect(page.getByLabel('Bottom colour')).toHaveValue('#1f2a5a');
 
   await page.getByRole('button', { name: 'Next bottom' }).click();
-  await expect(bottom).toHaveText('None');
+  await expect(bottom).toHaveText('Nothing');
   await page.getByRole('button', { name: 'Next bottom' }).click();
   await expect(bottom).toHaveText('Trousers');
   await expect(page.getByLabel('Bottom colour')).toHaveValue('#333333');
@@ -31,6 +35,7 @@ test('offers shorts as a bottom with their own colour, and remembers the choice 
 
 test('saves shorts and wears them from the library', async ({ page }) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   await page.getByRole('button', { name: 'Next bottom' }).click();
   await page.getByLabel('Bottom colour').fill('#1f2a5a');
   await page.getByRole('button', { name: 'Save', exact: true }).last().click();
@@ -39,6 +44,8 @@ test('saves shorts and wears them from the library', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Wear Navy shorts' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Try on' }).click();
+
+  await openRows(page);
   await page.getByRole('button', { name: 'Previous bottom' }).click(); // back to trousers
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await page.getByRole('button', { name: 'Wear Navy shorts' }).click();

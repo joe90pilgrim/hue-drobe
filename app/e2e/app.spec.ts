@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test';
+import { openRows } from './helpers';
 
 test('opens on Try on and moves between the three screens', async ({ page }) => {
   await page.goto('/');
+  await openRows(page);
   await expect(page.locator('#stage')).toBeVisible();
-  await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt');
+  await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
 
   await page.getByRole('link', { name: 'My colours' }).click();
   await expect(page).toHaveURL(/#\/colours$/);
@@ -15,6 +17,8 @@ test('opens on Try on and moves between the three screens', async ({ page }) => 
   await expect(page.getByRole('heading', { name: 'Wardrobe', level: 1 })).toBeVisible();
 
   await page.getByRole('link', { name: 'Try on' }).click();
+
+  await openRows(page);
   await expect(page).toHaveURL(/#\/try-on$/);
   await expect(page.locator('#stage')).toBeVisible();
 });
@@ -39,6 +43,7 @@ test('old links #/dress and #/colour still open the right screen', async ({ page
 
 test('the phone tab bar is 56 px and the top bar is 52 px (no safe-area inset in the test browser)', async ({ page }) => {
   await page.goto('/');
+  await openRows(page);
   expect(await page.locator('.nav').evaluate((el) => el.getBoundingClientRect().height)).toBe(56);
   expect(await page.locator('.topbar').evaluate((el) => el.getBoundingClientRect().height)).toBe(52);
 });
@@ -55,34 +60,39 @@ test('on a laptop there is a 232 px sidebar, no top bar, and a main area wider t
 
 test('switches outfit and remembers it after a reload', async ({ page }) => {
   await page.goto('/');
+  await openRows(page);
   const top = page.locator('[data-slot="Top"]');
   const bottom = page.locator('[data-slot="Bottom"]');
-  await expect(top).toHaveText('T-shirt');
+  await expect(top).toHaveText('T-shirt, crew neck');
   await expect(bottom).toHaveText('Trousers');
 
   await page.getByRole('button', { name: 'Next top' }).click();
   await expect(top).toHaveText('Sweatshirt');
   await page.reload();
+  await openRows(page);
   await expect(top).toHaveText('Sweatshirt');
   await page.getByRole('button', { name: 'Next top' }).click();
-  await expect(top).toHaveText('None');
+  await expect(top).toHaveText('Nothing');
   await page.getByRole('button', { name: 'Next bottom' }).click();
   await expect(bottom).toHaveText('Shorts');
   await page.getByRole('button', { name: 'Next bottom' }).click();
-  await expect(bottom).toHaveText('None');
+  await expect(bottom).toHaveText('Nothing');
 
   await page.reload();
-  await expect(top).toHaveText('None');
-  await expect(bottom).toHaveText('None');
+
+  await openRows(page);
+  await expect(top).toHaveText('Nothing');
+  await expect(bottom).toHaveText('Nothing');
 
   await page.getByRole('button', { name: 'Previous top' }).click();
   await expect(top).toHaveText('Sweatshirt');
   await page.getByRole('button', { name: 'Previous top' }).click();
-  await expect(top).toHaveText('T-shirt');
+  await expect(top).toHaveText('T-shirt, crew neck');
 });
 
 test('sets the tee colour, keeps the trousers colour, and remembers it after a reload', async ({ page }) => {
   await page.goto('/');
+  await openRows(page);
   const topColour = page.getByLabel('Top colour');
   const bottomColour = page.getByLabel('Bottom colour');
   await expect(topColour).toBeEnabled();
@@ -100,6 +110,8 @@ test('sets the tee colour, keeps the trousers colour, and remembers it after a r
   await expect(topColour).toHaveValue('#2e5e8c');
 
   await page.reload();
+
+  await openRows(page);
   await expect(page.getByLabel('Top colour')).toHaveValue('#2e5e8c');
   await expect(page.getByLabel('Bottom colour')).toHaveValue('#d6d6d6');
 });

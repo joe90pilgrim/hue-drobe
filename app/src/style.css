@@ -61,17 +61,30 @@ button { font-family: inherit; }
 .sheet-actions .primary, .sheet-actions .secondary { width: 100%; height: 50px; }
 .sheet-close { margin-top: 8px; width: 100%; height: 44px; border: 0; background: none; color: var(--text-2); font-size: 14px; font-weight: 600; }
 
-.dress { flex: 1; min-height: 0; display: flex; gap: 10px; }
-.stage { flex: 1; position: relative; background: var(--stage); border-radius: 20px; overflow: hidden; min-height: 320px; }
+/* Try on (V1.2-03): the stage fills the width and the height left over; under it (phone) or beside it (laptop) is the "What you're wearing" panel. */
+.main:has(> .try-on) { padding: 0; gap: 0; }
+.try-on { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.stage { flex: 1; position: relative; background: var(--stage); overflow: hidden; min-height: 240px; }
 .stage canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.stage-hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--muted); }
+.stage-hint { position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--muted); pointer-events: none; }
+.stage-status { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; padding: 0 24px; text-align: center; font-size: 15px; color: var(--muted); pointer-events: none; }
+.stage-status[hidden] { display: none; }
 
-.rail { flex: 0 0 148px; display: flex; flex-direction: column; gap: 8px; }
-.slot { flex: 1; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+.panel { flex: 0 1 auto; max-height: 60%; overflow-y: auto; background: var(--surface); border-top: 1px solid var(--line); padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px; }
+.panel-title { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.slot { border-bottom: 1px solid var(--line); }
+.wear-row { width: 100%; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
+.wear-swatch { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 10px; box-shadow: var(--swatch-edge); background: var(--line-strong); }
+.wear-swatch.o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }
+.wear-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .slot-label { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
-.slot-item { font-size: 13px; font-weight: 600; }
-.slot-controls { flex: 1; display: flex; align-items: center; justify-content: space-between; }
-.slot-controls button { width: 36px; height: 44px; border: 0; border-radius: 10px; background: var(--ground); font-size: 20px; color: var(--ink); }
+.wear-name { font-size: 16px; font-weight: 600; }
+.wear-change { flex: 0 0 auto; font-size: 14px; font-weight: 600; color: var(--text-2); }
+.slot-edit { display: flex; flex-direction: column; gap: 8px; padding: 0 0 14px; }
+.slot-edit[hidden] { display: none; }
+.slot-controls { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.slot-controls button { width: 44px; height: 44px; border: 0; border-radius: 10px; background: var(--ground); font-size: 20px; color: var(--ink); }
 .slot-controls button:disabled { opacity: .5; }
 .swatch { width: 44px; height: 44px; border: 0; border-radius: 10px; padding: 0; background: var(--line-strong); cursor: pointer; }
 .swatch::-webkit-color-swatch-wrapper { padding: 0; }
@@ -142,8 +155,10 @@ button { font-family: inherit; }
   .nav-item.active .nav-icon { background: none; }
   .nav-foot { display: flex; align-items: center; gap: 12px; margin-top: auto; min-height: 44px; padding: 0 12px; border: 0; border-radius: 12px;
     background: none; color: var(--text-2); font-size: 15px; font-weight: 500; text-align: left; }
-  .stage { border-radius: 24px; }
-  .rail { flex-basis: 220px; }
+  .main:has(> .try-on) { padding: 0; }
+  .try-on { flex-direction: row; gap: 24px; padding: 24px; }
+  .stage { border-radius: 24px; min-height: 0; }
+  .panel { flex: 0 0 400px; max-height: none; border: 1px solid var(--line); border-radius: 24px; padding: 20px; }
   .quiz { max-width: 560px; }
   .sheet { margin: auto; width: 480px; max-width: calc(100% - 32px); border-radius: 20px; padding: 24px; }
 }
@@ -156,6 +171,7 @@ button { font-family: inherit; }
   .nav-item:hover:not(.active) { color: var(--ink); }
   .nav-foot:hover, .menu-btn:hover { background: var(--sunken); color: var(--ink); }
   .slot-controls button:hover:not(:disabled) { background: var(--sunken); }
+  .wear-row:hover .wear-change { color: var(--ink); }
   .swatch:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
   .primary:hover:not(:disabled) { background: var(--text-2); }
   .secondary:hover:not(:disabled) { border-color: var(--ink); background: var(--ground); }
@@ -180,7 +196,7 @@ button { font-family: inherit; }
 .w-name-input { flex: 1; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; font: inherit; font-size: 15px; }
 .slot-save { align-self: flex-start; min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--surface); color: var(--ink); font-size: 12px; }
 .slot-save:disabled { opacity: .5; }
-.outfit-save { align-self: stretch; min-height: 44px; font-size: 14px; font-weight: 600; }
+.outfit-save { align-self: stretch; height: 50px; font-size: 15px; margin-top: 4px; }
 .w-heading { margin: 0 0 4px; font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
 .o-swatches { flex: 0 0 auto; display: flex; gap: 3px; }
 .o-swatches .w-swatch { flex-basis: 18px; width: 18px; height: 36px; border-radius: 6px; }

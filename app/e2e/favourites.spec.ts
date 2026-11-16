@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
+import { openRows } from './helpers';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/colour-quiz.json', import.meta.url), 'utf8'));
 const QUESTIONS = data.questions.length as number;
@@ -26,9 +27,13 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
   await expect(first).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
+
+  await openRows(page);
   await expect(mainToggles.first()).toHaveText('Saved');
 
   await page.getByRole('link', { name: 'Try on' }).click();
+
+  await openRows(page);
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const tile = top.getByRole('button', { name: hex });
   await expect(tile).toBeVisible();
@@ -38,12 +43,15 @@ test('saves a palette colour from the quiz, applies it to the tee, and keeps it 
   await expect(page.getByLabel('Bottom colour')).toHaveValue('#d6d6d6');
 
   await page.reload();
+
+  await openRows(page);
   await expect(page.getByLabel('Top colour')).toHaveValue(hex);
   await expect(page.getByRole('group', { name: 'Top favourite colours' }).getByRole('button', { name: hex })).toHaveClass(/\bon\b/);
 });
 
 test('saves a picked colour with the star, shows it in every slot, and removes it in edit mode', async ({ page }) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const bottom = page.getByRole('group', { name: 'Bottom favourite colours' });
   const star = (group: typeof top) => group.getByRole('button', { name: 'Save this colour to favourites' });
@@ -55,6 +63,8 @@ test('saves a picked colour with the star, shows it in every slot, and removes i
   await star(top).click();
 
   await page.reload();
+
+  await openRows(page);
   await expect(top.getByRole('button', { name: '#2e5e8c' })).toBeVisible();
   await expect(top.getByRole('button', { name: '#aa5500' })).toBeVisible();
   await expect(bottom.getByRole('button', { name: '#2e5e8c' })).toBeVisible();
@@ -69,6 +79,7 @@ test('saves a picked colour with the star, shows it in every slot, and removes i
 
 test('shows the first 12 favourites and a more option for the rest', async ({ page }) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   for (let i = 1; i <= 13; i++) {
     await page.getByLabel('Top colour').fill(`#0a0${i.toString(16).padStart(1, '0')}00`);
@@ -83,6 +94,7 @@ test('shows the first 12 favourites and a more option for the rest', async ({ pa
 
 test('after removing the last favourite in edit mode, the star still saves a new one', async ({ page }) => {
   await page.goto('/#/try-on');
+  await openRows(page);
   const top = page.getByRole('group', { name: 'Top favourite colours' });
   const star = top.getByRole('button', { name: 'Save this colour to favourites' });
 
