@@ -96,3 +96,4 @@ Ideas are numbered in the order they were raised, not by priority. New ideas get
 19. Neutral lighting for the avatar: the hemisphere light's ground colour is warm and tints the lower part of each garment (unassigned; found in the 1.2 redesign, a viewer change)
 20. Search and more filters in the Wardrobe, once there are enough clothes to need them (unassigned; from the 1.2 redesign)
 21. Undo after deleting a piece or outfit, in place of the confirmation (unassigned; from the 1.2 redesign)
+22. Baggier clothes slider or level setting per piece

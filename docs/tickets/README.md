@@ -75,17 +75,19 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V2-06b | [Sync between devices](v2-beth-joins/V2-06b-sync.md) | V2-06 | Sonnet, high |
 | V2-07 | [Spike: free MakeHuman asset packs](v2-beth-joins/V2-07-asset-pack-spike.md) | V2-03; run before V3-00 | Sonnet, high |
 | V2-08 | [Bug: the tops show a point at each breast](v2-beth-joins/V2-08-bust-shape-bug.md) | V2-03, V2-07; run last in version 2 | Fable, high |
+| V2-09 | [Archive the free asset packs](v2-beth-joins/V2-09-archive-packs.md) | V2-07; do soon | Haiku, high |
 
 ### Version 3: Loose clothes and layers
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V3-00 | [Experiment: loose clothes with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03, V2-07 (may shrink or drop this) | Opus, high |
+| V3-00 | [Experiment: skirts with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03, V2-07 | Opus, high |
 | V3-01 | [Skirts](v3-loose-clothes/V3-01-skirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-02 | [Dresses](v3-loose-clothes/V3-02-dresses.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-02 | [Dresses (from the free packs)](v3-loose-clothes/V3-02-dresses.md) | V3-06 | Sonnet, medium |
 | V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
+| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
 
 ### Version 4: Your real wardrobe
 
@@ -100,11 +102,12 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V5-00 | [Decision: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (outline) | None | No agent. Joe, with a short Sonnet (low) research ticket if wanted. |
-| V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) (outline) | V5-00 | Sonnet, high (tentative) |
+| V5-00 | [Decision: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (shoes and hair decided) | None | No agent. Joe. |
+| V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) | V3-06, V5-05 | Sonnet, high |
 | V5-02 | [Hats](v5-finishing-the-look/V5-02-hats.md) (outline) | V5-00 | Sonnet, high (tentative) |
 | V5-03 | [Jewellery: necklaces, rings, watches](v5-finishing-the-look/V5-03-jewellery.md) (outline) | V5-00 | Sonnet, high (tentative) |
-| V5-04 | [Hair styles](v5-finishing-the-look/V5-04-hair.md) (outline) | V5-00 | Sonnet, high (tentative) |
+| V5-04 | [Hair styles](v5-finishing-the-look/V5-04-hair.md) | V5-05 | Sonnet, medium |
+| V5-05 | [Shrink textures at build time](v5-finishing-the-look/V5-05-texture-shrink.md) | V3-06 | Sonnet, low |
 
 ### Version 6: Style assistant
 

@@ -1,21 +1,17 @@
 # V5-00 Decision: where shoes, hats, jewellery and hair come from
 
-**Status:** outline. Refine with Joe before starting.
+**Status:** decided for shoes and hair; open for hats and jewellery.
 
 **Ceiling:** No agent.
-**Worker:** No agent. Joe, with a short Sonnet (low) research ticket if wanted. A licensing and source decision.
+**Worker:** No agent. Joe. A short spike like V2-07 (Sonnet, high, 1 hour) can test hats if wanted.
 **Depends on:** None
 
-## Goal
-Decide whether these items are made from scratch in Blender, taken from MPFB2's own free assets (it includes some hair), or bought or downloaded from asset libraries.
+## Decided (16 November 2026)
+- **Shoes and hair:** from the free CC0 MakeHuman packs (Shoes 01, Hair 01), with textures shrunk to about 1024 px. See `docs/decisions/2026-11-16-v2-07-joe-decisions.md`.
 
-## Scope
-- Licences must allow use in the app.
-
-## Decisions needed from Joe
-- **Make, reuse or buy?** Recommendation: reuse MPFB2's free (CC0) assets where they exist, and make simple shoes and jewellery in Blender.
-
-If a decision isn't made when this ticket starts, stop and ask rather than guess.
+## Still open
+- **Hats:** the Hats 01 pack (CC0) wasn't tested. Recommendation: a one-hour spike on two hats, the same way as V2-07, before V5-02.
+- **Jewellery:** no pack holds rings, watches or necklaces. Make simple ones in Blender, or find a CC0 source.
 
 ## Acceptance criteria
-- A decision record in `docs/decisions/`.
+- A decision record for hats and jewellery in `docs/decisions/`.
