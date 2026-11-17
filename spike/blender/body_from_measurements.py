@@ -5,6 +5,7 @@ Run:
 
 Measurements JSON keys (cm): sex_base (male|female), height_cm, waist_cm, hips_cm, chest_cm, "real" (list of keys that are
 real tape measurements; the rest are placeholders and are reported as such).
+Optional "cup" (A, B, ...): the cup letter, mapped to the cupsize macro by spike/cup_sizes.json (V2-09).
 Landmarks are found once per body as fractions of height, then held fixed while solving, so results are repeatable.
 """
 import sys, json, math, os
@@ -140,6 +141,11 @@ WEIGHT_FIXED = SHAPE.pop("weight", None)  # a fixed weight macro replaces the so
 for _k in ("muscle", "proportions", "cupsize", "firmness"):
     if _k in SHAPE:
         macros[_k] = SHAPE.pop(_k)
+if "cup" in M:  # V2-09: an optional cup letter (A, B, ...) sets the cupsize macro from spike/cup_sizes.json; not allowed together with shape.cupsize
+    assert "cupsize" not in M.get("shape", {}), "give the cup as \"cup\" or as shape.cupsize, not both"
+    sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "pack"))
+    import cup as _cup_table
+    macros["cupsize"] = _cup_table.cup_macro(M["cup"])
 h = HumanService.create_human(scale=0.1, macro_detail_dict=macros)
 load_torso_targets(h)
 for _stem, _v in SHAPE.items():
@@ -1069,7 +1075,7 @@ if BUST is not None:  # V2-08: how each top sits over the bust, measured on the 
     _body = bust_shape.load_glb(glb)
     _apx = bust_shape.body_apexes(_body, marks["chest_cm"] * H_f * 100)
     report["bust_shape"] = {"body_apexes_x_height_depth_cm": [[round(c, 1) for c in a] for a in _apx],
-                            "cupsize_macro": _cup, "body_cup": bust_shape.body_cup(_body, marks["chest_cm"] * H_f * 100, _apx),  # V2-09: reported, not limited
+                            "cup": M.get("cup"), "cupsize_macro": _cup, "body_cup": bust_shape.body_cup(_body, marks["chest_cm"] * H_f * 100, _apx),  # V2-09: reported, not limited
                             **{top: bust_shape.measure_top(bust_shape.load_glb(os.path.join(out_dir, f"{name}_{top}.glb")), _body[0][:, 1].min(), _apx)
                                for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + (["sweatshirt"] if SG else [])}}
     print("BUST_SHAPE", json.dumps(report["bust_shape"]))

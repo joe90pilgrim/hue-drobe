@@ -13,6 +13,7 @@ It wraps the spike's Blender scripts (`spike/blender/`) and checker (`spike/chec
 | `measure_glb.py` | Measures an exported body GLB against its tape measurements, with numpy only (no Blender, none of the generator's code). `python pack/measure_glb.py private/pack/b/body.glb private/measurements_b.json private/pack/build/b_report.json` |
 | `test_measure_glb.py` | Unit tests for `measure_glb.py` on small synthetic tubes. |
 | `bust_shape.py` | V2-08: how a top sits over the bust on a female body, from the GLBs with numpy only: the tuck under each breast (hollow below the apex) and how sharply the cloth falls away from the apex. The generator writes it into each female body's report (`bust_shape`), and `check_reports.py` holds it to `spike/tolerances.json` `bust_shape`. By hand: `python pack/bust_shape.py private/pack/b/body.glb private/pack/build/b_report.json private/pack/b/tee.glb private/pack/b/sweatshirt.glb`. V2-09 added `body_cup` (bust minus underbust, and projection of each breast in front of the chest wall), reported with no limit. |
+| `cup.py`, `test_cup.py` | V2-09: the cup letter in a measurements file (`"cup": "A"`) to MPFB's cupsize macro, from `spike/cup_sizes.json`. No Blender needed. |
 | `test_reports.py` | Fails if the committed reports in `reports/` were not built from the current `fit_config.json`; run by `npm run check`. |
 | `reports/` | The six synthetic bodies' reports, built by `build_pack.py` from `fit_config.json`. `npm run check` validates these, so it checks the garments the app ships. |
 

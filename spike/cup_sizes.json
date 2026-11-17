@@ -1,0 +1,4 @@
+{
+  "_note": "V2-09: cup letter (the optional \"cup\" key in a measurements file) to MPFB's cupsize macro (0 smallest, 0.5 MPFB's average, 1 largest). Proposed by Claude on 17 Nov 2026 and chosen by eye and by number on B's frame, not from a tape: A (0.1) is B's own cup and was checked by eye and by number (projection 1.2 cm, bust minus underbust 9.9 cm). AA, B, C, D and DD are spaced by projection measured on B (macro 0 gives 1.05 cm, 0.1 1.2, 0.3 1.7, 0.5 3.2, 0.7 4.4) and have not been checked by eye. Above 0.5 the bust minus underbust stops tracking the cup, because the tape bust is fixed and the solver takes the rest from the ribcage. Changing a value is a reviewed edit: rebuild and look.",
+  "cupsize_macro": {"AA": 0.0, "A": 0.1, "B": 0.3, "C": 0.45, "D": 0.6, "DD": 0.7}
+}
