@@ -44,3 +44,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Use the real Python, not the Microsoft Store `python` alias.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
+
+## Result (17 Nov 2026)
+Built: point collar and raised placket on the tee shell, three sleeve lengths, in the pack and the Top slot; all hard checks pass on Joe, B and the six synthetic bodies. Not signed off: in close-up the collar and placket are faint and may not read as a shirt, so the visual criterion is open. See `docs/decisions/2026-11-17-v3-03-shirts.md`.

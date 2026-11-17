@@ -5,6 +5,11 @@ import { kvGet, kvPut } from './store';
 export const GARMENTS = {
   tee: { label: 'tee', slot: 'Top', option: 'T-shirt' },
   sweatshirt: { label: 'sweatshirt', slot: 'Top', option: 'Sweatshirt' },
+  // V3-03: a collared shirt, untucked, in three sleeve lengths. Each length is a garment of its own (its own pack mesh, its own saved items),
+  // so the stored records need no new field; each length keeps its own colour.
+  shirt_short: { label: 'short-sleeve shirt', slot: 'Top', option: 'Shirt, short sleeves' },
+  shirt_mid: { label: 'mid-sleeve shirt', slot: 'Top', option: 'Shirt, mid sleeves' },
+  shirt_long: { label: 'long-sleeve shirt', slot: 'Top', option: 'Shirt, long sleeves' },
   trousers: { label: 'trousers', slot: 'Bottom', option: 'Trousers' },
   shorts: { label: 'shorts', slot: 'Bottom', option: 'Shorts' },
   // V2-04: a layer of its own, under the shorts (never the trousers), so it has its own slot.
@@ -41,10 +46,13 @@ export const TIGHTS_BLOCKED_BY = 'Trousers';
 /**
  * Joe's decision (17 Nov 2026, V3-01b): a top is tucked into a skirt. The tee has a version cut flat at the skirt's waistband,
  * and it is that version that is shown while the skirt is worn. The sweatshirt has no such version (its ribbed hem would not
- * tuck), so it cannot be worn with a skirt.
+ * tuck), so it cannot be worn with a skirt. Nor can the shirts (V3-03): Joe's decision of 17 Nov 2026 is that a shirt is untucked
+ * first, so a shirt, like the sweatshirt, gives way to a skirt and the other way round.
  */
 export const TUCKS_INTO = 'Skirt';
-export const NOT_WITH_SKIRT = 'Sweatshirt';
+/** The tops that are never tucked in: the sweatshirt and the three shirts. */
+export const NOT_WITH_SKIRT: readonly string[] = ['Sweatshirt', GARMENTS.shirt_short.option, GARMENTS.shirt_mid.option, GARMENTS.shirt_long.option];
+export const isUntuckedTop = (option: string | undefined) => !!option && NOT_WITH_SKIRT.includes(option);
 /** True when the outfit shows the tucked-in tee: a tee over a skirt. */
 export const isTucked = (outfit: Record<string, string>) => outfit.Bottom === TUCKS_INTO && outfit.Top === GARMENTS.tee.option;
 
@@ -61,7 +69,7 @@ const isOn = (option: string | undefined) => !!option && option !== 'None';
  *  - A dress (V3-06, Joe's decision of 16 Nov 2026) replaces the top and the bottom: putting it on takes both off, and putting a top or
  *    a bottom on takes the dress off. With no `changed`, the dress wins. Tights are a separate layer and stay.
  *  - Tights and trousers are never worn together (V2-04); the trousers give way to tights just put on, otherwise the tights go.
- *  - A sweatshirt and a skirt are never worn together (V3-01b); the sweatshirt gives way to a skirt just put on, otherwise the skirt goes.
+ *  - A sweatshirt or a shirt (V3-03) and a skirt are never worn together (V3-01b); the top gives way to a skirt just put on, otherwise the skirt goes.
  */
 export function keepLayers(outfit: Record<string, string>, changed?: string): Record<string, string> {
   let o = outfit;
@@ -69,7 +77,7 @@ export function keepLayers(outfit: Record<string, string>, changed?: string): Re
     o = changed === 'Top' || changed === 'Bottom' ? { ...o, [DRESS_SLOT]: 'None' } : { ...o, Top: 'None', Bottom: 'None' };
   }
   if (o.Legs === GARMENTS.tights.option && o.Bottom === TIGHTS_BLOCKED_BY) o = changed === 'Legs' ? { ...o, Bottom: 'None' } : { ...o, Legs: 'None' };
-  if (o.Top === NOT_WITH_SKIRT && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
+  if (isUntuckedTop(o.Top) && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
   return o;
 }
 

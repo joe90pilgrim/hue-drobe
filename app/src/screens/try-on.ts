@@ -16,7 +16,7 @@ import {
   GARMENTS,
   NECKLINES,
   NECKLINE_KEY,
-  NOT_WITH_SKIRT,
+  isUntuckedTop,
   SHEER_KEY,
   TIGHTS_BLOCKED_BY,
   TUCKS_INTO,
@@ -45,13 +45,23 @@ const SLOTS: Slot[] = [
   // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
   { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
-  { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
+  // The shirts (V3-03) are the same kind of top, untucked, in three sleeve lengths; the panel offers one once the pack has loaded and has it.
+  {
+    name: 'Top',
+    options: ['T-shirt', 'Sweatshirt', GARMENTS.shirt_short.option, GARMENTS.shirt_mid.option, GARMENTS.shirt_long.option, 'None'],
+    garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt', [GARMENTS.shirt_short.option]: 'shirt_short', [GARMENTS.shirt_mid.option]: 'shirt_mid', [GARMENTS.shirt_long.option]: 'shirt_long' },
+  },
   // Shorts (V1.1-05) are the trousers cut at a 23 cm inseam, so the tops sit over them exactly as over the trousers.
   // The skirt (V3-01b) is in a woman's pack only; the panel offers it once the pack has loaded and has it. A tee worn over it is the tucked-in version.
   { name: 'Bottom', options: ['Trousers', 'Shorts', 'Skirt', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts', Skirt: 'skirt' } },
   // Tights (V2-04) are a layer under the shorts, so they have their own slot. Nothing by default; never with trousers.
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
 ];
+
+/** The pack mesh behind each shirt option (V3-03), to offer a shirt only when this person's pack has it. */
+const SHIRT_MESH: Record<string, string> = Object.fromEntries(
+  (['shirt_short', 'shirt_mid', 'shirt_long'] as const).map((g) => [GARMENTS[g].option, g]),
+);
 
 /** The garments' base colour (`colour_srgb` in pack/fit_config.json), shown until Joe picks one. */
 const DEFAULT_COLOUR = '#d6d6d6';
@@ -202,15 +212,18 @@ export function renderTryOn(el: HTMLElement): () => void {
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
-  const offered = (opt: string) => (opt !== TUCKS_INTO || viewer.has('skirt')) && (opt !== DRESS_OPTION || viewer.has('dress'));
+  const offered = (opt: string) =>
+    (opt !== TUCKS_INTO || viewer.has('skirt')) &&
+    (opt !== DRESS_OPTION || viewer.has('dress')) &&
+    !(opt.startsWith('Shirt') && !viewer.has(SHIRT_MESH[opt] ?? ''));
   /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
   const blockedNote = (slot: string, opt: string): string | null => {
     if (slot === 'Legs' && opt === 'Tights' && outfit.Bottom === TIGHTS_BLOCKED_BY)
       return 'Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.';
-    if (slot === 'Top' && opt === NOT_WITH_SKIRT && outfit.Bottom === TUCKS_INTO)
-      return "A sweatshirt isn't tucked in, so it can't go with a skirt. Change your bottom to trousers, shorts or nothing to wear it.";
-    if (slot === 'Bottom' && opt === TUCKS_INTO && outfit.Top === NOT_WITH_SKIRT)
-      return 'A skirt goes with a T-shirt or nothing on top. Change your top from the sweatshirt to wear a skirt.';
+    if (slot === 'Top' && isUntuckedTop(opt) && outfit.Bottom === TUCKS_INTO)
+      return `A ${opt === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} isn't tucked in, so it can't go with a skirt. Change your bottom to trousers, shorts or nothing to wear it.`;
+    if (slot === 'Bottom' && opt === TUCKS_INTO && isUntuckedTop(outfit.Top))
+      return `A skirt goes with a T-shirt or nothing on top. Change your top from the ${outfit.Top === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} to wear a skirt.`;
     return null;
   };
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];

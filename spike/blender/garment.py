@@ -821,3 +821,200 @@ def tuck_inside(inner_mesh, outer_mesh, body_bm_, body_gap, body_floor=0.00203, 
     for p in me.polygons:
         p.use_smooth = True
     return me, left
+
+
+def _smoothstep(t):
+    t = max(0.0, min(1.0, t))
+    return t * t * (3 - 2 * t)
+
+
+def _boundary_loop_top(g):
+    """The open edge loop that holds the highest vertex (the neck opening), as an ordered list of vertices, counter-clockwise seen
+    from above. Walks the boundary edges by vertex index, so the result does not depend on how bmesh orders its sets."""
+    adj = {}
+    for e in g.edges:
+        if e.is_boundary:
+            a, b = e.verts[0].index, e.verts[1].index
+            adj.setdefault(a, []).append(b)
+            adj.setdefault(b, []).append(a)
+    start = min(adj, key=lambda i: (-g.verts[i].co.z, i))
+    order, prev, cur = [start], None, start
+    while True:
+        cand = [k for k in adj[cur] if k != prev]
+        nxt = min(adj[cur]) if prev is None else (cand[0] if cand else None)
+        if nxt is None or nxt == start:
+            break
+        order.append(nxt)
+        prev, cur = cur, nxt
+        if len(order) > len(adj):
+            break
+    ring = [g.verts[i] for i in order]
+    area = sum(ring[i].co.x * ring[(i + 1) % len(ring)].co.y - ring[(i + 1) % len(ring)].co.x * ring[i].co.y for i in range(len(ring)))
+    return ring if area > 0 else ring[::-1]
+
+
+def add_shirt_details(me, body_bm, joints, neck, cfg):
+    """V3-03: turn a tee-shaped shell (from build_tee) into a shirt, in place, by adding two things drawn as shape (no buttons):
+      placket  a strip down the centre front, raised cfg["placket_height_cm"] off the cloth, cfg["placket_half_width_cm"] either side
+               of the centre line and fading out over cfg["placket_fade_cm"]. It only moves vertices outward, so it cannot touch the body.
+      collar   a point collar on the neck opening. A stand rises cfg["stand_cm"] from the opening, hugging the neck at
+               cfg["neck_clearance_cm"]; a flap folds over it (cfg["fold_out_cm"] outside it) and hangs down, longer at the front
+               into two points (cfg["tip_drop_cm"] below the stand's top edge, at +-cfg["tip_angle_deg"] from the front centre),
+               resting cfg["flap_gap_cm"] off the cloth below it.
+    Returns what was drawn, for the report: placket and collar sizes as built. Deterministic: the same shell gives the same shirt."""
+    c = {k: (v / 100.0 if k.endswith("_cm") else v) for k, v in cfg.items() if not k.startswith("_")}
+    g = bmesh.new()
+    g.from_mesh(me)
+    g.verts.ensure_lookup_table(); g.faces.ensure_lookup_table(); g.verts.index_update()
+    g.normal_update()
+    fr, cx, cy = neck["front"], neck["cx"], neck["cy"]
+    segs, radius = _arm_segs(joints)
+    body_bvh = BVHTree.FromBMesh(body_bm)
+
+    # --- placket
+    raised, top_raise = 0, 0.0
+    for v in g.verts:
+        ax = abs(v.co.x - cx)
+        if ax >= c["placket_half_width_cm"] + c["placket_fade_cm"] or (v.co.y - cy) * fr < 0.0 or v.normal.y * fr < 0.3:
+            continue
+        if _classify(v.co, segs, radius) != "torso":
+            continue
+        w = 1.0 if ax <= c["placket_half_width_cm"] else _smoothstep(1.0 - (ax - c["placket_half_width_cm"]) / c["placket_fade_cm"])
+        d = c["placket_height_cm"] * w
+        if d > 1e-6:
+            v.co += v.normal * d
+            raised += 1 if w > 0.5 else 0
+            top_raise = max(top_raise, d)
+
+    # --- collar: stand
+    g.normal_update()
+    ring = _boundary_loop_top(g)
+    n = len(ring)
+    base = [v.co.copy() for v in ring]
+
+    def clear(p):
+        loc, nor, fi, d = nearest(body_bvh, p)
+        return -9.0 if loc is None else (d if (p - loc).dot(nor) > 0 else -d)
+
+    dirs, rho_req, phis = [], [], []
+    for p in base:
+        dx, dy = p.x - cx, p.y - cy
+        r = math.hypot(dx, dy)
+        d_ = (dx / r, dy / r)
+        dirs.append(d_)
+        phis.append(math.atan2(dx, dy * fr))
+        z = p.z + c["stand_cm"]
+        rho = r
+        pt = lambda rr, d_=d_, z=z: Vector((cx + d_[0] * rr, cy + d_[1] * rr, z))
+        if clear(pt(rho)) >= c["neck_clearance_cm"]:
+            while rho - 0.002 > 0.02 and clear(pt(rho - 0.002)) >= c["neck_clearance_cm"]:
+                rho -= 0.002
+        else:
+            while clear(pt(rho)) < c["neck_clearance_cm"] and rho < r + 0.06:
+                rho += 0.002
+        rho_req.append(rho)
+    rho_s = list(rho_req)
+    for _ in range(4):
+        rho_s = [0.25 * rho_s[i - 1] + 0.5 * rho_s[i] + 0.25 * rho_s[(i + 1) % n] for i in range(n)]
+    top = []
+    for i in range(n):
+        rho = max(rho_s[i], rho_req[i])
+        top.append(g.verts.new(Vector((cx + dirs[i][0] * rho, cy + dirs[i][1] * rho, base[i].z + c["stand_cm"]))))
+    new_faces = []
+    for i in range(n):
+        j = (i + 1) % n
+        new_faces.append(("stand", g.faces.new((ring[i], ring[j], top[j], top[i]))))
+    g.verts.index_update(); g.faces.index_update(); g.normal_update()
+    base_bvh = BVHTree.FromBMesh(g)  # the shirt as it is before the flap: the flap must stand clear of it
+
+    # --- collar: the fold and the flap with its two points
+    tip, tip_drop = math.radians(c["tip_angle_deg"]), c["tip_drop_cm"]
+    back_from, d0, dback = math.radians(c["back_from_deg"]), c["centre_drop_cm"], c["back_drop_cm"]
+
+    def drop(phi):
+        a = abs(phi)
+        if a <= tip:
+            return d0 + (tip_drop - d0) * (a / tip)
+        return tip_drop + (dback - tip_drop) * _smoothstep((a - tip) / max(1e-6, back_from - tip))
+    rows = 3
+    fold = []
+    for i in range(n):
+        t = top[i].co
+        fold.append(g.verts.new(Vector((t.x + dirs[i][0] * c["fold_out_cm"], t.y + dirs[i][1] * c["fold_out_cm"], t.z + 0.002))))
+    flap = [fold]
+    for k in range(1, rows + 1):
+        flap.append([g.verts.new(Vector((fold[i].co.x, fold[i].co.y, fold[i].co.z - drop(phis[i]) * k / rows))) for i in range(n)])
+    for i in range(n):
+        j = (i + 1) % n
+        new_faces.append(("rim", g.faces.new((top[i], top[j], fold[j], fold[i]))))
+        for k in range(rows):
+            new_faces.append(("flap", g.faces.new((flap[k][i], flap[k][j], flap[k + 1][j], flap[k + 1][i]))))
+
+    def push_flap():
+        for k in range(1, rows + 1):
+            for v in flap[k]:
+                loc, nor, fi, dist = nearest(base_bvh, v.co)
+                if loc is not None:
+                    s_ = (v.co - loc).dot(nor)
+                    if s_ < c["flap_gap_cm"]:
+                        v.co += nor * (c["flap_gap_cm"] - s_)
+    for _ in range(2):
+        push_flap()
+        for k in range(1, rows + 1):
+            row = flap[k]
+            sm = [row[i].co.lerp((row[i - 1].co + row[(i + 1) % n].co) / 2, 0.25) for i in range(n)]
+            for i in range(n):
+                row[i].co = sm[i]
+    push_flap()
+    push_flap()
+
+    # the flap is pushed clear of the shell vertex by vertex, which can leave a face of it crossing another between the vertices:
+    # find such pairs and move the flap's own vertices of the pair apart (never the shell's), then push clear again, until none cross
+    flap_faces = [f for kind, f in new_faces if kind == "flap"]
+    movable = set(v for row in flap[1:] for v in row)
+    for _ in range(25):
+        g.faces.index_update(); g.verts.index_update(); g.faces.ensure_lookup_table(); g.normal_update()
+        tree = BVHTree.FromBMesh(g)
+        pairs = [(a, b) for a, b in tree.overlap(tree) if a < b and not (set(g.faces[a].verts) & set(g.faces[b].verts))]
+        pairs = [(a, b) for a, b in pairs if g.faces[a] in flap_faces or g.faces[b] in flap_faces]
+        if not pairs:
+            break
+        for a, b in pairs:
+            fa, fb = g.faces[a], g.faces[b]
+            for f, o in ((fa, fb), (fb, fa)):
+                away = f.calc_center_median() - o.calc_center_median()
+                if away.length > 1e-6:
+                    for v in f.verts:
+                        if v in movable:
+                            v.co += away.normalized() * 0.0015
+        push_flap()
+
+    # face directions: the stand and flap face away from the neck and the cloth under them, the rim faces up
+    g.normal_update()
+    for kind, f in new_faces:
+        cen = f.calc_center_median()
+        if kind == "rim":
+            outward = f.normal.z > 0
+        elif kind == "stand":
+            outward = f.normal.x * (cen.x - cx) + f.normal.y * (cen.y - cy) > 0
+        else:
+            loc, nor, fi, dist = nearest(base_bvh, cen)
+            outward = loc is None or (cen - loc).dot(f.normal) > 0
+        if not outward:
+            bmesh.utils.face_flip(f)
+
+    # what was drawn, measured on the result
+    lower = flap[rows]
+    drops = [top[i].co.z - lower[i].co.z for i in range(n)]
+    lim = 0.75 * max(drops)
+    front = [abs(phis[i]) < math.radians(100) and drops[i] >= lim for i in range(n)]  # the points are at the front; count the runs of deep flap there
+    runs = sum(1 for i in range(n) if front[i] and not front[i - 1])
+    report = {"placket": {"vertices_raised": raised, "height_cm": round(top_raise * 100, 2), "half_width_cm": round(c["placket_half_width_cm"] * 100, 2)},
+              "collar": {"ring_vertices": n, "stand_cm": round(c["stand_cm"] * 100, 2), "tip_drop_cm": round(max(drops) * 100, 1), "points": runs,
+                         "min_clearance_stand_top_to_body_cm": round(min(clear(v.co) for v in top) * 100, 2)}}
+    canonical_faces(g)
+    g.to_mesh(me)
+    g.free()
+    for p in me.polygons:
+        p.use_smooth = True
+    return report

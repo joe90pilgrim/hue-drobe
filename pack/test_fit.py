@@ -35,6 +35,21 @@ class DefaultGarments(unittest.TestCase):
         self.assertEqual(n["v"]["neckline_width_cm"], 21.2)  # 0.125 * 170 = 21.25, rounded to 1 decimal place
         self.assertEqual(n["scoop"]["neckline_width_cm"], 23.4)  # 1.1 times that
 
+    def test_shirt_is_the_tee_fit_with_a_collar_and_three_sleeve_lengths(self):
+        # V3-03: same chest ease and length as the tee (the shell cannot go looser, and a longer tail is unstable), sleeves short < mid, long set by the wrist
+        g = fit.default_garments(BODY, CFG)
+        s, t = g["shirt"], g["tee"]
+        self.assertEqual(s["chest_circ_cm"], t["chest_circ_cm"])
+        self.assertEqual(s["length_cm"], t["length_cm"])  # 0.39 * 170
+        self.assertLess(s["sleeve_short_cm"], s["sleeve_mid_cm"])
+        self.assertEqual((s["sleeve_short_cm"], s["sleeve_mid_cm"]), (20.4, 23.8))
+        self.assertEqual(s["cuff_above_wrist_cm"], 1.0)
+        self.assertEqual(s["neckline_width_cm"], t["neckline_width_cm"])  # the collar stands on an opening as wide as the tee's (narrower ones broke the shell)
+        d = s["detail"]
+        self.assertGreater(d["tip_drop_cm"], d["back_drop_cm"])  # points at the front, a lower flap there than round the back
+        self.assertGreater(d["placket_height_cm"], 0)
+        self.assertEqual(s["colour_srgb"], CFG["colour_srgb"])
+
     def test_shorts_are_above_the_knee(self):
         # V1.1-05, length decided by Joe: 23 cm inseam, opening a little wider than the trousers at that height
         s = fit.default_garments(BODY, CFG)["shorts"]

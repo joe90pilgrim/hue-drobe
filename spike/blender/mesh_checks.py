@@ -103,10 +103,10 @@ def clearance_cm(cloth, body_tree):
             "min_at_xyz_cm": [round(c * 100, 1) for c in (lo.x, lo.y, lo.z)]}
 
 
-def shoulder_gap(tee, body_tree, hps_z):
+def shoulder_gap(tee, body_tree, hps_z, x_min=0.04):
     by = collections.defaultdict(list)
     for v in tee.verts:
-        if v.co.z > hps_z - 0.07 and 0.04 < abs(v.co.x) < 0.20 and v.normal.z > 0.6:
+        if v.co.z > hps_z - 0.07 and x_min < abs(v.co.x) < 0.20 and v.normal.z > 0.6:
             loc, nor, fi, d = body_tree.find_nearest(v.co)
             by[int(round(abs(v.co.x) * 100)) // 2 * 2].append(d * 100 if (v.co - loc).dot(nor) > 0 else -d * 100)
     bands = {str(k): {"mean": round(sum(v) / len(v), 2), "max": round(max(v), 2), "verts": len(v)} for k, v in sorted(by.items())}
@@ -198,7 +198,7 @@ def tights_faces_z(bm, i):
     return bm.faces[i].calc_center_median().z
 
 
-def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=None, tights=None):
+def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=None, tights=None, shirt_shoulder_x_min=0.04):
     body, tee, trousers = merged(body), merged(tee), merged(trousers)
     bt, tt, rt = BVHTree.FromBMesh(body), BVHTree.FromBMesh(tee), BVHTree.FromBMesh(trousers)
     garments = [("tee", tee, tt), ("trousers", trousers, rt)]
@@ -251,7 +251,8 @@ def run(body, tee, trousers, hps_z, sweatshirt=None, tee_variants=None, shorts=N
         sweatshirt.free()
     for label, (vm, vt) in variants.items():
         R[f"{label}_vs_trousers_intersecting_pairs"] = len(vt.overlap(rt))
-        R[label]["shoulder_gap"] = shoulder_gap(vm, bt, hps_z)
+        # V3-03: a shirt's collar stands on the neck and its folded flap lies over the base of it, so the shoulder is judged outside the collar
+        R[label]["shoulder_gap"] = shoulder_gap(vm, bt, hps_z, shirt_shoulder_x_min if label.startswith("shirt_") else 0.04)
         vm.free()
     for b in (body, tee, trousers):
         b.free()

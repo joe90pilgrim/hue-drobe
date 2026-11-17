@@ -53,8 +53,9 @@ No open decisions for 1.2.
 - **V3-01b** Skirt in the app: other lengths and styles? Recommendation: midi only until it's in use.
 - **V3-02** Dresses: more dress styles beyond the shift dress? Recommendation: one more only if Beth asks (Dress 02 and 03 are CC-BY, needing a credits screen).
 - **V3-02** Dresses: tights with the dress? Recommendation: yes.
-- **V3-03** Shirts: collar style? Recommendation: classic point collar first.
-- **V3-03** Shirts: tucked in, out or both? Recommendation: untucked first.
+- ~~**V3-03** Shirts: collar style?~~ **Decided 17 Nov 2026:** classic point collar.
+- ~~**V3-03** Shirts: tucked in, out or both?~~ **Decided 17 Nov 2026:** untucked first.
+- **V3-03** Shirts: agree the three new limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm); and look at the renders: does it read as a shirt?
 - **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
 - **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
 - **V3-05** Multiple top layers: how many layers at most? Recommendation: three (base, mid, outer).

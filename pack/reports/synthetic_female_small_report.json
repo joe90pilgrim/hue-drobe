@@ -2542,6 +2542,1899 @@
     "neckline_width_cm": 22.3,
     "neckline_drop_front_cm": 9.2
   },
+  "shirt_short": {
+    "sleeve": "short",
+    "template_faces": 2602,
+    "ease_cm": 2.55,
+    "clipping": {
+      "covered_body_verts": 1815,
+      "showing_through": 0,
+      "fraction": 0.0,
+      "worst_penetration_cm": 0.0,
+      "skipped_near_edge": 70,
+      "worst_at_z_x_depth_cm": []
+    },
+    "clipping_ray": {
+      "samples": 3335,
+      "showing_through_strict": 80,
+      "fraction_strict": 0.024,
+      "showing_through_excluding_edges": 26,
+      "fraction_excluding_edges": 0.0078,
+      "front_face_hits": 6,
+      "no_hit": 74,
+      "where_z_x_y_kind_cm": [
+        [
+          119,
+          16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          114,
+          29,
+          -4,
+          "miss"
+        ],
+        [
+          113,
+          28,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          27,
+          -6,
+          "miss"
+        ],
+        [
+          111,
+          26,
+          -5,
+          "miss"
+        ],
+        [
+          114,
+          29,
+          -5,
+          "miss"
+        ],
+        [
+          113,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          113,
+          29,
+          0,
+          "miss"
+        ],
+        [
+          114,
+          30,
+          -1,
+          "miss"
+        ],
+        [
+          114,
+          30,
+          -3,
+          "miss"
+        ],
+        [
+          112,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          118,
+          -14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          114,
+          -29,
+          -4,
+          "miss"
+        ],
+        [
+          113,
+          -28,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          -27,
+          -6,
+          "miss"
+        ],
+        [
+          111,
+          -26,
+          -5,
+          "miss"
+        ],
+        [
+          114,
+          -29,
+          -5,
+          "miss"
+        ],
+        [
+          113,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          113,
+          -29,
+          0,
+          "miss"
+        ],
+        [
+          114,
+          -30,
+          -1,
+          "miss"
+        ],
+        [
+          114,
+          -30,
+          -3,
+          "miss"
+        ],
+        [
+          112,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          27,
+          -5,
+          "miss"
+        ],
+        [
+          109,
+          26,
+          -4,
+          "miss"
+        ],
+        [
+          109,
+          25,
+          -2,
+          "front"
+        ],
+        [
+          111,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          26,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          25,
+          0,
+          "miss"
+        ],
+        [
+          109,
+          25,
+          -1,
+          "front"
+        ],
+        [
+          111,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          27,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          27,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          27,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          26,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -27,
+          -5,
+          "miss"
+        ],
+        [
+          109,
+          -26,
+          -4,
+          "miss"
+        ],
+        [
+          109,
+          -25,
+          -2,
+          "front"
+        ],
+        [
+          111,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -26,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -25,
+          0,
+          "miss"
+        ],
+        [
+          109,
+          -25,
+          -1,
+          "front"
+        ],
+        [
+          111,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          -27,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          -27,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          -27,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -26,
+          1,
+          "miss"
+        ],
+        [
+          118,
+          14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          -14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          118,
+          -14,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -14,
+          -1,
+          "miss"
+        ],
+        [
+          110,
+          -26,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          -27,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -25,
+          -3,
+          "front"
+        ],
+        [
+          111,
+          -27,
+          -5,
+          "miss"
+        ],
+        [
+          111,
+          -26,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          -26,
+          1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          118,
+          14,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          14,
+          -1,
+          "miss"
+        ],
+        [
+          110,
+          26,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          27,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          25,
+          -3,
+          "front"
+        ],
+        [
+          111,
+          27,
+          -5,
+          "miss"
+        ],
+        [
+          111,
+          26,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          26,
+          1,
+          "miss"
+        ]
+      ]
+    },
+    "hem_height_cm": 70.0,
+    "hem_from_hps_cm": 61.6,
+    "sleeve_end_from_shoulder_cm": 19.7,
+    "calibration": {
+      "converged": true,
+      "ease_at_floor": [],
+      "residual_cm": {
+        "chest": 0.0,
+        "sleeve": 0.7
+      }
+    },
+    "chest_circ_cm": 92.0,
+    "chest_circ_as_worn_cm": 93.2,
+    "details": {
+      "placket": {
+        "vertices_raised": 76,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 52,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 5.1,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.3
+      }
+    }
+  },
+  "shirt_mid": {
+    "sleeve": "mid",
+    "template_faces": 2602,
+    "ease_cm": 2.55,
+    "clipping": {
+      "covered_body_verts": 1875,
+      "showing_through": 0,
+      "fraction": 0.0,
+      "worst_penetration_cm": 0.0,
+      "skipped_near_edge": 86,
+      "worst_at_z_x_depth_cm": []
+    },
+    "clipping_ray": {
+      "samples": 3455,
+      "showing_through_strict": 110,
+      "fraction_strict": 0.0318,
+      "showing_through_excluding_edges": 26,
+      "fraction_excluding_edges": 0.0075,
+      "front_face_hits": 8,
+      "no_hit": 102,
+      "where_z_x_y_kind_cm": [
+        [
+          119,
+          16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          112,
+          30,
+          -5,
+          "miss"
+        ],
+        [
+          112,
+          30,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          30,
+          0,
+          "miss"
+        ],
+        [
+          113,
+          30,
+          -1,
+          "miss"
+        ],
+        [
+          113,
+          31,
+          -3,
+          "miss"
+        ],
+        [
+          111,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          30,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          27,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          26,
+          0,
+          "miss"
+        ],
+        [
+          108,
+          26,
+          -1,
+          "front"
+        ],
+        [
+          118,
+          -14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          113,
+          30,
+          -4,
+          "miss"
+        ],
+        [
+          110,
+          29,
+          -6,
+          "miss"
+        ],
+        [
+          109,
+          27,
+          -5,
+          "miss"
+        ],
+        [
+          108,
+          27,
+          -4,
+          "miss"
+        ],
+        [
+          108,
+          26,
+          -2,
+          "front"
+        ],
+        [
+          112,
+          31,
+          -5,
+          "miss"
+        ],
+        [
+          110,
+          31,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          31,
+          0,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -2,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -3,
+          "miss"
+        ],
+        [
+          110,
+          30,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          108,
+          27,
+          0,
+          "miss"
+        ],
+        [
+          108,
+          27,
+          -1,
+          "front"
+        ],
+        [
+          109,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          27,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          28,
+          -6,
+          "miss"
+        ],
+        [
+          113,
+          -30,
+          -4,
+          "miss"
+        ],
+        [
+          112,
+          -30,
+          -5,
+          "miss"
+        ],
+        [
+          112,
+          -30,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          -30,
+          0,
+          "miss"
+        ],
+        [
+          113,
+          -30,
+          -1,
+          "miss"
+        ],
+        [
+          113,
+          -31,
+          -3,
+          "miss"
+        ],
+        [
+          111,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          -30,
+          -6,
+          "miss"
+        ],
+        [
+          110,
+          -29,
+          -6,
+          "miss"
+        ],
+        [
+          109,
+          -27,
+          -5,
+          "miss"
+        ],
+        [
+          108,
+          -27,
+          -4,
+          "miss"
+        ],
+        [
+          108,
+          -26,
+          -2,
+          "front"
+        ],
+        [
+          112,
+          -31,
+          -5,
+          "miss"
+        ],
+        [
+          110,
+          -31,
+          1,
+          "miss"
+        ],
+        [
+          111,
+          -31,
+          0,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -2,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -3,
+          "miss"
+        ],
+        [
+          110,
+          -30,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          -27,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          -26,
+          0,
+          "miss"
+        ],
+        [
+          108,
+          -26,
+          -1,
+          "front"
+        ],
+        [
+          109,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          108,
+          -27,
+          0,
+          "miss"
+        ],
+        [
+          108,
+          -27,
+          -1,
+          "front"
+        ],
+        [
+          109,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          -27,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -28,
+          -6,
+          "miss"
+        ],
+        [
+          118,
+          14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          -14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          -14,
+          -1,
+          "miss"
+        ],
+        [
+          110,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          -26,
+          -3,
+          "front"
+        ],
+        [
+          112,
+          -30,
+          -5,
+          "miss"
+        ],
+        [
+          112,
+          -30,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -2,
+          "miss"
+        ],
+        [
+          111,
+          -29,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -1,
+          "miss"
+        ],
+        [
+          111,
+          -30,
+          0,
+          "miss"
+        ],
+        [
+          112,
+          -31,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          -30,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          -27,
+          -4,
+          "miss"
+        ],
+        [
+          110,
+          -29,
+          1,
+          "miss"
+        ],
+        [
+          108,
+          -26,
+          0,
+          "miss"
+        ],
+        [
+          110,
+          -28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          -27,
+          -5,
+          "miss"
+        ],
+        [
+          110,
+          -28,
+          -6,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          14,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -2,
+          "miss"
+        ],
+        [
+          119,
+          14,
+          -1,
+          "miss"
+        ],
+        [
+          110,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          26,
+          -3,
+          "front"
+        ],
+        [
+          112,
+          30,
+          -5,
+          "miss"
+        ],
+        [
+          112,
+          30,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -2,
+          "miss"
+        ],
+        [
+          111,
+          29,
+          -6,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -1,
+          "miss"
+        ],
+        [
+          111,
+          30,
+          0,
+          "miss"
+        ],
+        [
+          112,
+          31,
+          -4,
+          "miss"
+        ],
+        [
+          111,
+          30,
+          1,
+          "miss"
+        ],
+        [
+          109,
+          27,
+          -4,
+          "miss"
+        ],
+        [
+          110,
+          29,
+          1,
+          "miss"
+        ],
+        [
+          108,
+          26,
+          0,
+          "miss"
+        ],
+        [
+          110,
+          28,
+          1,
+          "miss"
+        ],
+        [
+          110,
+          27,
+          -5,
+          "miss"
+        ],
+        [
+          110,
+          28,
+          -6,
+          "miss"
+        ]
+      ]
+    },
+    "hem_height_cm": 70.0,
+    "hem_from_hps_cm": 61.6,
+    "sleeve_end_from_shoulder_cm": 21.3,
+    "calibration": {
+      "converged": true,
+      "ease_at_floor": [],
+      "residual_cm": {
+        "chest": 0.0,
+        "sleeve": -0.2
+      }
+    },
+    "chest_circ_cm": 92.0,
+    "chest_circ_as_worn_cm": 93.2,
+    "details": {
+      "placket": {
+        "vertices_raised": 76,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 52,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 5.1,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.3
+      }
+    }
+  },
+  "shirt_long": {
+    "sleeve": "long",
+    "template_faces": 3084,
+    "ease_cm": 2.55,
+    "clipping": {
+      "covered_body_verts": 2325,
+      "showing_through": 0,
+      "fraction": 0.0,
+      "worst_penetration_cm": 0.0,
+      "skipped_near_edge": 96,
+      "worst_at_z_x_depth_cm": []
+    },
+    "clipping_ray": {
+      "samples": 4355,
+      "showing_through_strict": 100,
+      "fraction_strict": 0.023,
+      "showing_through_excluding_edges": 12,
+      "fraction_excluding_edges": 0.0028,
+      "front_face_hits": 0,
+      "no_hit": 100,
+      "where_z_x_y_kind_cm": [
+        [
+          119,
+          16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          0,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          99,
+          41,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          40,
+          -16,
+          "miss"
+        ],
+        [
+          99,
+          40,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          41,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          98,
+          42,
+          -14,
+          "miss"
+        ],
+        [
+          99,
+          42,
+          -14,
+          "miss"
+        ],
+        [
+          99,
+          42,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          96,
+          40,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          98,
+          41,
+          -17,
+          "miss"
+        ],
+        [
+          98,
+          40,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -16,
+          "miss"
+        ],
+        [
+          96,
+          40,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          40,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          39,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          40,
+          -16,
+          "miss"
+        ],
+        [
+          96,
+          41,
+          -13,
+          "miss"
+        ],
+        [
+          96,
+          40,
+          -13,
+          "miss"
+        ],
+        [
+          99,
+          -41,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          -40,
+          -16,
+          "miss"
+        ],
+        [
+          99,
+          -40,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          -41,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          98,
+          -42,
+          -14,
+          "miss"
+        ],
+        [
+          99,
+          -42,
+          -14,
+          "miss"
+        ],
+        [
+          99,
+          -42,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          96,
+          -40,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          98,
+          -41,
+          -17,
+          "miss"
+        ],
+        [
+          98,
+          -40,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -16,
+          "miss"
+        ],
+        [
+          96,
+          -40,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          -40,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          -39,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          -40,
+          -16,
+          "miss"
+        ],
+        [
+          96,
+          -41,
+          -13,
+          "miss"
+        ],
+        [
+          96,
+          -40,
+          -13,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          -16,
+          -2,
+          "miss"
+        ],
+        [
+          99,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          99,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          100,
+          -41,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          -42,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          -41,
+          -12,
+          "miss"
+        ],
+        [
+          98,
+          -42,
+          -12,
+          "miss"
+        ],
+        [
+          100,
+          -41,
+          -15,
+          "miss"
+        ],
+        [
+          100,
+          -40,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          -42,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -15,
+          "miss"
+        ],
+        [
+          97,
+          -39,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          -39,
+          -16,
+          "miss"
+        ],
+        [
+          99,
+          -40,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          -41,
+          -12,
+          "miss"
+        ],
+        [
+          97,
+          -40,
+          -12,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -3,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -1,
+          "miss"
+        ],
+        [
+          119,
+          16,
+          -2,
+          "miss"
+        ],
+        [
+          99,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          99,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          100,
+          41,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          42,
+          -13,
+          "miss"
+        ],
+        [
+          97,
+          41,
+          -12,
+          "miss"
+        ],
+        [
+          98,
+          42,
+          -12,
+          "miss"
+        ],
+        [
+          100,
+          41,
+          -15,
+          "miss"
+        ],
+        [
+          100,
+          40,
+          -15,
+          "miss"
+        ],
+        [
+          99,
+          42,
+          -14,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -15,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -16,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -15,
+          "miss"
+        ],
+        [
+          97,
+          39,
+          -14,
+          "miss"
+        ],
+        [
+          98,
+          39,
+          -16,
+          "miss"
+        ],
+        [
+          99,
+          40,
+          -16,
+          "miss"
+        ],
+        [
+          97,
+          41,
+          -12,
+          "miss"
+        ],
+        [
+          97,
+          40,
+          -12,
+          "miss"
+        ]
+      ]
+    },
+    "hem_height_cm": 70.0,
+    "hem_from_hps_cm": 61.6,
+    "cuff_above_wrist_cm": 1.3,
+    "calibration": {
+      "converged": true,
+      "ease_at_floor": [],
+      "residual_cm": {
+        "chest": 0.0,
+        "cuff": 0.3
+      }
+    },
+    "chest_circ_cm": 92.0,
+    "chest_circ_as_worn_cm": 93.2,
+    "details": {
+      "placket": {
+        "vertices_raised": 76,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 52,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 5.1,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.3
+      }
+    }
+  },
   "garment_landmarks_vs_real": [
     {
       "garment": "tee",
@@ -2684,6 +4577,87 @@
       "target": 9,
       "achieved": 9.2,
       "error": 0.2,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_short",
+      "measure": "chest_circ_cm",
+      "target": 92,
+      "achieved": 92.0,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_short",
+      "measure": "length_cm (shoulder to hem)",
+      "target": 61.6,
+      "achieved": 61.6,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_short",
+      "measure": "sleeve_cm",
+      "target": 19.0,
+      "achieved": 19.7,
+      "error": 0.7,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_mid",
+      "measure": "chest_circ_cm",
+      "target": 92,
+      "achieved": 92.0,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_mid",
+      "measure": "length_cm (shoulder to hem)",
+      "target": 61.6,
+      "achieved": 61.6,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_mid",
+      "measure": "sleeve_cm",
+      "target": 21.5,
+      "achieved": 21.3,
+      "error": -0.2,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_long",
+      "measure": "chest_circ_cm",
+      "target": 92,
+      "achieved": 92.0,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_long",
+      "measure": "length_cm (shoulder to hem)",
+      "target": 61.6,
+      "achieved": 61.6,
+      "error": 0.0,
+      "tolerance": 2.0,
+      "pass": true
+    },
+    {
+      "garment": "shirt_long",
+      "measure": "cuff_above_wrist_cm",
+      "target": 1.0,
+      "achieved": 1.3,
+      "error": 0.3,
       "tolerance": 2.0,
       "pass": true
     },
@@ -3171,6 +5145,219 @@
         "max_cm": 0.52
       }
     },
+    "shirt_short": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 4286,
+          "area_cm2": 6674.4,
+          "z_cm": [
+            72.6,
+            134.4
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        100.0,
+        67.9,
+        26.0,
+        26.0
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.33,
+        "median": 1.41,
+        "max": 6.68,
+        "min_at_xyz_cm": [
+          -6.0,
+          -6.7,
+          128.2
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.31,
+            "max": 0.34,
+            "verts": 10
+          },
+          "12": {
+            "mean": 0.36,
+            "max": 0.43,
+            "verts": 14
+          },
+          "14": {
+            "mean": 0.41,
+            "max": 0.52,
+            "verts": 8
+          },
+          "16": {
+            "mean": 0.38,
+            "max": 0.47,
+            "verts": 10
+          },
+          "18": {
+            "mean": 0.39,
+            "max": 0.39,
+            "verts": 6
+          },
+          "20": {
+            "mean": 0.41,
+            "max": 0.42,
+            "verts": 4
+          }
+        },
+        "worst_band_mean_cm": 0.41,
+        "max_cm": 0.52
+      }
+    },
+    "shirt_mid": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 4406,
+          "area_cm2": 6763.1,
+          "z_cm": [
+            72.6,
+            134.4
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        100.0,
+        67.9,
+        25.3,
+        25.3
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.32,
+        "median": 1.38,
+        "max": 6.68,
+        "min_at_xyz_cm": [
+          -29.0,
+          -6.2,
+          111.8
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.31,
+            "max": 0.34,
+            "verts": 10
+          },
+          "12": {
+            "mean": 0.36,
+            "max": 0.43,
+            "verts": 14
+          },
+          "14": {
+            "mean": 0.41,
+            "max": 0.52,
+            "verts": 8
+          },
+          "16": {
+            "mean": 0.38,
+            "max": 0.47,
+            "verts": 10
+          },
+          "18": {
+            "mean": 0.39,
+            "max": 0.39,
+            "verts": 6
+          },
+          "20": {
+            "mean": 0.41,
+            "max": 0.42,
+            "verts": 4
+          }
+        },
+        "worst_band_mean_cm": 0.41,
+        "max_cm": 0.52
+      }
+    },
+    "shirt_long": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 5306,
+          "area_cm2": 7737.7,
+          "z_cm": [
+            72.6,
+            134.4
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        100.0,
+        67.9,
+        16.0,
+        16.0
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.34,
+        "median": 1.16,
+        "max": 6.68,
+        "min_at_xyz_cm": [
+          11.3,
+          -3.0,
+          131.1
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.31,
+            "max": 0.34,
+            "verts": 10
+          },
+          "12": {
+            "mean": 0.36,
+            "max": 0.43,
+            "verts": 14
+          },
+          "14": {
+            "mean": 0.41,
+            "max": 0.52,
+            "verts": 8
+          },
+          "16": {
+            "mean": 0.38,
+            "max": 0.47,
+            "verts": 10
+          },
+          "18": {
+            "mean": 0.39,
+            "max": 0.39,
+            "verts": 6
+          },
+          "20": {
+            "mean": 0.41,
+            "max": 0.42,
+            "verts": 4
+          }
+        },
+        "worst_band_mean_cm": 0.41,
+        "max_cm": 0.52
+      }
+    },
     "shorts": {
       "pieces": 1,
       "piece_faces_area": [
@@ -3244,15 +5431,24 @@
     "sweatshirt_vs_shorts_intersecting_pairs": 0,
     "tee_v_vs_shorts_intersecting_pairs": 0,
     "tee_scoop_vs_shorts_intersecting_pairs": 0,
+    "shirt_short_vs_shorts_intersecting_pairs": 0,
+    "shirt_mid_vs_shorts_intersecting_pairs": 0,
+    "shirt_long_vs_shorts_intersecting_pairs": 0,
     "tights_vs_shorts_intersecting_pairs": 0,
     "tights_vs_shorts_at_z_x_cm": [],
     "tee_vs_tights_intersecting_pairs": 0,
     "sweatshirt_vs_tights_intersecting_pairs": 0,
     "tee_v_vs_tights_intersecting_pairs": 0,
     "tee_scoop_vs_tights_intersecting_pairs": 0,
+    "shirt_short_vs_tights_intersecting_pairs": 0,
+    "shirt_mid_vs_tights_intersecting_pairs": 0,
+    "shirt_long_vs_tights_intersecting_pairs": 0,
     "sweatshirt_vs_trousers_intersecting_pairs": 0,
     "tee_v_vs_trousers_intersecting_pairs": 0,
     "tee_scoop_vs_trousers_intersecting_pairs": 0,
+    "shirt_short_vs_trousers_intersecting_pairs": 0,
+    "shirt_mid_vs_trousers_intersecting_pairs": 0,
+    "shirt_long_vs_trousers_intersecting_pairs": 0,
     "skirt": {
       "pieces": 1,
       "openings": 2,
@@ -3492,6 +5688,66 @@
         "drop_out_cm": 2.88
       }
     ],
+    "shirt_short": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      }
+    ],
+    "shirt_mid": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      }
+    ],
+    "shirt_long": [
+      {
+        "apex_x_cm": -10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      },
+      {
+        "apex_x_cm": 10.5,
+        "apex_height_cm": 113.26391760302941,
+        "apex_depth_cm": 17.64,
+        "hollow_below_cm": 0.37,
+        "drop_up_cm": 0.76,
+        "drop_in_cm": 0.05,
+        "drop_out_cm": 2.93
+      }
+    ],
     "sweatshirt": [
       {
         "apex_x_cm": -10.0,
@@ -3624,7 +5880,7 @@
         "cloth_first_hits_inside_face": 17,
         "worst_view": null,
         "intersecting_pairs_with_hiding_off": 0,
-        "seconds": 1.8
+        "seconds": 2.2
       },
       "body_vertices_hidden": 1111,
       "body_vertices_restored_where_cloth_does_not_cover": 268,
@@ -3632,5 +5888,5 @@
       "status": "ok"
     }
   },
-  "fit_config_sha256": "e90242963f3c8a1ebe25c3c6bba9aebf0db03441ae74892a1f4985ab68b18f9d"
+  "fit_config_sha256": "03e5f18ca7a2d01642b69a6859b1fe55a11b29aaff5cf036150b8765f26601ce"
 }

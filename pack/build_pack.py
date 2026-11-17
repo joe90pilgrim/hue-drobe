@@ -3,7 +3,7 @@
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build J and B from private/measurements_<person>.json (joe, b) into private/pack, check them, and write each pack
-             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, tights.glb, sweatshirt.glb, manifest.json;
+             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, shirt_short.glb, shirt_mid.glb, shirt_long.glb, trousers.glb, shorts.glb, tights.glb, sweatshirt.glb, manifest.json;
              a woman's pack also has skirt.glb and tee_tucked.glb, tee_v_tucked.glb, tee_scoop_tucked.glb, V3-01b).
              A pack is written only if every check passes. A person whose file is missing is skipped. A measurements file with
              "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json).
@@ -42,6 +42,8 @@ PEOPLE = ["joe", "b"]  # private bodies: J and B. A person is built when private
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
               "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb",
               "tights": "{n}_tights.glb",
+              # V3-03: the collared shirt in three sleeve lengths (untucked)
+              "shirt_short": "{n}_shirt_short.glb", "shirt_mid": "{n}_shirt_mid.glb", "shirt_long": "{n}_shirt_long.glb",
               # V3-01b, women's bodies only: the skirt, and the three tees cut at its waistband (Joe: tops are tucked in)
               "skirt": "{n}_skirt.glb", "tee_tucked": "{n}_tee_tucked.glb", "tee_v_tucked": "{n}_tee_v_tucked.glb",
               "tee_scoop_tucked": "{n}_tee_scoop_tucked.glb"}
@@ -170,7 +172,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shirts", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
 
 
 def config_hash(cfg):
@@ -209,6 +211,7 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"},
+                     "shirt": {"fit": "regular, untucked, point collar and placket drawn as shape", "sleeves": {"short": "shirt_short.glb", "mid": "shirt_mid.glb", "long": "shirt_long.glb"}},
                      "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts", "skirt"]},
                      **({"dress": {"fit": "pack item (MakeHuman toigo_shift_dress, CC0), plain colour", "body_while_worn": "body_dress.glb",
                                    "replaces": ["Top", "Bottom"]}} if "dress.glb" in files else {}),

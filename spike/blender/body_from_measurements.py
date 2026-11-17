@@ -727,6 +727,60 @@ for _style, _VG in ((TG or {}).get("necklines") or {}).items():
     var_necks[_style], var_meshes[_style], var_vids[_style] = _vn, _vm, _vv
     var_cal[_style] = {"drop_residual_cm": round(_got - _want, 2), "cut_depth_cm": round(_vn["drop_front"] * 100, 2)}
 
+# --- V3-03: shirts. The tee's offset shell in three sleeve lengths (short, mid to the elbow, long to the wrist), untucked, with a point
+# collar and a raised button placket drawn as shape (garment.add_shirt_details). The chest and the sleeve are calibrated for each, like
+# the tee's; on a woman the hang under the bust is applied last, as for every top (V2-08). Plain colour, no cloth simulation.
+SHG = (G or {}).get("shirt") if TG else None
+shirt_meshes, shirt_vids, shirt_cal, shirt_info, shirt_ease, shirt_chest = {}, {}, {}, {}, {}, {}
+SHIRT_KINDS = ("short", "mid", "long")
+if SHG:
+    shirt_faces = {"short": tee_faces, "mid": tee_faces, "long": garment.define_tee(ref, collar_drop=-0.04, long_sleeves=True)}
+    shirt_hem_z = max(hps_z - SHG["length_cm"] / 100.0, crotch_z + 0.05)  # the shell stops 5 cm above the crotch, then the tail hangs straight down (as the tee's)
+    shirt_extend = (hps_z - SHG["length_cm"] / 100.0) if (hps_z - SHG["length_cm"] / 100.0) < shirt_hem_z - 1e-4 else None
+    shirt_neck = {**neck, "a": SHG["neckline_width_cm"] / 200.0, "drop_front": SHG["neckline_drop_front_cm"] / 100.0}
+    _arm = (joints_final["joint-l-elbow"] - joints_final["joint-l-shoulder"]).length
+    _fo = (joints_final["joint-l-hand"] - joints_final["joint-l-elbow"]).length
+    _cuff = (SHG["cuff_band_cm"] / 100.0, SHG["cuff_gap_cm"] / 100.0)
+
+    def _shirt_build(kind, ease, sleeve_t, bust=None):
+        long_ = kind == "long"
+        m_, v_ = garment.build_tee(body_final, shirt_faces[kind], joints_final, ease=ease, min_gap=tee_gap, hem_z=shirt_hem_z, sleeve_t=sleeve_t,
+                                   extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if bust is not None else 0.004, extend_hem_to=shirt_extend,
+                                   neck=shirt_neck, settle_shoulders=True, long_sleeves=long_,
+                                   forearm_ease_frac=SHG["forearm_ease_fraction"] if long_ else 1.0, cuff_band=_cuff if long_ else None, bust=bust)
+        return m_, v_, garment.add_shirt_details(m_, body_final, joints_final, shirt_neck, SHG["detail"])
+
+    _ease0 = tee_ease
+    # the mid sleeve ends just above the elbow: a body with a short upper arm gets a shorter mid sleeve (the cut cannot go past 95% of the arm)
+    shirt_sleeve_cm = {"short": SHG["sleeve_short_cm"], "mid": round(min(SHG["sleeve_mid_cm"], 0.93 * _arm * 100.0), 1)}
+    for kind in SHIRT_KINDS:
+        want_sleeve = SHG["cuff_above_wrist_cm"] if kind == "long" else shirt_sleeve_cm[kind]
+        t_ = (1.0 - want_sleeve / 100.0 / _fo) if kind == "long" else min(0.95, want_sleeve / 100.0 / _arm)
+        ease = _ease0
+        for it in range(8):
+            sm, sv, si = _shirt_build(kind, ease, t_)
+            gs = bmesh.new()
+            gs.from_mesh(sm)
+            got = tee_chest_circ(gs)
+            gs.free()
+            got_s = garment.cuff_above_wrist_cm(body_final, sv, joints_final) if kind == "long" else garment.landmarks(body_final, shirt_faces[kind], sv, joints_final)["sleeve_end_from_shoulder_cm"]
+            print("CAL shirt", kind, it, round(got, 1), SHG["chest_circ_cm"], "sleeve" if kind != "long" else "cuff above wrist", got_s, want_sleeve, "ease", repr(ease), "sleeve_t", repr(t_))
+            chest_ok, sleeve_ok = abs(got - SHG["chest_circ_cm"]) < 0.5, abs(got_s - want_sleeve) < 0.7
+            shirt_cal[kind] = {"converged": chest_ok and sleeve_ok, "ease_at_floor": ["chest"] if ease <= 0.0031 else [],
+                               "residual_cm": {"chest": round(got - SHG["chest_circ_cm"], 2), ("cuff" if kind == "long" else "sleeve"): round(got_s - want_sleeve, 2)}}
+            if chest_ok and sleeve_ok:
+                break
+            if not sleeve_ok:
+                step = (got_s - want_sleeve) / 100.0 / _fo if kind == "long" else (want_sleeve - got_s) / 100.0 / _arm
+                t_ = min(1.0 if kind == "long" else 0.95, max(0.2, t_ + step))
+            if not math.isnan(got):
+                ease = min(0.06, max(0.003, ease + (SHG["chest_circ_cm"] - got) / two_pi / 100.0))
+        shirt_chest[kind], shirt_ease[kind] = got, ease
+        if BUST is not None:  # V2-08: the hang is drape, not size, so it is applied after the size is settled
+            sm, sv, si = _shirt_build(kind, ease, t_, bust=BUST)
+        shirt_meshes[kind], shirt_vids[kind], shirt_info[kind] = sm, sv, si
+        _ease0 = ease
+
 # --- task 5: cloth drape (optional)
 drape_info = None
 if DRAPE and TG:
@@ -883,6 +937,29 @@ for _style, _vm in var_meshes.items():
         "neckline_drop_front_cm": _measured_front_drop_cm(_gv),
     }
     _gv.free()
+shirt_reports = {}
+for _kind, _sm in shirt_meshes.items():  # V3-03
+    _sv = shirt_vids[_kind]
+    _gs2 = bmesh.new()
+    _gs2.from_mesh(_sm)
+    _segs2, _rad2 = garment._arm_segs(joints_final)
+    _body_z = [v.co.z for v in _gs2.verts if garment._classify(v.co, _segs2, _rad2) not in garment.ARM]  # the long sleeves hang below the tail in the A-pose
+    _worn = tee_chest_circ(_gs2)
+    _skip = lambda p: garment.in_neckline(p, {**shirt_neck, "a": shirt_neck["a"] + 0.03, "b": shirt_neck["b"] + 0.03}, margin=0.03)
+    _zr = ((shirt_extend if shirt_extend else shirt_hem_z) + 0.01, 10.0)
+    shirt_reports[_kind] = {
+        "sleeve": _kind, "template_faces": len(shirt_faces[_kind]), "ease_cm": round(shirt_ease[_kind] * 100, 2),
+        "clipping": garment.clipping_report(body_final, _sm, _sv, zrange=_zr, skip=_skip),
+        "clipping_ray": garment.clipping_report_ray(body_final, _sm, _sv, zrange=_zr, skip=_skip),
+        "hem_height_cm": round((min(_body_z) - zmin_f) * 100, 1), "hem_from_hps_cm": round((hps_z - min(_body_z)) * 100, 1),
+        **({"cuff_above_wrist_cm": garment.cuff_above_wrist_cm(body_final, _sv, joints_final)} if _kind == "long"
+           else {"sleeve_end_from_shoulder_cm": garment.landmarks(body_final, shirt_faces[_kind], _sv, joints_final)["sleeve_end_from_shoulder_cm"]}),
+        "calibration": shirt_cal[_kind],
+        "chest_circ_cm": round(shirt_chest[_kind] if BUST is not None else _worn, 1),
+        **({"chest_circ_as_worn_cm": round(_worn, 1)} if BUST is not None else {}),
+        "details": shirt_info[_kind],
+    }
+    _gs2.free()
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
@@ -964,6 +1041,13 @@ for _style, _vr in var_reports.items():
     add(f"tee_{_style}", "sleeve_cm", TG["sleeve_cm"], _vr["sleeve_end_from_shoulder_cm"])
     add(f"tee_{_style}", "neckline_width_cm", _VG["neckline_width_cm"], _vr["neckline_width_cm"])
     add(f"tee_{_style}", "neckline_drop_front_cm", _VG["drop_front_cm"], _vr["neckline_drop_front_cm"])
+for _kind, _sr in shirt_reports.items():  # V3-03
+    add(f"shirt_{_kind}", "chest_circ_cm", SHG["chest_circ_cm"], _sr["chest_circ_cm"])
+    add(f"shirt_{_kind}", "length_cm (shoulder to hem)", SHG["length_cm"], _sr["hem_from_hps_cm"])
+    if _kind == "long":
+        add("shirt_long", "cuff_above_wrist_cm", SHG["cuff_above_wrist_cm"], _sr["cuff_above_wrist_cm"])
+    else:
+        add(f"shirt_{_kind}", "sleeve_cm", shirt_sleeve_cm[_kind], _sr["sleeve_end_from_shoulder_cm"])
 if RG:
     add("trousers", "waist_circ_cm", RG["waist_circ_cm"], tr_report["waist_circ_cm"])
     add("trousers", "hip_circ_cm", RG["hip_circ_cm"], tr_report["hip_circ_cm"])
@@ -981,7 +1065,7 @@ if TT:
     add("tights", "hip_circ_cm (body)", tg_report["hip_target_circ_cm"], tg_report["hip_circ_cm"])
     add("tights", "ankle_circ_cm (body + gap)", tg_report["ankle_target_circ_cm"], tg_report["ankle_circ_cm"])
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}), **({"tights": tg_report} if TT else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
+results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}), **({"tights": tg_report} if TT else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, **{f"shirt_{k}": r_ for k, r_ in shirt_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
 report = {"name": name, "sex_base": M["sex_base"], "body_only": bool(M.get("body_only", False)), "shape_by_eye": M.get("shape", {}), "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
@@ -1061,14 +1145,26 @@ for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, sam
     _vo.select_set(True)
     bpy.context.view_layer.objects.active = _vo
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_tee_{_style}.glb"), export_format="GLB", use_selection=True)
+for _kind, _sm in shirt_meshes.items():  # V3-03: shirt_short.glb, shirt_mid.glb, shirt_long.glb, same material setup as the tee
+    _so = bpy.data.objects.new(f"{name}_shirt_{_kind}", _sm)
+    _ms = bpy.data.materials.new(f"shirt_{_kind}"); _ms.use_nodes = True
+    _ms.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(SHG.get("colour_srgb", [214, 214, 214]))
+    _sm.materials.append(_ms)
+    bpy.context.scene.collection.objects.link(_so)
+    bpy.ops.object.select_all(action="DESELECT")
+    _so.select_set(True)
+    bpy.context.view_layer.objects.active = _so
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_shirt_{_kind}.glb"), export_format="GLB", use_selection=True)
 # mesh checks run on the exported GLBs read back in, because glTF export splits quads into its own triangles and the phone
 # shows those triangles; checking the in-memory quads gives lower intersection counts
 import mesh_checks
 report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z,
                                         sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None,
-                                        tee_variants={f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
+                                        tee_variants={**{f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
+                                                     **{f"shirt_{k}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_shirt_{k}.glb")) for k in shirt_meshes}},
                                         shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None,
-                                        tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None)
+                                        tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None,
+                                        shirt_shoulder_x_min=TOL["shirt"]["shoulder_gap_from_x_cm"] / 100.0)
 if BUST is not None:  # V2-08: how each top sits over the bust, measured on the exported GLBs (pack/bust_shape.py, numpy only)
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "pack"))
     import bust_shape
@@ -1077,7 +1173,7 @@ if BUST is not None:  # V2-08: how each top sits over the bust, measured on the 
     report["bust_shape"] = {"body_apexes_x_height_depth_cm": [[round(c, 1) for c in a] for a in _apx],
                             "cup": M.get("cup"), "cupsize_macro": _cup, "body_cup": bust_shape.body_cup(_body, marks["chest_cm"] * H_f * 100, _apx),  # V2-09: reported, not limited
                             **{top: bust_shape.measure_top(bust_shape.load_glb(os.path.join(out_dir, f"{name}_{top}.glb")), _body[0][:, 1].min(), _apx)
-                               for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + (["sweatshirt"] if SG else [])}}
+                               for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + [f"shirt_{k}" for k in shirt_meshes] + (["sweatshirt"] if SG else [])}}
     print("BUST_SHAPE", json.dumps(report["bust_shape"]))
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
@@ -1086,5 +1182,7 @@ if SG:
     print("SWEATSHIRT", json.dumps({k: v for k, v in sw_report.items() if k != "clipping_ray"}))
 for _style, _vr in var_reports.items():
     print(f"TEE_{_style.upper()}", json.dumps({k: v for k, v in _vr.items() if k not in ("clipping_ray", "clipping")}))
+for _kind, _sr in shirt_reports.items():
+    print(f"SHIRT_{_kind.upper()}", json.dumps({k: v for k, v in _sr.items() if k not in ("clipping_ray", "clipping")}))
 print("REPORT", json.dumps(results))
 print("GLB_BYTES", os.path.getsize(glb))

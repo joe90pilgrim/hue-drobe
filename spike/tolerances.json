@@ -33,6 +33,13 @@
     "azimuth_step_deg": 15,
     "elevations_deg": [-18, 0, 18, 36, 54]
   },
+  "shirt": {
+    "_note": "V3-03, what makes a shirt a shirt (checked by spike/check_reports.py on the report's collar and placket record, which the generator measures on the finished mesh). A point collar has two points: collar_tip_drop_cm_min is how far the flap must hang below the collar band's top edge at the tips (the drop is 1.5 cm at the front centre and 2 cm round the back, so a collar with no points fails). The placket is the raised strip down the front: at least placket_height_cm_min high, over at least placket_vertices_min vertices. Proposed by Claude on 17 Nov 2026 from the first builds; to be agreed by Joe. shoulder_gap_from_x_cm: the tee's shoulder-gap limits (0.5 cm band mean, 1.0 cm) are applied to a shirt from this distance either side of the centre line outwards instead of from 4 cm, because the collar and its folded flap lie over the base of the neck out to about 8 cm (first build: the shoulders beyond 10 cm measured 0.32 to 0.44 cm, the same as the tee, with the collar in the band at 0.57 cm). Every other limit on the shirt is the tee's.",
+    "collar_tip_drop_cm_min": 4.0,
+    "placket_height_cm_min": 0.3,
+    "placket_vertices_min": 20,
+    "shoulder_gap_from_x_cm": 10
+  },
   "phone_min_fps": 30,
   "phone_max_load_mb": 15
 }

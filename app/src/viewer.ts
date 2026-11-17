@@ -4,10 +4,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
 
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb'];
 /** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error.
  * V3-02: so do `dress` and `body_dress` (the body with the parts under the dress removed, drawn in place of `body` while the dress is worn). */
-const OPTIONAL = new Set(['skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress']);
+// The shirts (V3-03) are optional too, so a pack built before them still opens: the Dress screen offers a shirt only when its mesh loaded.
+const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress']);
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
@@ -16,7 +17,7 @@ const groupOf = (name: string) => name.split('_')[0];
 const packUrl = () => `./pack/${person()}/`;
 
 export interface Viewer {
-  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, their `_tucked` versions, `sweatshirt`, `trousers`, `shorts`, `skirt`, `tights`) instantly. Works before it has loaded. */
+  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, their `_tucked` versions, `sweatshirt`, `shirt_short`, `shirt_mid`, `shirt_long`, `trousers`, `shorts`, `skirt`, `tights`) instantly. Works before it has loaded. */
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;

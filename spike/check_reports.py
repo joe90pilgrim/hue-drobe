@@ -15,6 +15,11 @@ Stricter than the first version:
 - the other tee necklines (V1.1-04: tee_v, tee_scoop), when the report has them, get exactly the tee's mesh limits too, plus their
   own neckline width and front depth against the fit config. --necklines makes a missing one a failure.
 
+- the shirts (V3-03: shirt_short, shirt_mid, shirt_long), when the report has them, get exactly the tee's mesh limits, calibration and
+  bust-shape limits too (they are checked like the other tops: against the trousers, shorts and tights), plus what makes them shirts and
+  not tees: two collar points at least tolerances.json "shirt" collar_tip_drop_cm_min below the collar's top edge, and a raised placket of at
+  least placket_height_cm_min over placket_vertices_min vertices. --shirts makes a missing one a failure.
+
 - shorts (V1.1-05), when the report has them, get exactly the trousers' mesh limits, and every top is checked against them with
   the tee-with-trousers limit. --shorts makes missing shorts a failure.
 
@@ -39,7 +44,7 @@ Stricter than the first version:
   where the removed body would have been seen (tolerances.json "pack_item_body_as_drawn"). The item as the pack fits it, over the whole body, must have
   face pairs, or the check proves nothing; build_pack.py --no-hide builds without hiding or our fitting and fails it. --pack-items makes a missing dress a failure on a female body.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights] [--skirt] [--pack-items]
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shirts] [--shorts] [--tights] [--skirt] [--pack-items]
 """
 import json, sys, pathlib
 
@@ -52,6 +57,7 @@ failures = 0
 LENGTHS = {"height_cm", "inside_leg_cm"}
 gm = tol["garment_mesh"]
 NECKLINE_TEES = ("tee_v", "tee_scoop")  # V1.1-04
+SHIRTS = ("shirt_short", "shirt_mid", "shirt_long")  # V3-03
 _exc_path = pathlib.Path(__file__).with_name("known_exceptions.json")
 EXCEPTIONS = {(e["body"], e["check"]): e for e in json.load(open(_exc_path))["exceptions"]} if _exc_path.exists() else {}
 
@@ -88,6 +94,8 @@ for f in reports:
         print("  info garments not judged: this body is marked body_only (its garments are V2-03)")
         continue
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
+    shirts = tuple(g for g in SHIRTS if g in r or "--shirts" in sys.argv)  # V3-03: held to the tee's limits like the necklines, so they join `variants` below
+    variants += shirts
     shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
     tights = ("tights",) if "tights" in r or "--tights" in sys.argv else ()  # V2-04
     for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts + tights:
@@ -124,6 +132,16 @@ for f in reports:
                 if cal["ease_at_floor"]:
                     print(f"  info {g} ease at its floor for: {cal['ease_at_floor']} (real item smaller than body plus 3 mm; stretch is not modelled)")
 
+    for g in shirts:  # V3-03: what makes it a shirt and not a tee with a neckline
+        d_ = (r.get(g) or {}).get("details")
+        if d_ is None:
+            check(False, f"{g} collar and placket record missing from report")
+            continue
+        st = tol["shirt"]
+        check(d_["collar"]["points"] == 2 and d_["collar"]["tip_drop_cm"] >= st["collar_tip_drop_cm_min"],
+              f"{g} collar: {d_['collar']['points']} points (want 2), the flap hangs {d_['collar']['tip_drop_cm']} cm below the band's top edge at the tips (min {st['collar_tip_drop_cm_min']}); band {d_['collar']['stand_cm']} cm high")
+        check(d_["placket"]["height_cm"] >= st["placket_height_cm_min"] and d_["placket"]["vertices_raised"] >= st["placket_vertices_min"],
+              f"{g} placket: raised {d_['placket']['height_cm']} cm (min {st['placket_height_cm_min']}) over {d_['placket']['vertices_raised']} vertices (min {st['placket_vertices_min']})")
     if "mesh_checks" in r:
         n = r["mesh_checks"]["tee_vs_trousers_intersecting_pairs"]
         check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"tee-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")

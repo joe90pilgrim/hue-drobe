@@ -27,6 +27,31 @@
     "hem_rib_gap_cm": 0.8,
     "cuff_rib_gap_cm": 0.5
   },
+  "shirt": {
+    "_note": "V3-03: a collared shirt with a button placket (drawn as shape, no separate buttons), the tee's offset shell with a point collar and a raised placket added (spike/blender/garment.py add_shirt_details), untucked, in three sleeve lengths: short, mid (to just above the elbow: sleeve_mid_fraction_of_height, or 93% of the upper arm on a body where that is shorter) and long (to 1 cm short of the wrist joint, a little closer round the forearm and the cuff). Same chest ease as the tee, because the shell method cannot make a looser top (see pack/README.md); the tee's length, so the tail hangs over the waistband the same way (0.41 of height, tried first, made B's tail fall to her thighs: the hanging-tail step is not stable for a longer one). Joe's decisions of 17 Nov 2026: a classic point collar, untucked first. Neckline: the opening the collar stands on, the tee's width and a little shallower (a narrower opening broke the shell: at 0.10 of height the chest could not be measured on the synthetic man, and at 0.11 B's hips were thrown out of shape). collar: stand_cm is how high the band rises from the opening, neck_clearance_cm how far it stands from the neck, fold_out_cm how far the folded-over flap sits outside the band, flap_gap_cm how far the flap rests off the cloth below it; the flap hangs centre_drop_cm below the band's top edge at the front centre, tip_drop_cm at the two points (tip_angle_deg either side of the centre) and back_drop_cm round the back (from back_from_deg). placket: height_cm raised off the cloth, half_width_cm either side of the centre line, fading out over fade_cm.",
+    "chest_ease_cm": 8,
+    "length_fraction_of_height": 0.39,
+    "sleeve_short_fraction_of_height": 0.12,
+    "sleeve_mid_fraction_of_height": 0.14,
+    "cuff_above_wrist_cm": 1.0,
+    "forearm_ease_fraction": 0.6,
+    "cuff_band_cm": 4,
+    "cuff_gap_cm": 0.7,
+    "neckline_width_fraction_of_height": 0.125,
+    "neckline_drop_front_cm": 4,
+    "collar": {
+      "stand_cm": 2.2,
+      "neck_clearance_cm": 0.3,
+      "fold_out_cm": 0.4,
+      "flap_gap_cm": 0.45,
+      "centre_drop_cm": 1.5,
+      "tip_drop_cm": 9,
+      "tip_angle_deg": 35,
+      "back_drop_cm": 2.0,
+      "back_from_deg": 100
+    },
+    "placket": {"height_cm": 0.4, "half_width_cm": 1.4, "fade_cm": 1.0}
+  },
   "trousers": {
     "_note": "Regular-fit straight trousers, hem just above the floor.",
     "waist_towards_hips_fraction": 0.4,

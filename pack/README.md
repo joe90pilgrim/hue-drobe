@@ -48,12 +48,18 @@ add-on folder from anything it starts. Run the script with the interpreter's ful
 
 `private/pack/joe/` (git-ignored, because `private/` is):
 
-- `body.glb`, `tee.glb`, `tee_v.glb`, `tee_scoop.glb`, `trousers.glb`, `shorts.glb`, `tights.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
+- `body.glb`, `tee.glb`, `tee_v.glb`, `tee_scoop.glb`, `shirt_short.glb`, `shirt_mid.glb`, `shirt_long.glb`, `trousers.glb`, `shorts.glb`, `tights.glb`, `sweatshirt.glb`: one mesh each, exported by Blender's glTF exporter.
   `tee.glb` is the crew neck; `tee_v.glb` and `tee_scoop.glb` (V1.1-04) are the same shell cut with a deeper V or scoop front. The depths and widths are in `fit_config.json` under `tee.necklines`.
 - `manifest.json`: file sizes and SHA-256, Blender version, the fit config used, build time.
 
 `private/pack/build/` holds the build logs, reports and garment size files for inspection. Garments are built in a neutral light grey;
 the app sets the colour. The sweatshirt (MVP-07) is an alternative top over the trousers, held to the tee's mesh limits. So are the V and scoop tees: each gets the same hard mesh checks as the crew neck, plus its own neckline width and front depth against the config.
+The shirts (V3-03) are the tee's shell with a point collar and a raised button placket added by `garment.add_shirt_details` (shape only, no separate buttons),
+untucked, in three sleeve lengths: short (the tee's), mid (just above the elbow) and long (to 1 cm short of the wrist joint, drawn in a little round the forearm and the cuff).
+Chest ease is the tee's, because the shell cannot go looser; the tail is a little longer. The sizes are in `fit_config.json` `shirt`; the chest and the sleeve are
+calibrated for each length like the tee's. Each gets the tee's hard mesh limits and bust-shape limits, is checked against the trousers, shorts and tights, and must show
+two collar points and a raised placket (`spike/tolerances.json` `shirt`; `check_reports.py --shirts`). A shirt is never tucked, so like the sweatshirt it cannot be worn
+with the skirt. Record: `docs/decisions/2026-11-17-v3-03-shirts.md`.
 The shorts (V1.1-05) are the trousers' shell cut at a 23 cm inseam, with the bottom 8 cm let out so the leg opening is 4 cm wider
 than the trousers at that height (`fit_config.json`, `shorts`). They get the trousers' hard mesh checks, and every top is checked
 for intersections with them as well as with the trousers.
