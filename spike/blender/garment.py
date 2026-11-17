@@ -167,7 +167,7 @@ ARM = ("lup", "rup", "lfo", "rfo")
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
               fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None, final_push=False,
-              extra_trigger=-0.0015, extra_push=0.003, bust=None):
+              extra_trigger=-0.0015, extra_push=0.003, bust=None, inner_mesh=None, inner_gap=0.004):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
@@ -195,6 +195,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     it; and (2) pad: within pad_radius of each apex the clearance to the body rises from min_gap to min_gap plus pad (smoothly), which
     rounds the apex the way a bra cup does. Both only move cloth away from the body, so neither can cause a clip. Applied inside
     every push_out, so the smoothing blends the result rather than leaving a step.
+    inner_mesh, inner_gap (V3-05, a top worn over another top): the garment this one is worn over (a mesh, or a list of meshes when the top
+    must clear several, such as the tee in each of its necklines). The new top is kept inner_gap off it in two ways, both applied inside
+    every push_out: (1) vertex for vertex, since both shells are built from the same body vertices: wherever the inner garment has a vertex
+    from the same body vertex, the new top's is kept inner_gap further out along that body vertex's normal (the nearest-surface test alone
+    could not order the layers at the shoulder cap and the armpit, where the shells are close to each other and to the arm); and (2) by
+    nearest point, as extra_mesh, for cloth the inner garment has no matching vertex for. Unlike extra_mesh the inner garment's top rim is
+    not faded into the body (the tee lies on the shoulders, so the new top must clear it there), the hem and cuff bands follow whichever
+    of the two is nearer, and the final pass is not used for it. Known limit (17 Nov 2026): at one spot on the side of each shoulder (x about 19 cm
+    from the centre, 130 cm up on the 175 cm synthetic man) a tee vertex still ends up within about 1 mm of the new top's surface, never through it.
     Returns (mesh, list of body vertex ids still covered)."""
     segs, radius = _arm_segs(joints)
     bm.normal_update()
@@ -222,6 +231,24 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         eb.normal_update()
         extra_bvh = BVHTree.FromBMesh(eb)
         extra_verts = [v.co.copy() for v in eb.verts]
+    inner_bvh = None
+    inner_at = {}  # body vertex number -> where the inner garment has its vertex from it
+    if inner_mesh is not None:  # V3-05: the garment this one is worn over, taken as it is
+        ib = bmesh.new()
+        for _m in (inner_mesh if isinstance(inner_mesh, (list, tuple)) else [inner_mesh]):
+            _one = bmesh.new()
+            _one.from_mesh(_m)
+            _lay = _one.verts.layers.int.get("bodyidx")
+            for _v in _one.verts:
+                _bi = _v[_lay] - 1 if _lay is not None else -1
+                if 0 <= _bi < len(bm.verts):
+                    _n = bm.verts[_bi].normal
+                    if _bi not in inner_at or (_v.co - inner_at[_bi]).dot(_n) > 0.0:
+                        inner_at[_bi] = _v.co.copy()  # the highest of the meshes along the body normal
+            ib.from_mesh(_m)  # several meshes in one tree: the nearest of them is the one the top is kept off
+            _one.free()
+        ib.normal_update()
+        inner_bvh = BVHTree.FromBMesh(ib)
     g = bmesh.new()
     layer = g.verts.layers.int.new("bodyidx")
     vmap = {}
@@ -283,6 +310,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                 loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
                     v.co += nor2 * (extra_gap - (v.co - loc2).dot(nor2))
+            if si in inner_at:
+                n_ = bm.verts[si].normal
+                d5 = (v.co - inner_at[si]).dot(n_)
+                if d5 < inner_gap:
+                    v.co += n_ * (inner_gap - d5)
+            if inner_bvh is not None:
+                loc4, nor4, fi4, dist4 = nearest(inner_bvh, v.co)
+                if loc4 is not None and (v.co - loc4).dot(nor4) < inner_gap and (v.co - loc4).length < 0.05:
+                    v.co += nor4 * (inner_gap - (v.co - loc4).dot(nor4))
         if bust is not None and bust["reach"] > 0.0:
             hang()
 
@@ -429,6 +465,10 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                     if loc2 is not None and dist2 < 0.06:
                         loc, nor = loc2, nor2
+                if inner_bvh is not None and _classify(v.co, segs, radius) not in ARM:
+                    loc4, nor4, fi4, dist4 = nearest(inner_bvh, v.co)  # V3-05: over a tee, the band follows the tee where that is nearer
+                    if loc4 is not None and dist4 < 0.06 and (loc is None or dist4 < (v.co - loc).length):
+                        loc, nor = loc4, nor4
                 if loc is not None:
                     v.co = v.co.lerp(loc + nor * gap, w)
             push_out()

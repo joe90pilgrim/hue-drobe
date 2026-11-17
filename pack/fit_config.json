@@ -59,6 +59,10 @@
     "placket": {"height_cm": 0.4, "half_width_cm": 1.4, "edge_cm": 0.3},
     "shade": {"shade_lip": 0.45, "shade_placket_edge": 0.55, "shade_stand": 0.8, "shadow_cm": 1.5}
   },
+  "layers": {
+    "_note": "V3-05 (Joe's decisions of 17 Nov 2026: three layers at most; tee under shirt and tee under sweatshirt, no shirt under the sweatshirt). A sweatshirt or shirt worn over a tee is built again over it, at the ease and sleeve length it was calibrated to on its own (garment.build_tee inner_mesh), and kept gap_cm off the tee everywhere. It is therefore looser than alone where the tee pushes it out. The outer layer (jackets, V3-04) will use the same setting.",
+    "gap_cm": 0.4
+  },
   "trousers": {
     "_note": "Regular-fit straight trousers, hem just above the floor.",
     "waist_towards_hips_fraction": 0.4,

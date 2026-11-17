@@ -47,7 +47,15 @@ Stricter than the first version:
   where the removed body would have been seen (tolerances.json "pack_item_body_as_drawn"). The item as the pack fits it, over the whole body, must have
   face pairs, or the check proves nothing; build_pack.py --no-hide builds without hiding or our fitting and fails it. --pack-items makes a missing dress a failure on a female body.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shirts] [--shorts] [--tights] [--skirt] [--pack-items]
+- layers (V3-05), when the report has them: the sweatshirt and the three shirts built over the tee (sweatshirt_over_tee, shirt_short_over_tee,
+  shirt_mid_over_tee, shirt_long_over_tee) are held to the tee's hard mesh limits, to the shading and bust-shape limits, and against the trousers,
+  shorts and tights like any top, except that their shoulders may stand tolerances.json "layers" shoulder_gap_extra_cm further off the body (the
+  tee is under them). They are not calibrated to a size of their own (they are the standalone garment's ease, pushed out by the tee), so the
+  calibration record is not asked for. The layer check proper: against each tee it can be worn over (crew, V, scoop) there are no intersecting
+  face pairs, and no tee vertex under the outer top is less than tolerances.json "layers" inner_clearance_cm_min inside it. --layers makes
+  missing ones a failure.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shirts] [--layers] [--shorts] [--tights] [--skirt] [--pack-items]
 """
 import json, sys, pathlib
 
@@ -61,6 +69,7 @@ LENGTHS = {"height_cm", "inside_leg_cm"}
 gm = tol["garment_mesh"]
 NECKLINE_TEES = ("tee_v", "tee_scoop")  # V1.1-04
 SHIRTS = ("shirt_short", "shirt_mid", "shirt_long")  # V3-03
+OVERS = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee", "shirt_long_over_tee")  # V3-05
 _exc_path = pathlib.Path(__file__).with_name("known_exceptions.json")
 EXCEPTIONS = {(e["body"], e["check"]): e for e in json.load(open(_exc_path))["exceptions"]} if _exc_path.exists() else {}
 
@@ -99,6 +108,8 @@ for f in reports:
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
     shirts = tuple(g for g in SHIRTS if g in r or "--shirts" in sys.argv)  # V3-03: held to the tee's limits like the necklines, so they join `variants` below
     variants += shirts
+    overs = tuple(g for g in OVERS if g in r or "--layers" in sys.argv)  # V3-05: held to the tee's limits too, with the shoulder allowance below
+    variants += overs
     shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
     tights = ("tights",) if "tights" in r or "--tights" in sys.argv else ()  # V2-04
     for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts + tights:
@@ -124,7 +135,7 @@ for f in reports:
         if old:
             print(f"  info {g} old nearest-point test: {old['fraction']*100:.2f}%, worst {old['worst_penetration_cm']} cm (not used for pass/fail)")
         cal = gr.get("calibration")
-        if need_garments:
+        if need_garments and g not in overs:
             if cal is None:
                 check(False, f"{g} has no calibration record (was a garment fixture supplied?)")
             else:
@@ -135,7 +146,7 @@ for f in reports:
                 if cal["ease_at_floor"]:
                     print(f"  info {g} ease at its floor for: {cal['ease_at_floor']} (real item smaller than body plus 3 mm; stretch is not modelled)")
 
-    for g in shirts:  # V3-03: what makes it a shirt and not a tee with a neckline
+    for g in shirts + tuple(o for o in overs if o.startswith("shirt")):  # V3-03: what makes it a shirt and not a tee with a neckline
         d_ = (r.get(g) or {}).get("details")
         if d_ is None:
             check(False, f"{g} collar and placket record missing from report")
@@ -182,12 +193,28 @@ for f in reports:
             if top not in r["mesh_checks"]:
                 continue
             sg = r["mesh_checks"][top]["shoulder_gap"]
-            check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
-                  and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
-                  f"{top} shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
-                  f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
+            extra_ = tol["layers"]["shoulder_gap_extra_cm"] if top in OVERS else 0.0  # V3-05: a top over a tee stands the tee's thickness further off the shoulder
+            check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"] + extra_
+                  and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] + extra_,
+                  f"{top} shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {round(gm['tee_shoulder_gap_band_mean_max_cm'] + extra_, 2)}), "
+                  f"max {sg['max_cm']} cm (max {round(gm['tee_shoulder_gap_max_cm'] + extra_, 2)})",
                   known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
                          and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], f"{top}_shoulder_gap_band_mean"))))
+
+    if overs:  # V3-05: the layer check, against each tee the top can be worn over
+        lt, ly = tol["layers"], r.get("layers") or {}
+        for o in overs:
+            if o not in ly:
+                check(False, f"{o} layer check missing from report (rebuild with python pack/build_pack.py)")
+                continue
+            for tee_, m_ in ly[o].items():
+                c_ = m_["inner_inside_clearance_cm"]
+                check(m_["intersecting_pairs"] <= lt["intersecting_pairs_max"], f"{o} over {tee_}: intersecting face pairs {m_['intersecting_pairs']} (max {lt['intersecting_pairs_max']})")
+                check(c_["min"] is not None and c_["min"] >= lt["inner_clearance_cm_min"],
+                      f"{o} over {tee_}: the tee is at least {c_['min']} cm inside it (min {lt['inner_clearance_cm_min']}); p05 {c_['p05']}, median {c_['median']}, "
+                      f"{c_['vertices']} tee vertices tested, tightest at {c_['min_at_xyz_cm']} cm")
+            ov_ = r.get(o, {})
+            print(f"  info {o}: chest as worn {ov_.get('chest_circ_as_worn_cm')} cm, {ov_.get('chest_extra_from_tee_cm')} cm more than the same top alone")
 
     if (r.get("sex_base") == "female" and "--skirt" in sys.argv) or "skirt" in r:  # V3-01b
         mc, sk = r.get("mesh_checks", {}), r.get("skirt")

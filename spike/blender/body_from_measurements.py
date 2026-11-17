@@ -731,7 +731,8 @@ for _style, _VG in ((TG or {}).get("necklines") or {}).items():
 # collar and a raised button placket drawn as shape (garment.add_shirt_details). The chest and the sleeve are calibrated for each, like
 # the tee's; on a woman the hang under the bust is applied last, as for every top (V2-08). Plain colour, no cloth simulation.
 SHG = (G or {}).get("shirt") if TG else None
-shirt_meshes, shirt_vids, shirt_cal, shirt_info, shirt_ease, shirt_chest = {}, {}, {}, {}, {}, {}
+shirt_meshes, shirt_vids, shirt_cal, shirt_info, shirt_ease, shirt_chest, shirt_t = {}, {}, {}, {}, {}, {}, {}
+LAYER_GAP = ((G or {}).get("layers") or {}).get("gap_cm", 0.4) / 100.0  # V3-05: how far a top worn over the tee is kept off it
 SHIRT_KINDS = ("short", "mid", "long")
 if SHG:
     shirt_faces = {"short": tee_faces, "mid": tee_faces, "long": garment.define_tee(ref, collar_drop=-0.04, long_sleeves=True)}
@@ -742,12 +743,13 @@ if SHG:
     _fo = (joints_final["joint-l-hand"] - joints_final["joint-l-elbow"]).length
     _cuff = (SHG["cuff_band_cm"] / 100.0, SHG["cuff_gap_cm"] / 100.0)
 
-    def _shirt_build(kind, ease, sleeve_t, bust=None):
+    def _shirt_build(kind, ease, sleeve_t, bust=None, inner=None):
         long_ = kind == "long"
         m_, v_ = garment.build_tee(body_final, shirt_faces[kind], joints_final, ease=ease, min_gap=tee_gap, hem_z=shirt_hem_z, sleeve_t=sleeve_t,
                                    extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if bust is not None else 0.004, extend_hem_to=shirt_extend,
                                    neck=shirt_neck, settle_shoulders=True, long_sleeves=long_,
-                                   forearm_ease_frac=SHG["forearm_ease_fraction"] if long_ else 1.0, cuff_band=_cuff if long_ else None, bust=bust)
+                                   forearm_ease_frac=SHG["forearm_ease_fraction"] if long_ else 1.0, cuff_band=_cuff if long_ else None, bust=bust,
+                                   inner_mesh=inner, inner_gap=LAYER_GAP)  # V3-05: inner is the tee a shirt is worn over
         # the chest is calibrated on the shell before the collar and placket go on: the placket's raised edges add about 0.8 cm
         # round the chest, which is a fold of cloth, not size, and counting it took ease out of the shirt until the trousers'
         # waistband showed through on the synthetic man (second pass, 17 Nov 2026)
@@ -778,11 +780,37 @@ if SHG:
                 t_ = min(1.0 if kind == "long" else 0.95, max(0.2, t_ + step))
             if not math.isnan(got):
                 ease = min(0.06, max(0.003, ease + (SHG["chest_circ_cm"] - got) / two_pi / 100.0))
-        shirt_chest[kind], shirt_ease[kind] = got, ease
+        shirt_chest[kind], shirt_ease[kind], shirt_t[kind] = got, ease, t_
         if BUST is not None:  # V2-08: the hang is drape, not size, so it is applied after the size is settled
             sm, sv, si, _ = _shirt_build(kind, ease, t_, bust=BUST)
         shirt_meshes[kind], shirt_vids[kind], shirt_info[kind] = sm, sv, si
         _ease0 = ease
+
+# --- V3-05: layers. The sweatshirt and the three shirts rebuilt over the tee (the base layer), at the ease and sleeve length each was
+# calibrated to on its own, with the tee as a second inner garment (garment.build_tee inner_mesh): the outer top is kept layers.gap_cm off the
+# tee everywhere, so it is looser than alone where the tee pushes it out, and nowhere passes through it. Built once, over the crew tee: the V and
+# scoop tees are the same shell cut deeper, so what clears the crew tee clears them (mesh_checks.layers checks all three). A shirt is not
+# worn under the sweatshirt (Joe, 17 Nov 2026), so there are four layered tops, not five.
+over_meshes, over_vids, over_info, over_faces, over_ease = {}, {}, {}, {}, {}
+LAYER_INNER = [tee_mesh] + list(var_meshes.values())  # the tee in each neckline: the V and scoop are cut deeper but settle onto the neck a little differently
+if (G or {}).get("layers") and TG:
+    if SG:
+        over_faces["sweatshirt_over_tee"] = sw_faces
+        over_ease["sweatshirt_over_tee"] = sw_ease
+        over_meshes["sweatshirt_over_tee"], over_vids["sweatshirt_over_tee"] = garment.build_tee(
+            body_final, sw_faces, joints_final, ease=sw_ease, min_gap=tee_gap, hem_z=sw_hem_z, sleeve_t=sw_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004,
+            neck=sw_neck, settle_shoulders=True, long_sleeves=True, forearm_ease_frac=SG["forearm_ease_fraction"],
+            hem_band=(SG["rib_band_cm"] / 100.0, SG["hem_rib_gap_cm"] / 100.0), cuff_band=(SG["rib_band_cm"] / 100.0, SG["cuff_rib_gap_cm"] / 100.0),
+            bust=BUST, inner_mesh=LAYER_INNER, inner_gap=LAYER_GAP)
+    for kind in shirt_meshes:
+        _om, _ov, _oi, _ = _shirt_build(kind, shirt_ease[kind], shirt_t[kind], bust=BUST, inner=LAYER_INNER)
+        over_faces[f"shirt_{kind}_over_tee"], over_ease[f"shirt_{kind}_over_tee"] = shirt_faces[kind], shirt_ease[kind]
+        over_meshes[f"shirt_{kind}_over_tee"], over_vids[f"shirt_{kind}_over_tee"], over_info[f"shirt_{kind}_over_tee"] = _om, _ov, _oi
+    for _lbl in over_meshes:
+        _g3 = bmesh.new()
+        _g3.from_mesh(over_meshes[_lbl])
+        print("LAYER", _lbl, "chest as worn over the tee", round(tee_chest_circ(_g3), 1))
+        _g3.free()
 
 # --- task 5: cloth drape (optional)
 drape_info = None
@@ -963,6 +991,18 @@ for _kind, _sm in shirt_meshes.items():  # V3-03
         "details": shirt_info[_kind],
     }
     _gs2.free()
+over_reports = {}
+for _lbl, _om in over_meshes.items():  # V3-05: one record per layered top (the hard mesh limits are in mesh_checks, run on the exported file)
+    _g4 = bmesh.new()
+    _g4.from_mesh(_om)
+    _alone_worn = {"sweatshirt_over_tee": sw_report["chest_circ_as_worn_cm"] if (SG and BUST is not None) else (sw_report["chest_circ_cm"] if SG else None),
+                   **{f"shirt_{k}_over_tee": shirt_reports[k].get("chest_circ_as_worn_cm", shirt_reports[k]["chest_circ_cm"]) for k in shirt_reports}}[_lbl]
+    _worn4 = tee_chest_circ(_g4)
+    over_reports[_lbl] = {"over": "tee", "ease_cm": round(over_ease[_lbl] * 100, 2), "layer_gap_cm": round(LAYER_GAP * 100, 2),
+                          "chest_circ_as_worn_cm": round(_worn4, 1), "chest_circ_alone_as_worn_cm": _alone_worn,
+                          "chest_extra_from_tee_cm": None if _alone_worn is None else round(_worn4 - _alone_worn, 1),
+                          **({"details": over_info[_lbl]} if _lbl in over_info else {})}
+    _g4.free()
 tr_report = {"template_faces": len(tr_faces), "ease_cm": None if callable(tr_ease) else round(tr_ease * 100, 2),
              "clipping": garment.clipping_report(body_final, tr_mesh, tr_vids, zrange=(tr_hem_z + 0.01, tr_top_z - 0.01)),
              "waist_height_cm": round((tr_top_z - zmin_f) * 100, 1), "hem_height_cm": round((tr_hem_z - zmin_f) * 100, 1),
@@ -1068,7 +1108,7 @@ if TT:
     add("tights", "hip_circ_cm (body)", tg_report["hip_target_circ_cm"], tg_report["hip_circ_cm"])
     add("tights", "ankle_circ_cm (body + gap)", tg_report["ankle_target_circ_cm"], tg_report["ankle_circ_cm"])
 bpy.data.objects.remove(ref)
-results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}), **({"tights": tg_report} if TT else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, **{f"shirt_{k}": r_ for k, r_ in shirt_reports.items()}, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
+results_extra = {"tee": tee_report, "trousers": tr_report, **({"shorts": sh_report} if HG else {}), **({"tights": tg_report} if TT else {}),**({"sweatshirt": sw_report} if SG else {}), **{f"tee_{s}": r_ for s, r_ in var_reports.items()}, **{f"shirt_{k}": r_ for k, r_ in shirt_reports.items()}, **over_reports, "garment_landmarks_vs_real": cmp_, "extra_body_checks": extra, "hps_height_cm_estimate": round((hps_z - zmin_f) * 100, 1)}
 
 os.makedirs(out_dir, exist_ok=True)
 report = {"name": name, "sex_base": M["sex_base"], "body_only": bool(M.get("body_only", False)), "shape_by_eye": M.get("shape", {}), "height_macro": round(hv, 4), "weight_macro": round(wv, 4), "results": results, **results_extra}
@@ -1178,13 +1218,29 @@ for _kind, _sm in shirt_meshes.items():  # V3-03: shirt_short.glb, shirt_mid.glb
     # the shell carries over from the body, as COLOR_0, with the shading as COLOR_1, which the app does not read
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_shirt_{_kind}.glb"), export_format="GLB", use_selection=True,
                               export_vertex_color="NAME", export_vertex_color_name="Color")
+for _lbl, _om in over_meshes.items():  # V3-05: sweatshirt_over_tee.glb, shirt_*_over_tee.glb (a shirt keeps its collar and placket shading)
+    _oo = bpy.data.objects.new(f"{name}_{_lbl}", _om)
+    _mo = bpy.data.materials.new(_lbl); _mo.use_nodes = True
+    _mo.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((SHG if _lbl.startswith("shirt") else SG).get("colour_srgb", [214, 214, 214]))
+    _om.materials.append(_mo)
+    _shade(_om)
+    bpy.context.scene.collection.objects.link(_oo)
+    bpy.ops.object.select_all(action="DESELECT")
+    _oo.select_set(True)
+    bpy.context.view_layer.objects.active = _oo
+    if _lbl.startswith("shirt"):
+        bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_{_lbl}.glb"), export_format="GLB", use_selection=True,
+                                  export_vertex_color="NAME", export_vertex_color_name="Color")
+    else:
+        bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_{_lbl}.glb"), export_format="GLB", use_selection=True)
 # mesh checks run on the exported GLBs read back in, because glTF export splits quads into its own triangles and the phone
 # shows those triangles; checking the in-memory quads gives lower intersection counts
 import mesh_checks
 report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_dir, name + sfx + ".glb")) for sfx in ("", "_tee", "_trousers")), hps_z,
                                         sweatshirt=mesh_checks.load_glb(os.path.join(out_dir, name + "_sweatshirt.glb")) if SG else None,
                                         tee_variants={**{f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes},
-                                                     **{f"shirt_{k}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_shirt_{k}.glb")) for k in shirt_meshes}},
+                                                     **{f"shirt_{k}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_shirt_{k}.glb")) for k in shirt_meshes},
+                                                     **{_l: mesh_checks.load_glb(os.path.join(out_dir, f"{name}_{_l}.glb")) for _l in over_meshes}},
                                         shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None,
                                         tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None,
                                         shirt_shoulder_x_min=TOL["shirt"]["shoulder_gap_from_x_cm"] / 100.0)
@@ -1216,7 +1272,8 @@ _knee_z = max(joints_final["joint-l-knee"].z, joints_final["joint-r-knee"].z)
 _bottom_skip = lambda p: p.z < _knee_z or (abs(p.x) < 0.08 and p.z < crotch_z + 0.10)
 report["shading"] = {}
 for _g, _sk in ([("tee", _top_skip), ("trousers", _bottom_skip)] + ([("sweatshirt", _top_skip)] if SG else []) + ([("shorts", _bottom_skip)] if HG else [])
-                + [(f"tee_{s}", _top_skip) for s in var_meshes] + [(f"shirt_{k}", _shirt_skip) for k in shirt_meshes]):
+                + [(f"tee_{s}", _top_skip) for s in var_meshes] + [(f"shirt_{k}", _shirt_skip) for k in shirt_meshes]
+                + [(_l, _shirt_skip if _l.startswith("shirt") else _top_skip) for _l in over_meshes]):
     report["shading"][_g] = mesh_checks.shading_look(os.path.join(out_dir, f"{name}_{_g}.glb"), skip=_sk)
     print("SHADING", _g, report["shading"][_g])
 if BUST is not None:  # V2-08: how each top sits over the bust, measured on the exported GLBs (pack/bust_shape.py, numpy only)
@@ -1227,8 +1284,14 @@ if BUST is not None:  # V2-08: how each top sits over the bust, measured on the 
     report["bust_shape"] = {"body_apexes_x_height_depth_cm": [[round(c, 1) for c in a] for a in _apx],
                             "cup": M.get("cup"), "cupsize_macro": _cup, "body_cup": bust_shape.body_cup(_body, marks["chest_cm"] * H_f * 100, _apx),  # V2-09: reported, not limited
                             **{top: bust_shape.measure_top(bust_shape.load_glb(os.path.join(out_dir, f"{name}_{top}.glb")), _body[0][:, 1].min(), _apx)
-                               for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + [f"shirt_{k}" for k in shirt_meshes] + (["sweatshirt"] if SG else [])}}
+                               for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + [f"shirt_{k}" for k in shirt_meshes] + (["sweatshirt"] if SG else []) + list(over_meshes)}}
     print("BUST_SHAPE", json.dumps(report["bust_shape"]))
+if over_meshes:  # V3-05: each layered top against each tee it can be worn over (crew, V, scoop), read from the exported files
+    report["layers"] = mesh_checks.layers(
+        {_l: mesh_checks.load_glb(os.path.join(out_dir, f"{name}_{_l}.glb")) for _l in over_meshes},
+        {"tee": mesh_checks.load_glb(os.path.join(out_dir, name + "_tee.glb")),
+         **{f"tee_{s}": mesh_checks.load_glb(os.path.join(out_dir, f"{name}_tee_{s}.glb")) for s in var_meshes}})
+    print("LAYERS", json.dumps({_l: {_t: (_m["intersecting_pairs"], _m["inner_inside_clearance_cm"]["min"]) for _t, _m in _d.items()} for _l, _d in report["layers"].items()}))
 json.dump(report, open(os.path.join(out_dir, name + "_report.json"), "w"), indent=2)
 print("TEE", json.dumps(tee_report))
 print("TROUSERS", json.dumps(tr_report))

@@ -1,7 +1,7 @@
 # Ticket: Multiple top layers (V3-05)
 
 ## Summary
-- **Status:** ready. Needed before jackets (V3-04).
+- **Status:** stopped, not finished (17 Nov 2026). Needed before jackets (V3-04).
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · High. Rules and checks across the pack build and the app; the geometry support (building one shell over another) already exists from the spike.
 - **Depends on:** V3-01b (the first layering rule, top over skirt)
@@ -44,3 +44,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Use the real Python, not the Microsoft Store `python` alias.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
+
+## Note
+Stopped after repeated failed attempts at one problem: the pack build makes the layered tops (sweatshirt and the three shirts over the tee, built over all three necklines) and the layer check runs, with 0 face pairs and every other check passing on the synthetic medium man, but 12 checks fail by about 1 mm where a tee vertex sits within 0.1 cm of the outer top at the side of the shoulder (limit 0.2 cm). The app is not started, only one body was built, and the work is on branch `feat/V3-05-layers`; see `docs/decisions/2026-11-17-v3-05-layers.md`.

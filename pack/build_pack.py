@@ -48,6 +48,9 @@ PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers
               "skirt": "{n}_skirt.glb", "tee_tucked": "{n}_tee_tucked.glb", "tee_v_tucked": "{n}_tee_v_tucked.glb",
               "tee_scoop_tucked": "{n}_tee_scoop_tucked.glb"}
 WOMENS_ONLY = ("skirt", "tee_tucked", "tee_v_tucked", "tee_scoop_tucked", "dress", "body_dress")
+# V3-05: the sweatshirt and the shirts built over the tee (a layer on top of a tee); not for the shirt under the sweatshirt, which Joe left out
+OVER_TEE = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee", "shirt_long_over_tee")
+PACK_FILES.update({k: "{n}_" + k + ".glb" for k in OVER_TEE})
 PACK_FILES.update({"dress": "{n}_dress.glb", "body_dress": "{n}_body_dress.glb"})  # V3-06: the pack dress, and the body with its hidden parts removed (worn instead of body.glb)
 
 
@@ -172,7 +175,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shirts", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shirts", "--layers", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
 
 
 def config_hash(cfg):
@@ -211,6 +214,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"},
+                     "layers": {"max": 3, "base": "tee", "gap_cm": person_cfg(name)["layers"]["gap_cm"],
+                                "over_tee": {k[: -len("_over_tee")]: k + ".glb" for k in OVER_TEE}},
                      "shirt": {"fit": "regular, untucked, point collar and placket drawn as shape", "sleeves": {"short": "shirt_short.glb", "mid": "shirt_mid.glb", "long": "shirt_long.glb"}},
                      "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts", "skirt"]},
                      **({"dress": {"fit": "pack item (MakeHuman toigo_shift_dress, CC0), plain colour", "body_while_worn": "body_dress.glb",

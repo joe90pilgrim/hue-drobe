@@ -46,6 +46,12 @@
     "_note": "V3-03 (17 Nov 2026), measured by mesh_checks.shading_look on every offset-shell garment's GLB as the app gets it (tee in each neckline, sweatshirt, shirts, trousers, shorts; checked by check_reports.py). kink_deg_max: over the plain cloth (a top's torso clear of the arms, the shoulders and, on a shirt, the placket and collar; a bottom from the knee up, not the crotch), the largest turn of the shading normal within 1.5 cm along the cloth. Shaded from the body template's own vertex layout, the tops measured 25 to 44 degrees and drew the navel and nipples ('a skin-tight wrap', Joe); with normals averaged over 5 cm (fit_config shading) the tops measure 12 to 19 and the trousers and shorts 2 to 22. Proposed by Claude; to be agreed by Joe.",
     "kink_deg_max": 22
   },
+  "layers": {
+    "_note": "V3-05 (17 Nov 2026), the layer check (mesh_checks.layers, checked by check_reports.py) for a sweatshirt or shirt worn over a tee. intersecting_pairs_max: face pairs between the outer top and the tee, as for the other garments. inner_clearance_cm_min: how far inside the outer top every tee vertex must lie (the body's own minimum clearance, garment_mesh min_clearance_cm, is 0.2). shoulder_gap_extra_cm: the outer top's shoulder gap limits (garment_mesh) are raised by this much, because the tee lies between it and the shoulder; the layer gap the tops are built with (fit_config layers gap_cm, 0.4) plus 0.2 for the push that keeps the tee at least 2.5 mm inside. Proposed by Claude; to be agreed by Joe.",
+    "intersecting_pairs_max": 0,
+    "inner_clearance_cm_min": 0.2,
+    "shoulder_gap_extra_cm": 0.6
+  },
   "phone_min_fps": 30,
   "phone_max_load_mb": 15
 }
