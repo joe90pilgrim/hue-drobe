@@ -595,10 +595,12 @@ if TT and HG:
     print("TIGHTS tuck, triangles still crossing the shorts:", tg_tuck_left)
 
 # --- tee (built over the trousers)
-# V3-05 fifth pass (off by default; ARMPIT_OPEN_CM="0.5,10" turns it on): the tee, its other necklines and the tops worn over it leave out the
-# cloth from the armpit slot (within 10 cm of each armpit apex, where the offset would come nearer the body than the ease plus 0.5 cm) and span
-# it with a patch (garment.build_tee armpit_open). See docs/decisions/2026-11-17-v3-05-layers.md, fifth pass.
-ARMPIT_OPEN = tuple(float(x) / 100.0 for x in os.environ["ARMPIT_OPEN_CM"].split(",")) if os.environ.get("ARMPIT_OPEN_CM") else None
+# V3-05 fifth pass (off by default, Joe 17 Nov 2026; ARMPIT_OPEN_CM="0.5,10" turns it on): the tee, its other necklines and the tops worn over it
+# leave out the cloth from the armpit slot (within 10 cm of each armpit apex, where the offset would come nearer the body than the ease plus
+# 0.5 cm) and span it with a patch (garment.build_tee armpit_open). On all six synthetic bodies it gave 106 failures against 56 without it, so it
+# stays off. See docs/decisions/2026-11-17-v3-05-layers.md, fifth pass.
+_ao = os.environ.get("ARMPIT_OPEN_CM", "")
+ARMPIT_OPEN = None if _ao.lower() in ("", "off", "0") else tuple(float(x) / 100.0 for x in _ao.split(","))
 if ARMPIT_OPEN:
     body_final.normal_update()
     print("ARMPIT apexes cm", [[round(c * 100, 1) for c in _p] for _p in garment.armpit_apexes(body_final, joints_final)])
@@ -622,7 +624,7 @@ if TG:
     tee_ease = 0.005
     for it in range(8):
         tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
-                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True, armpit_open=ARMPIT_OPEN)
+                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True)
         gt = bmesh.new()
         gt.from_mesh(tee_mesh)
         got = tee_chest_circ(gt)
@@ -641,6 +643,13 @@ if TG:
         if not math.isnan(got):  # no usable reading this round: keep the ease as it is
             tee_ease = min(0.06, max(0.003, tee_ease + (TG["chest_circ_cm"] - got) / two_pi / 100.0))
     tee_size_chest = got
+    if BUST is None and ARMPIT_OPEN:
+        # V3-05: the opened armpit is shape, not size, and is left out of the calibration for the same reason as the hang below: on the men the
+        # chest line runs through the new underarm patch, which read bigger and took 0.2 to 0.25 cm of ease out of the tee, through the
+        # trousers' waistband (205 face pairs on synthetic medium). The tee is built once more, at the calibrated ease, with it.
+        tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
+                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True,
+                                           armpit_open=ARMPIT_OPEN)
     if BUST is not None:
         # V2-08: the hang under the bust is drape, not size: the calibrated ease is the garment's, so the ease is settled above
         # without it (the hung cloth reads bigger at the bust line, and calibrating on that reading shrank the tee everywhere

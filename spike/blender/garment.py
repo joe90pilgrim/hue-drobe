@@ -302,11 +302,11 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     ease, the cloth from its two walls crosses below the body's armpit, and the cloth from above the crossing is left as a folded pocket that
     smoothing and push_out cannot undo (a top over the tee then folds round the tee's pocket). Within radius of each armpit apex, a body
     vertex whose offset point (ease, plus inner_gap over an inner garment, plus margin) would lie nearer than that to the body is in the slot:
-    its faces are left out, and each hole this leaves is filled with a new patch (poked, subdivided and relaxed with its rim held), so the
-    underarm is a gusset spanning the slot lower down instead of a pocket.
-    Not on by default (V3-05 fifth pass, 17 Nov 2026): on synthetic female large the tee passes all its own checks with it and no top crosses
-    the tee, but the tee is still uncovered by up to 0.8 cm at the armpit (smoothing presses the patch back into the slot at min_gap). A top with more ease, or kept off the tee, cuts further and
+    its faces are left out, and each hole this leaves is filled with a new patch (rings to a centre, relaxed with its rim held), so the
+    underarm is a gusset spanning the slot lower down instead of a pocket. A top with more ease, or kept off the tee, cuts further and
     spans lower, so the layers nest. The openings and pieces are unchanged. Patch vertices have no body vertex (bodyidx 0).
+    Not used by default (Joe, 17 Nov 2026): it helps only synthetic female large (tee uncovered by up to 0.8 cm instead of 1.2) and is worse on
+    the other five synthetic bodies (106 failures against 56; the medium and small men, which pass without it, fail the layer check with it).
     Returns (mesh, list of body vertex ids still covered)."""
     segs, radius = _arm_segs(joints)
     bm.normal_update()
