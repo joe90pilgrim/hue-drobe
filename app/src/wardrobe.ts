@@ -46,15 +46,24 @@ export const NOT_WITH_SKIRT = 'Sweatshirt';
 /** True when the outfit shows the tucked-in tee: a tee over a skirt. */
 export const isTucked = (outfit: Record<string, string>) => outfit.Bottom === TUCKS_INTO && outfit.Top === GARMENTS.tee.option;
 
+/** V3-06: the slot a dress goes in. A dress covers the top and the bottom, so it takes the place of both (see `keepLayers`). */
+export const DRESS_SLOT = 'Dress';
+const isOn = (option: string | undefined) => !!option && option !== 'None';
+
 /**
  * Keeps an outfit (slot -> option) to the layering rules. `changed` is the slot just set; the other one gives way, so wearing
  * something from the wardrobe takes off what it cannot go with, and the other way round. With no `changed`, the layer named
  * first below gives way.
+ *  - A dress (V3-06, Joe's decision of 16 Nov 2026) replaces the top and the bottom: putting it on takes both off, and putting a top or
+ *    a bottom on takes the dress off. With no `changed`, the dress wins. Tights are a separate layer and stay.
  *  - Tights and trousers are never worn together (V2-04); the trousers give way to tights just put on, otherwise the tights go.
  *  - A sweatshirt and a skirt are never worn together (V3-01b); the sweatshirt gives way to a skirt just put on, otherwise the skirt goes.
  */
 export function keepLayers(outfit: Record<string, string>, changed?: string): Record<string, string> {
   let o = outfit;
+  if (isOn(o[DRESS_SLOT]) && (isOn(o.Top) || isOn(o.Bottom))) {
+    o = changed === 'Top' || changed === 'Bottom' ? { ...o, [DRESS_SLOT]: 'None' } : { ...o, Top: 'None', Bottom: 'None' };
+  }
   if (o.Legs === GARMENTS.tights.option && o.Bottom === TIGHTS_BLOCKED_BY) o = changed === 'Legs' ? { ...o, Bottom: 'None' } : { ...o, Legs: 'None' };
   if (o.Top === NOT_WITH_SKIRT && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
   return o;

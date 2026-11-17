@@ -49,3 +49,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Use the real Python, not the Microsoft Store `python` alias.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
+
+## Done (17 Nov 2026)
+Shift dress builds, hides the body and passes the new "body as drawn" check on B and the three synthetic women (0 face pairs, 0 gap rays); `--no-hide` fails it; `npm run check` passes (the offline timing test failed once under load and passed alone). The dress needed fitting (push out of the skin, restore uncovered body) as well as the pack's delete group, and hiding off alone no longer fails on every body: see `docs/decisions/2026-11-17-v3-06-pack-items-and-body-as-drawn.md`.

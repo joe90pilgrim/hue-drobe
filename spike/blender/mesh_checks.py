@@ -115,6 +115,85 @@ def shoulder_gap(tee, body_tree, hps_z):
             "max_cm": max((b["max"] for b in bands.values()), default=None)}
 
 
+def body_as_drawn(full, hidden, item, floor, cfg, collect=None):
+    """V3-06: the check for a pack item (dress, later shoes) that hides the body under it. The app's own garments keep the strict
+    check (run); this one asks what a viewer sees. Bmeshes in one frame: `full` the whole body, `hidden` the body with the item's
+    hidden parts removed (what the app draws while the item is worn), `item` the garment. cfg is tolerances.json "pack_item_body_as_drawn".
+    - visible_body_intersecting_pairs: face pairs between the drawn body and the item (no skin through the cloth).
+    - gap_rays: parallel rays from many directions (cfg azimuth_step_deg, elevations_deg, ray_spacing_cm) over the item's silhouette.
+      A ray is a gap when the full body would be hit but, with the hidden parts removed, the first thing drawn is nothing or the
+      inside (back face) of the cloth, lying beyond where the body was: the viewer looks through the hole where the body was removed
+      and sees the inside of the cloth or the background. Seeing the outside of the cloth, or skin, is never a gap, even if the removed
+      skin was a few millimetres nearer than the cloth (the body may bulge slightly outside a close-fitting item).
+    collect: an optional list; each gap ray appends (azimuth, elevation, the point on the full body it would have seen), to find holes.
+    Nothing here changes the meshes it is given."""
+    import math
+    import numpy as np
+    from mathutils import Vector
+    full, hidden, item = merged(full), merged(hidden), merged(item)
+    ft, ht, it = BVHTree.FromBMesh(full), BVHTree.FromBMesh(hidden), BVHTree.FromBMesh(item)
+    pairs = ht.overlap(it)
+    by_z = sorted(collections.Counter(int(round((hidden.faces[a].calc_center_median().z - floor) * 100)) // 5 * 5 for a, _ in pairs).items())
+    pts = np.array([(v.co.x, v.co.y, v.co.z) for v in item.verts])
+    centre = Vector(pts.mean(axis=0).tolist())
+    step, eps, reach = cfg["ray_spacing_cm"] / 100.0, 1e-4, 3.0
+    on_body, gaps, gap_z, worst, first_cloth = 0, 0, collections.Counter(), None, collections.Counter()
+    for el in cfg["elevations_deg"]:
+        for az in range(0, 360, cfg["azimuth_step_deg"]):
+            a, e = math.radians(az), math.radians(el)
+            d = -Vector((math.cos(e) * math.sin(a), -math.cos(e) * math.cos(a), math.sin(e)))  # from the viewer towards the body
+            u = d.cross(Vector((0, 0, 1))).normalized()
+            v = u.cross(d).normalized()
+            pu, pv = pts @ np.array(u), pts @ np.array(v)
+            cu, cv = float(np.dot(centre, u)), float(np.dot(centre, v))
+            n_view = 0
+
+            def classify(o):
+                """None if the full body is not on this ray; else (is_gap, point on the full body, t_b, t_h, t_i)."""
+                loc_b, _n, _i, t_b = ft.ray_cast(o, d)
+                if loc_b is None:
+                    return None
+                _, _, _, t_h = ht.ray_cast(o, d)
+                _, n_i, _, t_i = it.ray_cast(o, d)
+                if t_i is not None and (t_h is None or t_i <= t_h):  # the cloth is the first thing drawn
+                    outside = n_i.dot(d) < 0
+                    first_cloth[outside] += 1
+                    return (not outside and t_i > t_b - eps), loc_b, t_b, t_h, t_i
+                return t_h is None, loc_b, t_b, t_h, t_i  # skin, or nothing
+
+            for x in np.arange(pu.min(), pu.max() + step, step):
+                for y in np.arange(pv.min(), pv.max() + step, step):
+                    o = centre + u * (x - cu) + v * (y - cv) - d * reach
+                    c0 = classify(o)
+                    if c0 is None:
+                        continue
+                    on_body += 1
+                    if c0[0]:
+                        # a ray that slips between two triangles on an edge is not a hole: it counts only if the rays 0.5 mm either side also see through
+                        j, seam = 0.0005, False
+                        for du, dv in ((j, 0), (-j, 0), (0, j), (0, -j)):
+                            cj = classify(o + u * du + v * dv)
+                            if cj is not None and not cj[0]:
+                                seam = True
+                                break
+                        if seam:
+                            continue
+                        gaps += 1
+                        n_view += 1
+                        if collect is not None:
+                            collect.append((az, el, tuple(c0[1]), c0[2], c0[3], c0[4]))
+                        gap_z[int(round((c0[1].z - floor) * 100)) // 5 * 5] += 1
+            if n_view and (worst is None or n_view > worst["rays"]):
+                worst = {"azimuth_deg": az, "elevation_deg": el, "rays": n_view}
+    # the same pair count if the body were not hidden: the check must fail then, or it proves nothing
+    n_off = len(ft.overlap(it))
+    n_full, n_hidden = len(full.faces), len(hidden.faces)
+    for b in (full, hidden, item):
+        b.free()
+    return {"body_faces_full": n_full, "body_faces_as_drawn": n_hidden, "visible_body_intersecting_pairs": len(pairs), "visible_body_intersections_by_z_cm": by_z, "rays_on_body": on_body, "gap_rays": gaps,
+            "gap_by_z_cm": sorted(gap_z.items()), "cloth_first_hits_outside_face": first_cloth[True], "cloth_first_hits_inside_face": first_cloth[False], "worst_view": worst, "intersecting_pairs_with_hiding_off": n_off}
+
+
 def tights_faces_z(bm, i):
     return bm.faces[i].calc_center_median().z
 

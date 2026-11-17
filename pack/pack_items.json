@@ -1,0 +1,6 @@
+{
+  "_note": "V3-06: pack items built from the archived MakeHuman packs (assets/packs/MANIFEST.md) by pack/pack_items.py. 'sexes' says which bodies get the item. Plain colour (the neutral grey from fit_config.json); texture only for hair and shoes. The shift dress hides the body under it (Joe, 16 Nov 2026); the app takes off the top and the bottom while it is worn.",
+  "items": [
+    {"id": "dress", "pack": "dress01", "kind": "clothes", "role": "dress", "asset": "toigo_shift_dress", "sexes": ["female"]}
+  ]
+}

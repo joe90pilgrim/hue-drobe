@@ -4027,6 +4027,7 @@
         18.4
       ]
     ],
+    "cup": null,
     "cupsize_macro": 0.5,
     "body_cup": {
       "bust_circ_cm": 104.0,
@@ -4187,6 +4188,55 @@
     "triangles": 6528,
     "glb_kb": 118,
     "start_shell_body_pairs": 0
+  },
+  "pack_items": {
+    "dress": {
+      "pack": "dress01",
+      "asset": "toigo_shift_dress",
+      "role": "dress",
+      "licence": "CC0",
+      "hides_body": true,
+      "pairs_with_whole_body_as_shipped": 549,
+      "item_vertices_pushed_out_of_skin": 603,
+      "deepest_push_cm": 0.79,
+      "glb_kb": 242,
+      "texture_kept": false,
+      "triangles": 13568,
+      "pieces": 1,
+      "openings": 4,
+      "info_self_intersecting_pairs": 58,
+      "info_clearance_to_full_body_cm": {
+        "min": 0.2,
+        "p05": 0.2,
+        "median": 1.65,
+        "max": 13.34,
+        "min_at_xyz_cm": [
+          14.8,
+          1.2,
+          143.6
+        ]
+      },
+      "body_faces_trimmed_where_skin_pokes_through": 0,
+      "repair_rounds": 1,
+      "body_as_drawn": {
+        "body_faces_full": 26756,
+        "body_faces_as_drawn": 24418,
+        "visible_body_intersecting_pairs": 0,
+        "visible_body_intersections_by_z_cm": [],
+        "rays_on_body": 341396,
+        "gap_rays": 0,
+        "gap_by_z_cm": [],
+        "cloth_first_hits_outside_face": 262139,
+        "cloth_first_hits_inside_face": 15,
+        "worst_view": null,
+        "intersecting_pairs_with_hiding_off": 96,
+        "seconds": 2.3
+      },
+      "body_vertices_hidden": 1059,
+      "body_vertices_restored_where_cloth_does_not_cover": 320,
+      "body_glb_kb": 564,
+      "status": "ok"
+    }
   },
   "fit_config_sha256": "e90242963f3c8a1ebe25c3c6bba9aebf0db03441ae74892a1f4985ab68b18f9d"
 }

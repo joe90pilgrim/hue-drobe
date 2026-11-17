@@ -34,7 +34,12 @@ Stricter than the first version:
   by the generator) and each breast's hollow_below, drop_up and drop_in must be within tolerances.json "bust_shape". Male bodies are
   not judged on this. The body's own bust (cup macro, bust minus underbust, projection; V2-09) is printed as information, with no limit.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights] [--skirt]
+- pack items (V3-06: the dress, later shoes), on a female body, when the report has them: judged by "body as drawn" only, not by the strict
+  garment_mesh limits (Joe, 16 Nov 2026): no face pairs between the body as drawn (the hidden parts removed) and the item, and no gap ray
+  where the removed body would have been seen (tolerances.json "pack_item_body_as_drawn"). The item as the pack fits it, over the whole body, must have
+  face pairs, or the check proves nothing; build_pack.py --no-hide builds without hiding or our fitting and fails it. --pack-items makes a missing dress a failure on a female body.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights] [--skirt] [--pack-items]
 """
 import json, sys, pathlib
 
@@ -184,6 +189,27 @@ for f in reports:
                     check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{t}-through-tights intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
             print(f"  info untucked tee through skirt: {mc.get('tee_vs_skirt_intersecting_pairs_info')} face pairs (why tops are tucked)")
 
+    if (r.get("sex_base") == "female" and "--pack-items" in sys.argv) or "pack_items" in r:  # V3-06
+        pi, pt = r.get("pack_items", {}), tol["pack_item_body_as_drawn"]
+        if not pi:
+            check(False, "pack items missing from report (rebuild with python pack/build_pack.py)")
+        for iid, p_ in pi.items():
+            b_ = p_.get("body_as_drawn")
+            if p_.get("status") != "ok" or b_ is None:
+                check(False, f"pack item {iid}: {p_.get('status')}")
+                continue
+            check(p_["hides_body"] and p_["body_vertices_hidden"] > 0, f"pack item {iid} hides the body: {p_['body_vertices_hidden']} body vertices removed (the pack's delete group, less {p_['body_vertices_restored_where_cloth_does_not_cover']} the cloth does not cover), after {p_['item_vertices_pushed_out_of_skin']} item vertices were pushed out of the skin (deepest {p_['deepest_push_cm']} cm), {p_['body_faces_trimmed_where_skin_pokes_through']} body faces still crossed the cloth and were removed")
+            check(0 < b_["body_faces_as_drawn"] < b_["body_faces_full"], f"pack item {iid} body as drawn has fewer faces than the whole body: {b_['body_faces_as_drawn']} of {b_['body_faces_full']} (more means helper geometry is showing)")
+            check(b_["visible_body_intersecting_pairs"] <= pt["visible_body_intersecting_pairs_max"],
+                  f"pack item {iid} body as drawn, intersecting face pairs: {b_['visible_body_intersecting_pairs']} (max {pt['visible_body_intersecting_pairs_max']}); by height cm {b_['visible_body_intersections_by_z_cm']}")
+            check(b_["gap_rays"] <= pt["gap_rays_max"],
+                  f"pack item {iid} body as drawn, gap rays: {b_['gap_rays']} of {b_['rays_on_body']} on the body (max {pt['gap_rays_max']}); by height cm {b_['gap_by_z_cm']}; worst view {b_['worst_view']}")
+            check(p_["pairs_with_whole_body_as_shipped"] > pt["visible_body_intersecting_pairs_max"],
+                  f"pack item {iid} check has teeth: the item as the pack fits it, over the whole body, has {p_['pairs_with_whole_body_as_shipped']} face pairs (must be over {pt['visible_body_intersecting_pairs_max']}); "
+                  f"after our fitting, with no hiding: {b_['intersecting_pairs_with_hiding_off']} (information)")
+            print(f"  info pack item {iid}: {p_['triangles']} triangles, {p_['glb_kb']} KB item + {p_['body_glb_kb']} KB body-as-drawn, "
+                  f"{p_['pieces']} piece(s), {p_['openings']} opening(s), {p_['info_self_intersecting_pairs']} self-intersecting pairs, "
+                  f"min clearance to the full body {p_['info_clearance_to_full_body_cm']['min']} cm (all information; not the app's strict limits)")
 
     if r.get("sex_base") == "female" and "bust_shape" in tol:  # V2-08
         bs = r.get("bust_shape") or {}
