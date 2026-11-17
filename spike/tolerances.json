@@ -38,7 +38,10 @@
     "collar_tip_drop_cm_min": 4.0,
     "placket_height_cm_min": 0.3,
     "placket_vertices_min": 20,
-    "shoulder_gap_from_x_cm": 10
+    "shoulder_gap_from_x_cm": 10,
+    "_note_shading": "V3-03 second pass (17 Nov 2026), measured by mesh_checks.shading_look on each shirt GLB as the app gets it. shading_kink_deg_max: over the plain cloth of the torso (clear of the arms, the shoulders, the placket and the collar), the largest turn of the shading normal within 1.5 cm along the cloth. The first shirts measured 40 degrees on B (the tee too), at the bust and navel, where the shell inherits the body template's dense vertex layout and drew the nipples and navel on the cloth ('a skin-tight wrap', Joe); normals averaged over 5 cm measured 17. detail_colour_min_max: the darkest drawn shade in the file (glTF COLOR_0, the collar's lip and the placket edges) must be at most this, so a file exported without the shading fails. Both proposed by Claude; to be agreed by Joe.",
+    "shading_kink_deg_max": 22,
+    "detail_colour_min_max": 0.6
   },
   "phone_min_fps": 30,
   "phone_max_load_mb": 15

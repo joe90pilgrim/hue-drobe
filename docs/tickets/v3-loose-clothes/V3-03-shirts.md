@@ -47,3 +47,5 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Result (17 Nov 2026)
 Built: point collar and raised placket on the tee shell, three sleeve lengths, in the pack and the Top slot; all hard checks pass on Joe, B and the six synthetic bodies. Not signed off: in close-up the collar and placket are faint and may not read as a shirt, so the visual criterion is open. See `docs/decisions/2026-11-17-v3-03-shirts.md`.
+
+Second pass (17 Nov 2026, Opus): the shirt no longer shades B's nipples, ribs and navel (5 cm shading normals; a new shading check, max 22 degrees, measured 12 to 19). The collar and placket now read in the app: collar lip, sharp folds, drawn COLOR_0 shading, a placket cut with straight edges. All hard checks pass on Joe, B and the six synthetic bodies. Visual sign-off by Joe and Beth still to come.

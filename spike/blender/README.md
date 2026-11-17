@@ -36,3 +36,8 @@ Mesh analysis (pass the `hps_height_cm_estimate` value from the report; `spike/o
 ```
 `check_reports.py` reads `spike/tolerances.json` and exits 1 if any tolerance is missed.
 Personal measurements go in `private/` (git-ignored); committed tests use `spike/fixtures/`.
+
+Close-up renders for visual sign-off (V3-03): garments on a body from a pack folder, lit roughly like the app and shaded as three.js shades the pack (colour times the file's COLOR_0), front, three-quarter and back by default. Output paths are yours to choose; renders of Joe's or B's pack stay out of the repo.
+```
+& "C:\Program Files\Blender Foundation\Blender 5.3\blender.exe" --background --python spike/blender/render_closeup.py -- private/pack/b <out_prefix> shirt_short,trousers 1f2a44
+```

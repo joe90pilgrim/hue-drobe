@@ -194,6 +194,96 @@ def body_as_drawn(full, hidden, item, floor, cfg, collect=None):
             "gap_by_z_cm": sorted(gap_z.items()), "cloth_first_hits_outside_face": first_cloth[True], "cloth_first_hits_inside_face": first_cloth[False], "worst_view": worst, "intersecting_pairs_with_hiding_off": n_off}
 
 
+def shading_look(path, radius=0.015, edge_margin=0.04, skip=None):
+    """V3-03: how the exported garment will be shaded, read from the GLB as the app gets it (its NORMAL and COLOR_0 attributes).
+    - kink: for each corner of a face at least edge_margin from an open edge (neckline, collar, hem, sleeve ends) and not in
+      skip(point) (a garment's own drawn details), the largest angle between its normal and the normal of any corner within
+      radius. Cloth bridges small bumps, so its shading turns slowly; a shell shaded from the body template's own vertex layout
+      turns sharply at the navel, the nipples and the ribs (17 to 40 degrees in 1.5 cm on B's first shirt) and reads as a
+      skin-tight wrap (Joe, 17 Nov 2026). Reported as the maximum, the 99th percentile and where the maximum is.
+    - colour: whether the file has a COLOR_0 attribute, its darkest value and the share of corners darker than 0.8 (the drawn
+      shading of a shirt's collar and placket; a file exported without it would show a flat, collarless shirt).
+    Imports the file and removes it again; nothing is changed."""
+    import math
+    from mathutils.kdtree import KDTree
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=path)
+    new = [o for o in bpy.data.objects if o not in before]
+    pts, nrm, cols, bm = [], [], [], bmesh.new()
+    for o in new:
+        if o.type != "MESH":
+            continue
+        me, mw = o.data, o.matrix_world
+        rot = mw.to_3x3()
+        cn = me.corner_normals
+        for li, l in enumerate(me.loops):
+            pts.append(mw @ me.vertices[l.vertex_index].co)
+            nrm.append((rot @ cn[li].vector).normalized())
+        ca = me.color_attributes[0] if len(me.color_attributes) else None  # the first is COLOR_0, the only one the app reads
+        if ca is not None:
+            for d in ca.data:
+                cols.append(sum(d.color[:3]) / 3.0)
+        m2 = me.copy()
+        m2.transform(mw)
+        bm.from_mesh(m2)
+        bpy.data.meshes.remove(m2)
+    for o in new:
+        bpy.data.objects.remove(o)
+    g = merged(bm)
+    bm.free()
+    edge = [v.co.copy() for v in g.verts if v.is_boundary]
+    # neighbours are looked for along the cloth (within 3 edges), so a sleeve hanging beside the side seam or the other
+    # trouser leg, near in space but another part of the surface, is never compared
+    vkd = KDTree(len(g.verts))
+    for v in g.verts:
+        vkd.insert(v.co, v.index)
+    vkd.balance()
+    ring = {}
+
+    def ring3(vi):
+        if vi not in ring:
+            seen, front = {vi}, {vi}
+            for _ in range(3):
+                front = {e.other_vert(g.verts[k]).index for k in front for e in g.verts[k].link_edges} - seen
+                seen |= front
+            ring[vi] = seen
+        return ring[vi]
+    vof = [vkd.find(p)[1] for p in pts]
+    ekd = KDTree(max(1, len(edge)))
+    for i, co in enumerate(edge):
+        ekd.insert(co, i)
+    ekd.balance()
+    kd = KDTree(len(pts))
+    for i, p in enumerate(pts):
+        kd.insert(p, i)
+    kd.balance()
+    worst, cache = [], {}
+    for i, p in enumerate(pts):
+        if (edge and ekd.find(p)[2] < edge_margin) or (skip is not None and skip(p)):
+            continue
+        key = (round(p.x, 5), round(p.y, 5), round(p.z, 5), round(nrm[i].x, 3), round(nrm[i].y, 3), round(nrm[i].z, 3))
+        if key in cache:
+            continue
+        m, near = 0.0, ring3(vof[i])
+        for co, j, d in kd.find_range(p, radius):
+            if vof[j] in near:
+                m = max(m, math.degrees(nrm[i].angle(nrm[j], 0.0)))
+        cache[key] = m
+        worst.append((m, p))
+    g.free()
+    worst.sort(key=lambda t: -t[0])
+    n = len(worst)
+    out = {"corners": n, "radius_cm": round(radius * 100, 2)}
+    if n:
+        out.update({"kink_max_deg": round(worst[0][0], 1), "kink_p99_deg": round(worst[n // 100][0], 1),
+                    "kinks_over_15deg": sum(1 for m, _ in worst if m > 15.0),
+                    "kink_max_at_xyz_cm": [round(c * 100, 1) for c in worst[0][1]],
+                    "worst_at_xyz_cm_deg": [[round(c * 100, 1) for c in p] + [round(m, 1)] for m, p in worst[:6]]})
+    out["colour"] = {"present": bool(cols), "min": round(min(cols), 3) if cols else None,
+                     "share_below_0_8": round(sum(1 for c in cols if c < 0.8) / len(cols), 3) if cols else None}
+    return out
+
+
 def tights_faces_z(bm, i):
     return bm.faces[i].calc_center_median().z
 

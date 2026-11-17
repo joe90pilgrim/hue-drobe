@@ -92,7 +92,8 @@ def default_garments(m, cfg):
             "cuff_gap_cm": sh["cuff_gap_cm"],
             "neckline_width_cm": _r(sh["neckline_width_fraction_of_height"] * height),
             "neckline_drop_front_cm": sh["neckline_drop_front_cm"],
-            "detail": {**sh["collar"], **{"placket_" + k: v for k, v in sh["placket"].items()}},
+            "detail": {**sh["collar"], **{"placket_" + k: v for k, v in sh["placket"].items()}, **sh["shade"]},
+            "shading_radius_cm": sh["shading_radius_cm"],
             "colour_srgb": colour,
         }
     if "shorts" in cfg:  # V1.1-05: sizes taken from the trousers on the body, so only the length and the extra opening are set here

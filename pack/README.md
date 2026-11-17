@@ -59,7 +59,9 @@ untucked, in three sleeve lengths: short (the tee's), mid (just above the elbow)
 Chest ease is the tee's, because the shell cannot go looser; the tail is a little longer. The sizes are in `fit_config.json` `shirt`; the chest and the sleeve are
 calibrated for each length like the tee's. Each gets the tee's hard mesh limits and bust-shape limits, is checked against the trousers, shorts and tights, and must show
 two collar points and a raised placket (`spike/tolerances.json` `shirt`; `check_reports.py --shirts`). A shirt is never tucked, so like the sweatshirt it cannot be worn
-with the skirt. Record: `docs/decisions/2026-11-17-v3-03-shirts.md`.
+with the skirt. Shirt GLBs, unlike the others, carry drawn shading (a `COLOR_0` attribute the app's colour multiplies: the collar's edge and the placket's edges darker) and
+normals averaged over 5 cm on the plain cloth (`garment.set_shading_normals`), so the collar reads and the cloth does not show the navel and nipples; both are checked on
+the exported file (`mesh_checks.shading_look`, report key `shading`). Record: `docs/decisions/2026-11-17-v3-03-shirts.md`.
 The shorts (V1.1-05) are the trousers' shell cut at a 23 cm inseam, with the bottom 8 cm let out so the leg opening is 4 cm wider
 than the trousers at that height (`fit_config.json`, `shorts`). They get the trousers' hard mesh checks, and every top is checked
 for intersections with them as well as with the trousers.

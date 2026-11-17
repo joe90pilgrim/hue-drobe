@@ -748,7 +748,14 @@ if SHG:
                                    extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if bust is not None else 0.004, extend_hem_to=shirt_extend,
                                    neck=shirt_neck, settle_shoulders=True, long_sleeves=long_,
                                    forearm_ease_frac=SHG["forearm_ease_fraction"] if long_ else 1.0, cuff_band=_cuff if long_ else None, bust=bust)
-        return m_, v_, garment.add_shirt_details(m_, body_final, joints_final, shirt_neck, SHG["detail"])
+        # the chest is calibrated on the shell before the collar and placket go on: the placket's raised edges add about 0.8 cm
+        # round the chest, which is a fold of cloth, not size, and counting it took ease out of the shirt until the trousers'
+        # waistband showed through on the synthetic man (second pass, 17 Nov 2026)
+        gs_ = bmesh.new()
+        gs_.from_mesh(m_)
+        chest_ = tee_chest_circ(gs_)
+        gs_.free()
+        return m_, v_, garment.add_shirt_details(m_, body_final, joints_final, shirt_neck, SHG["detail"]), chest_
 
     _ease0 = tee_ease
     # the mid sleeve ends just above the elbow: a body with a short upper arm gets a shorter mid sleeve (the cut cannot go past 95% of the arm)
@@ -758,11 +765,7 @@ if SHG:
         t_ = (1.0 - want_sleeve / 100.0 / _fo) if kind == "long" else min(0.95, want_sleeve / 100.0 / _arm)
         ease = _ease0
         for it in range(8):
-            sm, sv, si = _shirt_build(kind, ease, t_)
-            gs = bmesh.new()
-            gs.from_mesh(sm)
-            got = tee_chest_circ(gs)
-            gs.free()
+            sm, sv, si, got = _shirt_build(kind, ease, t_)
             got_s = garment.cuff_above_wrist_cm(body_final, sv, joints_final) if kind == "long" else garment.landmarks(body_final, shirt_faces[kind], sv, joints_final)["sleeve_end_from_shoulder_cm"]
             print("CAL shirt", kind, it, round(got, 1), SHG["chest_circ_cm"], "sleeve" if kind != "long" else "cuff above wrist", got_s, want_sleeve, "ease", repr(ease), "sleeve_t", repr(t_))
             chest_ok, sleeve_ok = abs(got - SHG["chest_circ_cm"]) < 0.5, abs(got_s - want_sleeve) < 0.7
@@ -777,7 +780,7 @@ if SHG:
                 ease = min(0.06, max(0.003, ease + (SHG["chest_circ_cm"] - got) / two_pi / 100.0))
         shirt_chest[kind], shirt_ease[kind] = got, ease
         if BUST is not None:  # V2-08: the hang is drape, not size, so it is applied after the size is settled
-            sm, sv, si = _shirt_build(kind, ease, t_, bust=BUST)
+            sm, sv, si, _ = _shirt_build(kind, ease, t_, bust=BUST)
         shirt_meshes[kind], shirt_vids[kind], shirt_info[kind] = sm, sv, si
         _ease0 = ease
 
@@ -1150,11 +1153,15 @@ for _kind, _sm in shirt_meshes.items():  # V3-03: shirt_short.glb, shirt_mid.glb
     _ms = bpy.data.materials.new(f"shirt_{_kind}"); _ms.use_nodes = True
     _ms.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(SHG.get("colour_srgb", [214, 214, 214]))
     _sm.materials.append(_ms)
+    garment.set_shading_normals(_sm, SHG["shading_radius_cm"] / 100.0)  # smooth cloth, crisp collar and placket (the geometry is unchanged)
     bpy.context.scene.collection.objects.link(_so)
     bpy.ops.object.select_all(action="DESELECT")
     _so.select_set(True)
     bpy.context.view_layer.objects.active = _so
-    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_shirt_{_kind}.glb"), export_format="GLB", use_selection=True)
+    # the collar and placket shading (the "Color" attribute) goes out as COLOR_0, by name: "ACTIVE" also wrote a blank attribute
+    # the shell carries over from the body, as COLOR_0, with the shading as COLOR_1, which the app does not read
+    bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, f"{name}_shirt_{_kind}.glb"), export_format="GLB", use_selection=True,
+                              export_vertex_color="NAME", export_vertex_color_name="Color")
 # mesh checks run on the exported GLBs read back in, because glTF export splits quads into its own triangles and the phone
 # shows those triangles; checking the in-memory quads gives lower intersection counts
 import mesh_checks
@@ -1165,6 +1172,34 @@ report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_
                                         shorts=mesh_checks.load_glb(os.path.join(out_dir, name + "_shorts.glb")) if HG else None,
                                         tights=mesh_checks.load_glb(os.path.join(out_dir, name + "_tights.glb")) if TT else None,
                                         shirt_shoulder_x_min=TOL["shirt"]["shoulder_gap_from_x_cm"] / 100.0)
+# V3-03: how each garment will be shaded, read from its GLB (mesh_checks.shading_look), over the panels of plain cloth: for a top
+# the torso clear of the arms and below the shoulders, for a shirt also clear of the placket and the collar (drawn details,
+# meant to be crisp); for a bottom everything but the crotch, where trousers really crease. Held to a limit for the shirts
+# (check_reports.py); reported for the others, which are still shaded from the template's vertex layout.
+_segs3, _rad3 = garment._arm_segs(joints_final)
+
+
+def _top_skip(p):
+    return (garment._classify(p, _segs3, _rad3) != "torso" or p.z > hps_z - 0.08
+            or any(garment._seg_dist(p, *_segs3[k])[0] < _rad3[k] + 0.05 for k in ("lup", "rup")))
+
+
+def _shirt_skip(p):
+    if _top_skip(p):
+        return True
+    _d = SHG["detail"]
+    if (p.y - shirt_neck["cy"]) * FRONT > 0 and abs(p.x - shirt_neck["cx"]) < (_d["placket_half_width_cm"] + _d["placket_edge_cm"]) / 100.0 + 0.02:
+        return True
+    _ex, _ey = (p.x - shirt_neck["cx"]) / (shirt_neck["a"] + 0.05), (p.y - shirt_neck["cy"]) / (shirt_neck["b"] + 0.05)
+    return _ex * _ex + _ey * _ey < 1.0 and p.z > hps_z - _d["tip_drop_cm"] / 100.0 - 0.04
+
+
+_bottom_skip = lambda p: abs(p.x) < 0.08 and p.z < crotch_z + 0.10
+report["shading"] = {}
+for _g, _sk in ([("tee", _top_skip), ("trousers", _bottom_skip)] + ([("sweatshirt", _top_skip)] if SG else []) + ([("shorts", _bottom_skip)] if HG else [])
+                + [(f"shirt_{k}", _shirt_skip) for k in shirt_meshes]):
+    report["shading"][_g] = mesh_checks.shading_look(os.path.join(out_dir, f"{name}_{_g}.glb"), skip=_sk)
+    print("SHADING", _g, report["shading"][_g])
 if BUST is not None:  # V2-08: how each top sits over the bust, measured on the exported GLBs (pack/bust_shape.py, numpy only)
     sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "pack"))
     import bust_shape

@@ -48,6 +48,12 @@ class DefaultGarments(unittest.TestCase):
         d = s["detail"]
         self.assertGreater(d["tip_drop_cm"], d["back_drop_cm"])  # points at the front, a lower flap there than round the back
         self.assertGreater(d["placket_height_cm"], 0)
+        # second pass: the collar has a lip at its edge, and the drawn shading only darkens (it multiplies the colour picked in the app)
+        self.assertGreater(d["lip_cm"], 0)
+        self.assertLess(d["lip_gap_cm"], d["flap_gap_cm"])
+        for k in ("shade_lip", "shade_placket_edge", "shade_stand"):
+            self.assertTrue(0 < d[k] <= 1, k)
+        self.assertGreater(s["shading_radius_cm"], 0)
         self.assertEqual(s["colour_srgb"], CFG["colour_srgb"])
 
     def test_shorts_are_above_the_knee(self):

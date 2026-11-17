@@ -55,7 +55,8 @@ No open decisions for 1.2.
 - **V3-02** Dresses: tights with the dress? Recommendation: yes.
 - ~~**V3-03** Shirts: collar style?~~ **Decided 17 Nov 2026:** classic point collar.
 - ~~**V3-03** Shirts: tucked in, out or both?~~ **Decided 17 Nov 2026:** untucked first.
-- **V3-03** Shirts: agree the three new limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm); and look at the renders: does it read as a shirt?
+- **V3-03** Shirts: agree the limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm; second pass: cloth shading turn at most 22 degrees in 1.5 cm, drawn collar shading at most 0.6); and look at the second-pass renders: does it read as a shirt?
+- **V3-03 follow-up** The tee, sweatshirt and trousers still shade from the body template's vertex layout (40, 41 and 22 degrees on B against the shirt's 17), so they show the navel and nipples the way the first shirts did. Switch the shirt's 5 cm shading normals on for them too? It changes no shape and no hard check.
 - **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
 - **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
 - **V3-05** Multiple top layers: how many layers at most? Recommendation: three (base, mid, outer).

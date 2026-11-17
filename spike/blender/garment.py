@@ -855,12 +855,18 @@ def _boundary_loop_top(g):
 
 def add_shirt_details(me, body_bm, joints, neck, cfg):
     """V3-03: turn a tee-shaped shell (from build_tee) into a shirt, in place, by adding two things drawn as shape (no buttons):
-      placket  a strip down the centre front, raised cfg["placket_height_cm"] off the cloth, cfg["placket_half_width_cm"] either side
-               of the centre line and fading out over cfg["placket_fade_cm"]. It only moves vertices outward, so it cannot touch the body.
+      placket  a strip down the centre front, cfg["placket_half_width_cm"] either side of the centre line, cut into the shell with
+               straight edges and raised cfg["placket_height_cm"] forward, joined to the cloth by a slope cfg["placket_edge_cm"] wide.
+               It only moves cloth forward where the cloth faces the front, so it cannot touch the body.
       collar   a point collar on the neck opening. A stand rises cfg["stand_cm"] from the opening, hugging the neck at
                cfg["neck_clearance_cm"]; a flap folds over it (cfg["fold_out_cm"] outside it) and hangs down, longer at the front
                into two points (cfg["tip_drop_cm"] below the stand's top edge, at +-cfg["tip_angle_deg"] from the front centre),
-               resting cfg["flap_gap_cm"] off the cloth below it.
+               resting cfg["flap_gap_cm"] off the cloth below it; its edge turns back towards the cloth by cfg["lip_cm"] (the lip).
+    To make these read in the app's light in any plain colour (Joe, 17 Nov 2026: the collar was invisible): the fold lines and the
+    placket's cut lines are sharp edges, each face is tagged with its part (the "detail" attribute, DETAIL), and a "Color" corner
+    attribute (exported as glTF COLOR_0, which multiplies the material colour) darkens the lip (cfg["shade_lip"]), the placket's
+    edge slopes (cfg["shade_placket_edge"]), the collar band (cfg["shade_stand"]) and, as a soft shadow, the cloth within
+    cfg["shadow_cm"] of the lip.
     Returns what was drawn, for the report: placket and collar sizes as built. Deterministic: the same shell gives the same shirt."""
     c = {k: (v / 100.0 if k.endswith("_cm") else v) for k, v in cfg.items() if not k.startswith("_")}
     g = bmesh.new()
@@ -870,21 +876,44 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
     fr, cx, cy = neck["front"], neck["cx"], neck["cy"]
     segs, radius = _arm_segs(joints)
     body_bvh = BVHTree.FromBMesh(body_bm)
+    # which part each face is (DETAIL), read by set_shading_normals and by the vertex colours below; exported as nothing
+    detail = g.faces.layers.int.new("detail")
 
-    # --- placket
+    # --- placket: the shell is cut along four lines down the front (either side of the centre line at half_width, and edge_cm
+    # further out), so the strip has straight edges of its own instead of following the template's vertices (which are dense at
+    # the navel and sparse elsewhere). The strip is raised forward, horizontally: along the vertex normal it pointed down at the
+    # hem of the hanging tail and up near the neck, so it is moved straight forward where the cloth faces the front. Between the
+    # inner and the outer cut, a narrow slope joins it to the cloth.
+    hw, edge_w, ph = c["placket_half_width_cm"], c["placket_edge_cm"], c["placket_height_cm"]
+
+    def front_torso(p):
+        return (p.y - cy) * fr > 0.0 and _classify(p, segs, radius) == "torso"
+    for xc in (cx - hw - edge_w, cx - hw, cx + hw, cx + hw + edge_w):
+        fs = [f for f in g.faces if front_torso(f.calc_center_median())
+              and min(v.co.x for v in f.verts) < xc - 1e-6 and max(v.co.x for v in f.verts) > xc + 1e-6]
+        if fs:
+            bmesh.ops.bisect_plane(g, geom=list({v for f in fs for v in f.verts}) + list({e for f in fs for e in f.edges}) + fs,
+                                   plane_co=(xc, 0.0, 0.0), plane_no=(1.0, 0.0, 0.0))
+    g.verts.index_update(); g.edges.index_update(); g.faces.index_update()
+    g.verts.ensure_lookup_table(); g.edges.ensure_lookup_table(); g.faces.ensure_lookup_table(); g.normal_update()
     raised, top_raise = 0, 0.0
     for v in g.verts:
-        ax = abs(v.co.x - cx)
-        if ax >= c["placket_half_width_cm"] + c["placket_fade_cm"] or (v.co.y - cy) * fr < 0.0 or v.normal.y * fr < 0.3:
+        if abs(v.co.x - cx) > hw + 1e-5 or not front_torso(v.co):
             continue
-        if _classify(v.co, segs, radius) != "torso":
+        if v.normal.y * fr <= 0.0:  # only where the cloth faces the front at all (a stricter limit left steps in the strip)
             continue
-        w = 1.0 if ax <= c["placket_half_width_cm"] else _smoothstep(1.0 - (ax - c["placket_half_width_cm"]) / c["placket_fade_cm"])
-        d = c["placket_height_cm"] * w
-        if d > 1e-6:
-            v.co += v.normal * d
-            raised += 1 if w > 0.5 else 0
-            top_raise = max(top_raise, d)
+        v.co.y += fr * ph  # straight forward, so the cut lines stay where they were cut
+        raised += 1
+        top_raise = ph
+    for f in g.faces:
+        cen = f.calc_center_median()
+        if front_torso(cen):
+            ax = abs(cen.x - cx)
+            f[detail] = DETAIL["placket"] if ax < hw else DETAIL["placket_edge"] if ax < hw + edge_w else 0
+    for e in g.edges:  # the four cut lines are sharp edges: the exporter splits the normals there, so the strip reads as a separate band
+        if all(front_torso(v.co) and min(abs(abs(v.co.x - cx) - hw), abs(abs(v.co.x - cx) - hw - edge_w)) < 1e-4 for v in e.verts) \
+                and abs(abs(e.verts[0].co.x - cx) - abs(e.verts[1].co.x - cx)) < 1e-4:
+            e.smooth = False
 
     # --- collar: stand
     g.normal_update()
@@ -932,10 +961,14 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
     back_from, d0, dback = math.radians(c["back_from_deg"]), c["centre_drop_cm"], c["back_drop_cm"]
 
     def drop(phi):
+        # straight from the front centre down to each point, then straight back up at first (1 - (1 - t)^3 is steepest at the
+        # point; cubed, steeper still), easing into the back: a corner at each point. A smoothstep here was flat at the point and drew a rounded,
+        # Peter Pan collar (second pass, 17 Nov 2026).
         a = abs(phi)
         if a <= tip:
             return d0 + (tip_drop - d0) * (a / tip)
-        return tip_drop + (dback - tip_drop) * _smoothstep((a - tip) / max(1e-6, back_from - tip))
+        t_ = min(1.0, (a - tip) / max(1e-6, back_from - tip))
+        return tip_drop + (dback - tip_drop) * (1.0 - (1.0 - t_) ** 3)
     rows = 3
     fold = []
     for i in range(n):
@@ -958,20 +991,39 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
                     s_ = (v.co - loc).dot(nor)
                     if s_ < c["flap_gap_cm"]:
                         v.co += nor * (c["flap_gap_cm"] - s_)
+    # the two points and the notch between them are corners: the smoothing along the rows leaves those columns alone
+    corners = {min(range(n), key=lambda i: abs(phis[i] - tip)), min(range(n), key=lambda i: abs(phis[i] + tip)),
+               min(range(n), key=lambda i: abs(phis[i]))}
     for _ in range(2):
         push_flap()
         for k in range(1, rows + 1):
             row = flap[k]
-            sm = [row[i].co.lerp((row[i - 1].co + row[(i + 1) % n].co) / 2, 0.25) for i in range(n)]
+            sm = [row[i].co if i in corners else row[i].co.lerp((row[i - 1].co + row[(i + 1) % n].co) / 2, 0.25) for i in range(n)]
             for i in range(n):
                 row[i].co = sm[i]
     push_flap()
     push_flap()
 
+    # the lip: the flap's lower edge turns back towards the cloth by lip_cm (stopping lip_gap_cm off it), so the collar has a
+    # thickness at its edge. The lip faces point down and out, a different direction from the flap and the cloth, so under any
+    # light the collar's outline shows as a band of its own instead of melting into the shirt.
+    lip = []
+    for i in range(n):
+        p = flap[rows][i].co
+        loc, nor, fi, dist = nearest(base_bvh, p)
+        if loc is None:
+            lip.append(g.verts.new(p.copy()))
+            continue
+        s_ = (p - loc).dot(nor)
+        lip.append(g.verts.new(p - nor * max(0.0, s_ - max(c["lip_gap_cm"], s_ - c["lip_cm"]))))
+    for i in range(n):
+        j = (i + 1) % n
+        new_faces.append(("lip", g.faces.new((flap[rows][i], flap[rows][j], lip[j], lip[i]))))
+
     # the flap is pushed clear of the shell vertex by vertex, which can leave a face of it crossing another between the vertices:
     # find such pairs and move the flap's own vertices of the pair apart (never the shell's), then push clear again, until none cross
-    flap_faces = [f for kind, f in new_faces if kind == "flap"]
-    movable = set(v for row in flap[1:] for v in row)
+    flap_faces = [f for kind, f in new_faces if kind in ("flap", "lip")]
+    movable = set(v for row in flap[1:] for v in row) | set(lip)
     for _ in range(25):
         g.faces.index_update(); g.verts.index_update(); g.faces.ensure_lookup_table(); g.normal_update()
         tree = BVHTree.FromBMesh(g)
@@ -989,7 +1041,8 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
                             v.co += away.normalized() * 0.0015
         push_flap()
 
-    # face directions: the stand and flap face away from the neck and the cloth under them, the rim faces up
+    # face directions: the stand and flap face away from the neck and the cloth under them, the rim faces up, the lip faces down
+    # the flap (away from the flap row above it)
     g.normal_update()
     for kind, f in new_faces:
         cen = f.calc_center_median()
@@ -997,11 +1050,41 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
             outward = f.normal.z > 0
         elif kind == "stand":
             outward = f.normal.x * (cen.x - cx) + f.normal.y * (cen.y - cy) > 0
+        elif kind == "lip":
+            i = lip.index(next(v for v in f.verts if v in lip))
+            outward = f.normal.dot((flap[rows][i].co - flap[rows - 1][i].co).normalized()) > 0
         else:
             loc, nor, fi, dist = nearest(base_bvh, cen)
             outward = loc is None or (cen - loc).dot(f.normal) > 0
         if not outward:
             bmesh.utils.face_flip(f)
+    for kind, f in new_faces:
+        f[detail] = DETAIL[kind]
+    # sharp edges where the collar folds: the top of the band, the fold, and where the flap turns into the lip
+    for ring in (top, fold, flap[rows]):
+        for i in range(n):
+            e = g.edges.get((ring[i], ring[(i + 1) % n]))
+            if e is not None:
+                e.smooth = False
+
+    # shading drawn into the cloth (glTF COLOR_0, which the app's material colour multiplies, so it works in any plain colour):
+    # the lip and the placket's edge slopes darker, the band a little darker (it sits in the collar's shade), and on the cloth
+    # around the collar a soft shadow that fades out over shadow_cm from the lip
+    shade = {DETAIL["lip"]: c["shade_lip"], DETAIL["placket_edge"]: c["shade_placket_edge"], DETAIL["stand"]: c["shade_stand"]}
+    from mathutils.kdtree import KDTree
+    lkd = KDTree(n)
+    for i, v in enumerate(lip):
+        lkd.insert(v.co, i)
+    lkd.balance()
+    col = g.loops.layers.float_color.new("Color")
+    for f in g.faces:
+        k = f[detail]
+        for l in f.loops:
+            s = shade.get(k, 1.0)
+            if k in (0, DETAIL["placket"]):
+                d = lkd.find(l.vert.co)[2]
+                s = c["shade_lip"] + (1.0 - c["shade_lip"]) * _smoothstep(min(1.0, d / c["shadow_cm"]))
+            l[col] = (s, s, s, 1.0)
 
     # what was drawn, measured on the result
     lower = flap[rows]
@@ -1009,12 +1092,66 @@ def add_shirt_details(me, body_bm, joints, neck, cfg):
     lim = 0.75 * max(drops)
     front = [abs(phis[i]) < math.radians(100) and drops[i] >= lim for i in range(n)]  # the points are at the front; count the runs of deep flap there
     runs = sum(1 for i in range(n) if front[i] and not front[i - 1])
+    lip_gap = []
+    for v in lip:
+        loc, nor, fi, dist = nearest(base_bvh, v.co)
+        if loc is not None:
+            lip_gap.append((v.co - loc).dot(nor))
     report = {"placket": {"vertices_raised": raised, "height_cm": round(top_raise * 100, 2), "half_width_cm": round(c["placket_half_width_cm"] * 100, 2)},
               "collar": {"ring_vertices": n, "stand_cm": round(c["stand_cm"] * 100, 2), "tip_drop_cm": round(max(drops) * 100, 1), "points": runs,
-                         "min_clearance_stand_top_to_body_cm": round(min(clear(v.co) for v in top) * 100, 2)}}
+                         "min_clearance_stand_top_to_body_cm": round(min(clear(v.co) for v in top) * 100, 2),
+                         "lip_gap_to_cloth_cm": [round(min(lip_gap) * 100, 2), round(max(lip_gap) * 100, 2)] if lip_gap else None}}
     canonical_faces(g)
     g.to_mesh(me)
     g.free()
     for p in me.polygons:
         p.use_smooth = True
+    me.color_attributes.active_color = me.color_attributes["Color"]
     return report
+
+
+# V3-03: what each face of a shirt is, stored in the mesh's "detail" face attribute (not exported)
+DETAIL = {"placket": 1, "placket_edge": 2, "stand": 3, "rim": 4, "flap": 5, "lip": 6}
+
+
+def set_shading_normals(me, radius):
+    """V3-03: smooth the shading of a garment over radius (m), without moving a vertex. The offset shell inherits the body
+    template's vertex layout, which is dense at the navel and the nipples and sparse elsewhere; its millimetre ripples there are
+    invisible as shape but, shaded with per-vertex normals, they draw the navel, the nipples and the ribs on the cloth (Joe,
+    17 Nov 2026: "a skin-tight wrap rather than clothes"). Each corner of the plain cloth gets the area-weighted mean of the face
+    normals within radius (faces facing the other way, across a sleeve or a fold, are left out), written as custom normals, which
+    the glTF exporter writes as the NORMAL attribute. With a "detail" face attribute (a shirt, DETAIL): the placket strip is
+    smoothed over its own faces only, and the collar and the placket's edges keep their own normals (with sharp edges split), so
+    they stay crisp."""
+    from mathutils.kdtree import KDTree
+    me.update()
+    det = me.attributes.get("detail")
+    group = [d.value for d in det.data] if det else [0] * len(me.polygons)
+    smooth_groups = (0, DETAIL["placket"])
+    kd = KDTree(len(me.polygons))
+    cen = [p.center.copy() for p in me.polygons]
+    for p in me.polygons:
+        kd.insert(cen[p.index], p.index)
+    kd.balance()
+    nrm = [p.normal.copy() for p in me.polygons]
+    area = [p.area for p in me.polygons]
+    corner = [cn.vector.copy() for cn in me.corner_normals]
+    cache = {}
+    out = []
+    for p in me.polygons:
+        gp = group[p.index]
+        for li in p.loop_indices:
+            if gp not in smooth_groups:
+                out.append(corner[li])
+                continue
+            vi = me.loops[li].vertex_index
+            key = (vi, gp)
+            if key not in cache:
+                co, ref = me.vertices[vi].co, corner[li]
+                acc = Vector()
+                for c_, fi, d in kd.find_range(co, radius):
+                    if group[fi] == gp and nrm[fi].dot(ref) > 0.3:
+                        acc += nrm[fi] * area[fi] * (1.0 - d / radius) ** 2
+                cache[key] = acc.normalized() if acc.length > 1e-12 else ref
+            out.append(cache[key])
+    me.normals_split_custom_set(out)
