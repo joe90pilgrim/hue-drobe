@@ -309,11 +309,20 @@ def layers(outers, inners, edge_margin=0.02):
             it = BVHTree.FromBMesh(ib)
             pairs = ot.overlap(it)
             vals = []
+            ib.normal_update()
             for v in ib.verts:
                 loc, nor, fi, d = ot.find_nearest(v.co)
                 if loc is None or d > 0.05 or (edge and ekd.find(loc)[2] < edge_margin):
                     continue
-                vals.append((-(v.co - loc).dot(nor) * 100, v.co.copy()))
+                s = -(v.co - loc).dot(nor)
+                if s < d - 1e-6:
+                    # the nearest point is on an edge or corner (a crease, such as between the arm and the shoulder in the A-pose): the
+                    # nearest face's normal can lie almost side-on there and gives a wrong sign. Decide inside or outside by a ray along
+                    # the inner garment's own outward normal: it meets the outer cloth from the inside if the vertex is covered. The
+                    # clearance is then the true (unsigned) distance to the outer surface.
+                    h = ot.ray_cast(v.co + v.normal * 1e-5, v.normal, 0.05)
+                    s = d if (h[0] is not None and h[1].dot(v.normal) > 0.0) else -d
+                vals.append((s * 100, v.co.copy()))
             vals.sort(key=lambda t: t[0])
             n = len(vals)
             R[lbl][tl] = {"intersecting_pairs": len(pairs),

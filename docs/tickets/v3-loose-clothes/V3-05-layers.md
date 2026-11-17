@@ -47,3 +47,5 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Note
 Stopped after repeated failed attempts at one problem: the pack build makes the layered tops (sweatshirt and the three shirts over the tee, built over all three necklines) and the layer check runs, with 0 face pairs and every other check passing on the synthetic medium man, but 12 checks fail by about 1 mm where a tee vertex sits within 0.1 cm of the outer top at the side of the shoulder (limit 0.2 cm). The app is not started, only one body was built, and the work is on branch `feat/V3-05-layers`; see `docs/decisions/2026-11-17-v3-05-layers.md`.
+
+Second pass (17 Nov 2026): the medium man's 1 mm shoulder failure was a sign error in the layer check (fixed; the medium and small men now pass everything), but the first build of all six bodies fails for real on the other four (crossings, self-intersections, the tee through the top by up to 0.64 cm). Still stopped; see the decision record's second-pass section for the next step to choose.
