@@ -11,7 +11,7 @@ Date: 17 November 2026. Follows `2026-11-16-v2-07-joe-decisions.md` (decision 4:
 **Things Joe should know.**
 - Hiding off alone would not fail the check on every body any more, because step 1 stops the skin crossing the dress (0 pairs on the small body without hiding, 56 on the medium, 96 on the large, 78 on B). So the control is the dress as the pack fits it, over the whole body (24 to 637 pairs), and `python pack/build_pack.py --only synthetic_female_medium --no-hide` builds without hiding or our fitting and fails the check (503 face pairs). The ticket's wording, "turning the body hiding off makes the check fail", holds in that sense only.
 - The gap-ray heights stop at 18 degrees below horizontal because `app/src/viewer.ts` stops the camera there. Looking up a skirt from further below would show the inside of any hidden-body dress.
-- The sampling values (1 cm, 15 degrees, push 0.2 cm, 2 rings, up to 6 repair rounds) are mine, to be agreed.
+- The sampling values (1 cm, 15 degrees, push 0.2 cm, 2 rings, up to 6 repair rounds) were proposed by Claude and agreed by Joe on 17 Nov 2026.
 - Taking a pack item off the body object before the body is exported brings the body's helper geometry back into the export; `pack_items.py` exports from a copy and removes the item last. The check fails if the body as drawn has as many faces as the whole body.
 
 **App.** `keepLayers` has a `Dress` slot rule: a dress takes off the top and the bottom; a top or bottom takes off the dress. There is no dress in the app until V3-02.
