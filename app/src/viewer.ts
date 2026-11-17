@@ -4,9 +4,10 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
 
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb'];
-/** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error. */
-const OPTIONAL = new Set(['skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked']);
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb'];
+/** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error.
+ * V3-02: so do `dress` and `body_dress` (the body with the parts under the dress removed, drawn in place of `body` while the dress is worn). */
+const OPTIONAL = new Set(['skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress']);
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
@@ -105,7 +106,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     bytes += buf.byteLength;
     const gltf = await loader.parseAsync(buf, '');
     if (disposed) return;
-    gltf.scene.visible = wanted.get(name) ?? true;
+    gltf.scene.visible = wanted.get(name) ?? name !== 'body_dress'; // the dress's body only shows while the dress is worn
     garments.set(name, gltf.scene);
     const colour = colours.get(groupOf(name));
     if (colour) paint(gltf.scene, colour);

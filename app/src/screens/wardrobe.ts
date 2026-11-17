@@ -16,6 +16,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const GROUPS = [
   { slot: 'Top', label: 'Tops' },
   { slot: 'Bottom', label: 'Bottoms' },
+  { slot: 'Dress', label: 'Dresses' },
   { slot: 'Legs', label: 'Tights' },
 ] as const;
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
@@ -31,6 +32,10 @@ const stacked = (top?: SavedItem, bottom?: SavedItem, big = false, legs?: SavedI
   `<span class="o-stack${big ? ' big' : ''}" aria-hidden="true">${slice(top, 'top')}${slice(bottom, 'bottom')}${legs !== null && legs !== undefined ? slice(legs, 'legs') : legs === null ? slice(undefined, 'legs') : ''}</span>`;
 /** The legs slice: the tights, an empty slot when the outfit's tights were deleted, or nothing when it never had tights. */
 const legsOf = (o: Outfit, look: { legs?: SavedItem }) => (o.legs ? (look.legs ?? null) : undefined);
+
+/** The top and bottom slices of a tile: a dress fills both, in its colour (or both empty if its item was deleted). */
+const pair = (o: Outfit, look: { top?: SavedItem; bottom?: SavedItem; dress?: SavedItem }): [SavedItem | undefined, SavedItem | undefined] =>
+  o.dress ? [look.dress, look.dress] : [look.top, look.bottom];
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
@@ -80,6 +85,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
   const piecesOf = (o: Outfit) => {
     const look = resolveOutfit(o, items);
     const parts: string[] = [];
+    if (o.dress) parts.push(look.dress ? look.dress.name : 'dress deleted');
     if (o.top) parts.push(look.top ? look.top.name : 'top deleted');
     if (o.bottom) parts.push(look.bottom ? look.bottom.name : 'bottom deleted');
     if (o.legs) parts.push(look.legs ? look.legs.name : 'tights deleted');
@@ -128,7 +134,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
         .map((o) => {
           const look = resolveOutfit(o, items);
           return `<button type="button" class="w-card${on('outfit', o.id) ? ' on' : ''}" data-kind="outfit" data-id="${o.id}" aria-pressed="${on('outfit', o.id)}">
-            <span class="w-tile o-tile">${stacked(look.top, look.bottom, false, legsOf(o, look))}</span>
+            <span class="w-tile o-tile">${stacked(...pair(o, look), false, legsOf(o, look))}</span>
             <span class="w-card-text"><span class="w-name">${esc(o.name)}</span><span class="w-sub">${piecesOf(o)}</span></span>
           </button>`;
         })
@@ -145,7 +151,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     const look = outfit ? resolveOutfit(outfit, items) : undefined;
     const art = item
       ? `<span class="d-swatch" style="background:${item.colour}"></span>`
-      : `<span class="d-swatch o-tile">${stacked(look!.top, look!.bottom, true, legsOf(outfit!, look!))}</span>`;
+      : `<span class="d-swatch o-tile">${stacked(...pair(outfit!, look!), true, legsOf(outfit!, look!))}</span>`;
     const sub = item ? esc(itemKind(item)) : piecesOf(outfit!);
     const head = renaming
       ? `<div class="d-text"><label class="field-label" for="w-rename">Name</label>

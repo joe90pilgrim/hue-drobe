@@ -11,6 +11,8 @@ import {
 } from '../favourites';
 import {
   DEFAULT_NECKLINE,
+  DRESS_OPTION,
+  DRESS_SLOT,
   GARMENTS,
   NECKLINES,
   NECKLINE_KEY,
@@ -40,6 +42,8 @@ interface Slot {
   garments: Record<string, string>; // option -> pack garment name
 }
 const SLOTS: Slot[] = [
+  // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
+  { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
   { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
   // Shorts (V1.1-05) are the trousers cut at a 23 cm inseam, so the tops sit over them exactly as over the trousers.
@@ -198,7 +202,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
-  const offered = (opt: string) => opt !== TUCKS_INTO || viewer.has('skirt');
+  const offered = (opt: string) => (opt !== TUCKS_INTO || viewer.has('skirt')) && (opt !== DRESS_OPTION || viewer.has('dress'));
   /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
   const blockedNote = (slot: string, opt: string): string | null => {
     if (slot === 'Legs' && opt === 'Tights' && outfit.Bottom === TIGHTS_BLOCKED_BY)
@@ -230,6 +234,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.classList.toggle('o-empty', !g);
       sw.style.background = g ? colourOf(s) : '';
     }
+    el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
     outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
@@ -309,6 +314,9 @@ export function renderTryOn(el: HTMLElement): () => void {
   };
   const refresh = () => {
     SLOTS.forEach(apply);
+    const dressOn = outfit[DRESS_SLOT] === DRESS_OPTION && viewer.has('dress') && viewer.has('body_dress');
+    viewer.setGarment('body', !dressOn); // while the dress is worn, the body with the parts under it removed is drawn instead
+    viewer.setGarment('body_dress', dressOn);
     viewer.setSheer('tights', sheer);
     renderRows();
     syncEditor();
@@ -502,6 +510,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let loadedSaved = false;
   const dropMissingSkirt = () => {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
+    if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
   };
   let packReady = false;
   void viewer.ready.then(() => {
@@ -521,10 +530,11 @@ export function renderTryOn(el: HTMLElement): () => void {
       const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
+      else if (s.name === DRESS_SLOT) look.dress = r.item;
       else if (s.name === 'Legs') look.legs = r.item;
       else look.bottom = r.item;
     }
-    if (!look.top && !look.bottom && !look.legs) return;
+    if (!look.top && !look.bottom && !look.legs && !look.dress) return;
     await saveItems(items);
     await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
     outfitBtn.textContent = 'Outfit saved';

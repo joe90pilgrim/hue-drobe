@@ -74,7 +74,7 @@ which the app draws in place of `body.glb` while the dress is worn. `pack_items.
 (`spike/blender/mesh_checks.py` `body_as_drawn`: rays from 120 viewpoints over the dress's silhouette; a gap is a ray that would have hit skin on the whole body but, with the
 parts removed, shows the inside of the cloth or nothing). The check also counts face pairs with the body not hidden, which must be over zero, so it cannot pass by doing nothing.
 `python pack/build_pack.py --only synthetic_female_medium --no-hide` builds without hiding and fails the check, as a demonstration. The app takes off the top and the bottom
-when a dress is worn (`app/src/wardrobe.ts` `keepLayers`, slot `Dress`); the dress itself is not in the app until V3-02.
+when a dress is worn (`app/src/wardrobe.ts` `keepLayers`, slot `Dress`); the dress is in the app since V3-02 (Dress slot in the Try on screen; the viewer swaps `body.glb` for `body_dress.glb` while it is worn).
 On a female body every top hangs from the bust instead of tucking under it (V2-08, `fit_config.json` `bust`): the top's size is
 calibrated without the hang, then the shell is built once more with it, and the report carries both `chest_circ_cm` (the size) and
 `chest_circ_as_worn_cm`. Male bodies never read the block, so their garments are unchanged. Record: `docs/decisions/2026-11-16-v2-08-bust-shape.md`.

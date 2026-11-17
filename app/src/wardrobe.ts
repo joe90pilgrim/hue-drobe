@@ -11,6 +11,8 @@ export const GARMENTS = {
   tights: { label: 'tights', slot: 'Legs', option: 'Tights' },
   // V3-01b: a bottom, so it replaces the trousers or shorts. Women's packs only (the Dress screen offers it when the pack has it).
   skirt: { label: 'skirt', slot: 'Bottom', option: 'Skirt' },
+  // V3-02: the pack's shift dress, a slot of its own that replaces the top and the bottom (see `keepLayers`). Women's packs only.
+  dress: { label: 'dress', slot: 'Dress', option: 'Shift dress' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 
@@ -48,6 +50,8 @@ export const isTucked = (outfit: Record<string, string>) => outfit.Bottom === TU
 
 /** V3-06: the slot a dress goes in. A dress covers the top and the bottom, so it takes the place of both (see `keepLayers`). */
 export const DRESS_SLOT = 'Dress';
+/** The pack meshes for the dress, and the body drawn in place of `body` while it is worn (the body with the parts under the dress removed). */
+export const DRESS_OPTION = 'Shift dress';
 const isOn = (option: string | undefined) => !!option && option !== 'None';
 
 /**

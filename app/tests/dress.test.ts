@@ -33,3 +33,25 @@ describe('dress layering', () => {
     expect(keepLayers({ Bottom: 'Trousers', Legs: 'Tights' }, 'Legs')).toEqual({ Bottom: 'None', Legs: 'Tights' });
   });
 });
+
+describe('dress in the wardrobe and in outfits (V3-02)', () => {
+  it('is a garment in the Dress slot, saved by colour', async () => {
+    const { GARMENTS, newItem, itemKind } = await import('../src/wardrobe');
+    expect(GARMENTS.dress).toEqual({ label: 'dress', slot: 'Dress', option: 'Shift dress' });
+    const item = newItem('dress', '#2e5e8c', 1);
+    expect(item.name).toBe('Blue dress');
+    expect(itemKind(item)).toBe('Shift dress');
+  });
+
+  it('is kept by a saved outfit, and put on with the top and bottom off', async () => {
+    const { cleanOutfits, newOutfit, resolveOutfit } = await import('../src/outfits');
+    const { newItem } = await import('../src/wardrobe');
+    const dress = newItem('dress', '#8c2e3a', 1);
+    const tights = newItem('tights', '#222222', 2);
+    const o = newOutfit({ dress, legs: tights }, 3);
+    expect(o.dress).toBe(dress.id);
+    expect(cleanOutfits([o])[0].dress).toBe(dress.id);
+    expect(resolveOutfit(o, [dress, tights]).dress).toBe(dress);
+    expect(cleanOutfits([{ ...o, legs: undefined, dress: undefined }])).toEqual([]);
+  });
+});
