@@ -1090,6 +1090,18 @@ ob.select_set(True)
 bpy.context.view_layer.objects.active = ob
 glb = os.path.join(out_dir, name + ".glb")
 bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_apply=False)
+# V3-03 follow-up: every offset-shell garment the app draws is shaded with normals averaged over a radius (fit_config "shading"),
+# so the body template's dense vertices at the navel and nipples do not draw anatomy on the cloth; the shape is unchanged.
+# Not the tights (skin-close by design). A garments file from before this setting leaves the files' own normals.
+_SHADE_R = (G or {}).get("shading_radius_cm")
+
+
+def _shade(me):
+    if _SHADE_R:
+        garment.set_shading_normals(me, _SHADE_R / 100.0)
+
+
+_shade(tee_mesh)
 tee_ob = bpy.data.objects.new(name + "_tee", tee_mesh)
 mat = bpy.data.materials.new("tee"); mat.use_nodes = True
 mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((TG or {}).get("colour_srgb", [217, 51, 64]))
@@ -1099,6 +1111,7 @@ bpy.ops.object.select_all(action="DESELECT")
 tee_ob.select_set(True)
 bpy.context.view_layer.objects.active = tee_ob
 bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tee.glb"), export_format="GLB", use_selection=True)
+_shade(tr_mesh)
 tr_ob = bpy.data.objects.new(name + "_trousers", tr_mesh)
 mat2 = bpy.data.materials.new("trousers"); mat2.use_nodes = True
 mat2.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((RG or {}).get("colour_srgb", [58, 83, 140]))
@@ -1109,6 +1122,7 @@ tr_ob.select_set(True)
 bpy.context.view_layer.objects.active = tr_ob
 bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_trousers.glb"), export_format="GLB", use_selection=True)
 if SG:
+    _shade(sw_mesh)
     sw_ob = bpy.data.objects.new(name + "_sweatshirt", sw_mesh)
     mat3 = bpy.data.materials.new("sweatshirt"); mat3.use_nodes = True
     mat3.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(SG.get("colour_srgb", [214, 214, 214]))
@@ -1119,6 +1133,7 @@ if SG:
     bpy.context.view_layer.objects.active = sw_ob
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_sweatshirt.glb"), export_format="GLB", use_selection=True)
 if HG:  # V1.1-05: shorts.glb, same material setup as the trousers
+    _shade(sh_mesh)
     sh_ob = bpy.data.objects.new(name + "_shorts", sh_mesh)
     mat4 = bpy.data.materials.new("shorts"); mat4.use_nodes = True
     mat4.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(HG.get("colour_srgb", [214, 214, 214]))
@@ -1139,6 +1154,7 @@ if TT:  # V2-04: tights.glb, same material setup as the trousers (the app sets c
     bpy.context.view_layer.objects.active = tg_ob
     bpy.ops.export_scene.gltf(filepath=os.path.join(out_dir, name + "_tights.glb"), export_format="GLB", use_selection=True)
 for _style, _vm in var_meshes.items():  # V1.1-04: tee_v.glb, tee_scoop.glb, same material setup as the crew tee
+    _shade(_vm)
     _vo = bpy.data.objects.new(f"{name}_tee_{_style}", _vm)
     _mv = bpy.data.materials.new(f"tee_{_style}"); _mv.use_nodes = True
     _mv.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin((TG or {}).get("colour_srgb", [217, 51, 64]))
@@ -1153,7 +1169,7 @@ for _kind, _sm in shirt_meshes.items():  # V3-03: shirt_short.glb, shirt_mid.glb
     _ms = bpy.data.materials.new(f"shirt_{_kind}"); _ms.use_nodes = True
     _ms.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = _lin(SHG.get("colour_srgb", [214, 214, 214]))
     _sm.materials.append(_ms)
-    garment.set_shading_normals(_sm, SHG["shading_radius_cm"] / 100.0)  # smooth cloth, crisp collar and placket (the geometry is unchanged)
+    _shade(_sm)  # smooth cloth, crisp collar and placket (set_shading_normals reads the "detail" attribute)
     bpy.context.scene.collection.objects.link(_so)
     bpy.ops.object.select_all(action="DESELECT")
     _so.select_set(True)
@@ -1174,8 +1190,8 @@ report["mesh_checks"] = mesh_checks.run(*(mesh_checks.load_glb(os.path.join(out_
                                         shirt_shoulder_x_min=TOL["shirt"]["shoulder_gap_from_x_cm"] / 100.0)
 # V3-03: how each garment will be shaded, read from its GLB (mesh_checks.shading_look), over the panels of plain cloth: for a top
 # the torso clear of the arms and below the shoulders, for a shirt also clear of the placket and the collar (drawn details,
-# meant to be crisp); for a bottom everything but the crotch, where trousers really crease. Held to a limit for the shirts
-# (check_reports.py); reported for the others, which are still shaded from the template's vertex layout.
+# meant to be crisp); for a bottom from the knee up, but not the crotch, where trousers really crease. Every garment here is held to
+# tolerances.json "shading" (check_reports.py).
 _segs3, _rad3 = garment._arm_segs(joints_final)
 
 
@@ -1194,10 +1210,13 @@ def _shirt_skip(p):
     return _ex * _ex + _ey * _ey < 1.0 and p.z > hps_z - _d["tip_drop_cm"] / 100.0 - 0.04
 
 
-_bottom_skip = lambda p: abs(p.x) < 0.08 and p.z < crotch_z + 0.10
+_knee_z = max(joints_final["joint-l-knee"].z, joints_final["joint-r-knee"].z)
+# a bottom from the knee up (hips, seat, thighs, where a wrap would show anatomy), not the crotch; below the knee the straight leg
+# leaves the calf on purpose, a turn of the cut, not of the body (40 degrees on Joe's trousers, with or without smoothing)
+_bottom_skip = lambda p: p.z < _knee_z or (abs(p.x) < 0.08 and p.z < crotch_z + 0.10)
 report["shading"] = {}
 for _g, _sk in ([("tee", _top_skip), ("trousers", _bottom_skip)] + ([("sweatshirt", _top_skip)] if SG else []) + ([("shorts", _bottom_skip)] if HG else [])
-                + [(f"shirt_{k}", _shirt_skip) for k in shirt_meshes]):
+                + [(f"tee_{s}", _top_skip) for s in var_meshes] + [(f"shirt_{k}", _shirt_skip) for k in shirt_meshes]):
     report["shading"][_g] = mesh_checks.shading_look(os.path.join(out_dir, f"{name}_{_g}.glb"), skip=_sk)
     print("SHADING", _g, report["shading"][_g])
 if BUST is not None:  # V2-08: how each top sits over the bust, measured on the exported GLBs (pack/bust_shape.py, numpy only)

@@ -93,7 +93,6 @@ def default_garments(m, cfg):
             "neckline_width_cm": _r(sh["neckline_width_fraction_of_height"] * height),
             "neckline_drop_front_cm": sh["neckline_drop_front_cm"],
             "detail": {**sh["collar"], **{"placket_" + k: v for k, v in sh["placket"].items()}, **sh["shade"]},
-            "shading_radius_cm": sh["shading_radius_cm"],
             "colour_srgb": colour,
         }
     if "shorts" in cfg:  # V1.1-05: sizes taken from the trousers on the body, so only the length and the extra opening are set here
@@ -105,6 +104,8 @@ def default_garments(m, cfg):
         out["tights"] = {"gap_cm": t_["gap_cm"], "hem_above_floor_cm": t_["hem_above_floor_cm"],
                          "waist_below_trousers_cm": t_["waist_below_trousers_cm"],
                          "smooth_iterations": t_["smooth_iterations"], "colour_srgb": colour}
+    if "shading" in cfg:  # V3-03 follow-up: shading normals averaged over this radius for every offset-shell garment but the tights
+        out["shading_radius_cm"] = cfg["shading"]["radius_cm"]
     if "bust" in cfg:  # V2-08: how the tops sit over the bust; the generator applies it on female bodies only
         b_ = cfg["bust"]
         out["bust"] = {k: b_[k] for k in ("hang_reach_cm", "hang_slack_cm_per_cm", "hang_halfwidth_cm", "hang_side_taper_cm_per_cm", "pad_cm", "pad_radius_cm", "tee_trousers_gap_cm")}

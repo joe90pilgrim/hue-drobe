@@ -53,7 +53,7 @@ class DefaultGarments(unittest.TestCase):
         self.assertLess(d["lip_gap_cm"], d["flap_gap_cm"])
         for k in ("shade_lip", "shade_placket_edge", "shade_stand"):
             self.assertTrue(0 < d[k] <= 1, k)
-        self.assertGreater(s["shading_radius_cm"], 0)
+        self.assertGreater(g["shading_radius_cm"], 0)  # shared by every offset-shell garment
         self.assertEqual(s["colour_srgb"], CFG["colour_srgb"])
 
     def test_shorts_are_above_the_knee(self):

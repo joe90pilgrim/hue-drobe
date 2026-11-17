@@ -19,9 +19,9 @@ Stricter than the first version:
   bust-shape limits too (they are checked like the other tops: against the trousers, shorts and tights), plus what makes them shirts and
   not tees: two collar points at least tolerances.json "shirt" collar_tip_drop_cm_min below the collar's top edge, and a raised placket of at
   least placket_height_cm_min over placket_vertices_min vertices. --shirts makes a missing one a failure. Since the second pass, also
-  how the exported shirt is shaded (the report's "shading", from mesh_checks.shading_look): the plain cloth's shading turns at most
-  shading_kink_deg_max within 1.5 cm (so it does not draw the navel and nipples like a wrap), and the file carries the collar and
-  placket shading (COLOR_0, darkest at most detail_colour_min_max). Other garments' shading is printed as info only.
+  whether the exported shirt carries the collar and placket shading (COLOR_0, darkest at most detail_colour_min_max).
+- every garment in the report's "shading" (mesh_checks.shading_look: tees, sweatshirt, shirts, trousers, shorts): the plain cloth's
+  shading turns at most tolerances.json "shading" kink_deg_max within 1.5 cm, so it does not draw the navel and nipples like a wrap.
 
 - shorts (V1.1-05), when the report has them, get exactly the trousers' mesh limits, and every top is checked against them with
   the tee-with-trousers limit. --shorts makes missing shorts a failure.
@@ -149,14 +149,12 @@ for f in reports:
         if sh_ is None:
             check(False, f"{g} shading record missing from report")
             continue
-        check(sh_.get("kink_max_deg", 999) <= st["shading_kink_deg_max"],
-              f"{g} shading of the plain cloth: turns up to {sh_.get('kink_max_deg')} deg within {sh_['radius_cm']} cm at {sh_.get('kink_max_at_xyz_cm')} cm (max {st['shading_kink_deg_max']})")
         col_ = sh_["colour"]
         check(col_["present"] and col_["min"] <= st["detail_colour_min_max"],
               f"{g} collar and placket shading in the file (COLOR_0): present {col_['present']}, darkest {col_['min']} (at most {st['detail_colour_min_max']})")
-    for g, sh_ in (r.get("shading") or {}).items():
-        if g not in shirts:
-            print(f"  info {g} shading of the plain cloth turns up to {sh_.get('kink_max_deg')} deg within {sh_['radius_cm']} cm (report only; shirts are held to {tol['shirt']['shading_kink_deg_max']})")
+    for g, sh_ in (r.get("shading") or {}).items():  # V3-03: every offset-shell garment's plain cloth, so none draws anatomy like a wrap
+        check(sh_.get("kink_max_deg", 999) <= tol["shading"]["kink_deg_max"],
+              f"{g} shading of the plain cloth: turns up to {sh_.get('kink_max_deg')} deg within {sh_['radius_cm']} cm at {sh_.get('kink_max_at_xyz_cm')} cm (max {tol['shading']['kink_deg_max']})")
     if "mesh_checks" in r:
         n = r["mesh_checks"]["tee_vs_trousers_intersecting_pairs"]
         check(n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"tee-through-trousers intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")

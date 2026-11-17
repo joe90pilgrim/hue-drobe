@@ -39,9 +39,12 @@
     "placket_height_cm_min": 0.3,
     "placket_vertices_min": 20,
     "shoulder_gap_from_x_cm": 10,
-    "_note_shading": "V3-03 second pass (17 Nov 2026), measured by mesh_checks.shading_look on each shirt GLB as the app gets it. shading_kink_deg_max: over the plain cloth of the torso (clear of the arms, the shoulders, the placket and the collar), the largest turn of the shading normal within 1.5 cm along the cloth. The first shirts measured 40 degrees on B (the tee too), at the bust and navel, where the shell inherits the body template's dense vertex layout and drew the nipples and navel on the cloth ('a skin-tight wrap', Joe); normals averaged over 5 cm measured 17. detail_colour_min_max: the darkest drawn shade in the file (glTF COLOR_0, the collar's lip and the placket edges) must be at most this, so a file exported without the shading fails. Both proposed by Claude; to be agreed by Joe.",
-    "shading_kink_deg_max": 22,
+    "_note_colour": "V3-03 second pass (17 Nov 2026), measured by mesh_checks.shading_look on each shirt GLB as the app gets it. detail_colour_min_max: the darkest drawn shade in the file (glTF COLOR_0, the collar's lip and the placket edges) must be at most this, so a file exported without the shading fails. Proposed by Claude; to be agreed by Joe.",
     "detail_colour_min_max": 0.6
+  },
+  "shading": {
+    "_note": "V3-03 (17 Nov 2026), measured by mesh_checks.shading_look on every offset-shell garment's GLB as the app gets it (tee in each neckline, sweatshirt, shirts, trousers, shorts; checked by check_reports.py). kink_deg_max: over the plain cloth (a top's torso clear of the arms, the shoulders and, on a shirt, the placket and collar; a bottom from the knee up, not the crotch), the largest turn of the shading normal within 1.5 cm along the cloth. Shaded from the body template's own vertex layout, the tops measured 25 to 44 degrees and drew the navel and nipples ('a skin-tight wrap', Joe); with normals averaged over 5 cm (fit_config shading) the tops measure 12 to 19 and the trousers and shorts 2 to 22. Proposed by Claude; to be agreed by Joe.",
+    "kink_deg_max": 22
   },
   "phone_min_fps": 30,
   "phone_max_load_mb": 15

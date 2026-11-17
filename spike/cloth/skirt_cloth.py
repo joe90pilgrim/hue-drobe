@@ -448,6 +448,8 @@ def export_top(b, key):
     b.to_mesh(me)
     for pg in me.polygons:
         pg.use_smooth = True
+    if SHADE_R:  # V3-03 follow-up: shaded like the untucked tees (normals averaged over fit_config "shading" radius_cm)
+        garment.set_shading_normals(me, SHADE_R / 100.0)
     ob = bpy.data.objects.new(key, me)
     sc.collection.objects.link(ob)
     mat = bpy.data.materials.new(key)
@@ -465,6 +467,8 @@ def export_top(b, key):
 
 
 TOP_COLOUR = json.load(open(gar_path))["tee"].get("colour_srgb", [214, 214, 214])
+SHADE_R = json.load(open(gar_path)).get("shading_radius_cm")
+import garment  # noqa: E402  (spike/blender, on the path above)
 TIGHTS_GLB = os.path.join(out_dir, name + "_tights.glb")
 tights_bm = mesh_checks.merged(mesh_checks.load_glb(TIGHTS_GLB)) if os.path.exists(TIGHTS_GLB) else None
 tights_tree = BVHTree.FromBMesh(tights_bm) if tights_bm else None
