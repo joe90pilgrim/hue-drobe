@@ -50,4 +50,4 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
 
 ## Done (17 November 2026)
-Skirt and tucked tees (Joe: tucked in, midi only) are built per woman's body by `build_pack.py` and shown in the app; every hard check passes on B and all three synthetic women inside `npm run check`. Beth's sign-off and the Pixel 8 frame rate are still to do. Record: `docs/decisions/2026-11-17-v3-01b-skirt-in-app.md`.
+Skirt and tucked tees (Joe: tucked in, midi only) are built per woman's body by `build_pack.py` and shown in the app; every hard check passes on B and all three synthetic women inside `npm run check`. The Pixel 8 frame rate is still to measure. Beth's sign-off is deferred until V6 is complete (Joe tests everything until then). Record: `docs/decisions/2026-11-17-v3-01b-skirt-in-app.md`.

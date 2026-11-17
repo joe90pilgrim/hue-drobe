@@ -1,6 +1,6 @@
 # V3-01b Skirt in the app
 
-Date: 17 November 2026. Result: **Beth can wear the A-line midi skirt in any colour, with a tee tucked into it. All hard mesh checks pass on B and on all three synthetic women (small, medium, large) inside `npm run check`.** Not yet done: Beth's visual sign-off and the Pixel 8 frame rate.
+Date: 17 November 2026. Result: **Beth can wear the A-line midi skirt in any colour, with a tee tucked into it. All hard mesh checks pass on B and on all three synthetic women (small, medium, large) inside `npm run check`.** Not yet done: the Pixel 8 frame rate. Beth's visual sign-off is deferred: she will not review the app until version 6 is complete, so Joe tests everything until then (his decision, 17 November 2026).
 
 Joe's decisions (17 November 2026): tops are **tucked in** (cut at the skirt's waistband); **midi only** for now. Blender 5.3.0, MPFB 2.0.18.
 
@@ -24,7 +24,7 @@ Joe's decisions (17 November 2026): tops are **tucked in** (cut at the skirt's w
 B's pack is 1,337 KB in all (limit 15 MB); Joe's is 1,066 KB. Synthetic female medium was not covered by V3-01a, and passes with the same settings. `npm run check`: 83 unit tests, 60 Playwright tests (including `app/e2e/skirt.spec.ts`), asset checks and deploy tests all pass. Renders (front, side, back; skirt alone, with each tucked tee, with tights): `private/pack/build/renders/` and `pack/out/renders/`.
 
 ## Not done or not reliable
-- **Beth's visual sign-off** is still needed. In B's render the tucked tee meets the skirt in a clean straight line, front, side and back, with no visible clipping.
+- **Beth's visual sign-off** is deferred to after V6 (Joe tests in the meantime). In B's render the tucked tee meets the skirt in a clean straight line, front, side and back, with no visible clipping.
 - **No phone test.** The skirt and tucked tees add about 270 KB to B's pack and about 6,000 triangles for the skirt, so the Pixel 8 frame rate with skirt and top on still needs measuring (`?debug`).
 - **Hem is checked against a pattern target** (21% of height), not a real skirt.
 - **No blended sizes:** each body has its own skirt.
