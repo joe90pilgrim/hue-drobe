@@ -46,8 +46,8 @@ No open decisions for 1.2.
 
 ## v3-loose-clothes
 
-- **V3-00** Experiment: loose clothes with cloth simulation: Which skirt shape matters most to Beth? For example A-line, midi, pencil, wrap. Pick one for the experiment (dresses now come from the packs).
-- **V3-00** Experiment: loose clothes with cloth simulation: Go/no-go: Joe decides from the write-up whether version 3 goes ahead on this technique.
+- ~~**V3-00** Experiment: loose clothes with cloth simulation: Which skirt shape matters most to Beth? For example A-line, midi, pencil, wrap. Pick one for the experiment (dresses now come from the packs).~~ **Decided 16 Nov 2026:** A-line midi.
+- **V3-00** Experiment: loose clothes with cloth simulation: Go/no-go: Joe decides from the write-up (`docs/decisions/2026-11-17-v3-00-cloth-skirt.md`) whether version 3 goes ahead on this technique. Recommendation: go, with conditions (passes on B, fails on both synthetic bodies; fix the waistband and the small body first).
 - **V3-01** Skirts: Which skirt styles and lengths, in which order?
 - **V3-02** Dresses: Which dress styles first? Sleeved or sleeveless?
 - **V3-03** Shirts (long, mid and short sleeves): Collar style (classic, button-down)? Worn tucked in or out, or both?

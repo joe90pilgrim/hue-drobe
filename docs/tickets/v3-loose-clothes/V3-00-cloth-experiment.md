@@ -1,5 +1,6 @@
 # V3-00 Experiment: loose clothes with cloth simulation
 
+**Status:** done 17 November 2026, awaiting Joe's go/no-go. Skirt: A-line midi (Joe, 16 Nov). Write-up: `docs/decisions/2026-11-17-v3-00-cloth-skirt.md`.
 **Ceiling:** 2 hours (hard stop). The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 **Worker:** Opus, high. The hardest technical question on the roadmap, and the area that used most of the spike's reworks. Worth the stronger model once, with a hard stop.
 **Depends on:** V2-03, V2-07. Smaller since the asset spike: dresses now come from the pack (V3-02, V3-06), so this experiment covers skirts only.
