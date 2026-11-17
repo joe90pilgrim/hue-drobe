@@ -90,5 +90,5 @@ def default_garments(m, cfg):
                          "smooth_iterations": t_["smooth_iterations"], "colour_srgb": colour}
     if "bust" in cfg:  # V2-08: how the tops sit over the bust; the generator applies it on female bodies only
         b_ = cfg["bust"]
-        out["bust"] = {k: b_[k] for k in ("hang_reach_cm", "hang_slack_cm_per_cm", "hang_halfwidth_cm", "hang_side_taper_cm_per_cm", "pad_cm", "pad_radius_cm")}
+        out["bust"] = {k: b_[k] for k in ("hang_reach_cm", "hang_slack_cm_per_cm", "hang_halfwidth_cm", "hang_side_taper_cm_per_cm", "pad_cm", "pad_radius_cm", "tee_trousers_gap_cm")}
     return out

@@ -17,7 +17,7 @@ import json, pathlib, sys
 import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from measure_glb import load_glb, slice_loops  # noqa: E402
+from measure_glb import load_glb, slice_loops, torso_circumference_cm  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 STEP = 0.5  # cm
@@ -63,6 +63,29 @@ def body_apexes(body, bust_h):
     return out
 
 
+def body_cup(body, bust_h, apexes):
+    """V2-09: how big the body's own bust is, in cm, so a cup size can be judged by a number. Reported, not limited.
+      bust_minus_underbust_cm  torso circumference at the bust line less the circumference 5 cm below it (a bra's cup is this
+                               difference: about 2.5 cm is an A cup, 5 a B, 7.5 a C, 10 a D, 12.5 a DD)
+      projection_cm            per breast, how far the apex stands in front of the chest wall: the apex depth less the mean
+                               body depth at the same sideways position 6 cm above and 6 cm below the apex
+    """
+    v, t = body
+    ymin = v[:, 1].min()
+    circ = lambda h: float(torso_circumference_cm(v, t, ymin + h / 100))
+    out = {"bust_circ_cm": round(circ(bust_h), 1), "underbust_circ_cm": round(circ(bust_h - 5), 1)}
+    out["bust_minus_underbust_cm"] = round(out["bust_circ_cm"] - out["underbust_circ_cm"], 1)
+    proj = []
+    for ax, ah, ad in apexes:
+        hs = np.array([ah - 6, ah + 6])
+        xs = np.arange(ax - STEP, ax + STEP + STEP / 2, STEP)
+        dm = depth_map(v, t, ymin, hs, xs)
+        ref = float(np.nanmean(np.nanmax(dm, axis=1)))
+        proj.append(round(ad - ref, 2))
+    out["projection_cm"] = proj
+    return out
+
+
 def measure_top(top, ymin, apexes):
     """Per side: the top's apex and how it falls away from it, in cm."""
     v, t = top
@@ -98,6 +121,7 @@ def main():
     bust_h = frac["chest_cm"] * H * 100
     apexes = body_apexes(body, bust_h)
     print(f"{pathlib.Path(body_path).name}: bust line {bust_h:.1f} cm; body apexes (x, height, depth cm) {[tuple(round(c, 1) for c in a) for a in apexes]}")
+    print(f"body bust: {body_cup(body, bust_h, apexes)}")
     limits = json.load(open(ROOT / "spike" / "tolerances.json")).get("bust_shape")
     bad = 0
     print(f"{'top':32s} {'side':5s} {'apex x,h':>11s} {'hollow_below':>12s} {'drop_up':>8s} {'drop_in':>8s} {'drop_out':>9s}")

@@ -647,7 +647,7 @@
       },
       "hem": {
         "height_cm": 79.4,
-        "tee": 121.6,
+        "tee": 122.8,
         "garment": null,
         "stretched": 118.3,
         "expected": null,
@@ -3414,7 +3414,7 @@
       "piece_faces_area": [
         {
           "faces": 3704,
-          "area_cm2": 8346.3,
+          "area_cm2": 8380.2,
           "z_cm": [
             80.1,
             144.5
@@ -3423,7 +3423,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        122.3,
+        123.5,
         70.7,
         31.4,
         31.4
@@ -3435,8 +3435,8 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.33,
-        "median": 1.61,
-        "max": 7.8,
+        "median": 1.64,
+        "max": 7.93,
         "min_at_xyz_cm": [
           -10.5,
           1.7,
@@ -3620,7 +3620,7 @@
       "piece_faces_area": [
         {
           "faces": 3668,
-          "area_cm2": 8265.6,
+          "area_cm2": 8299.6,
           "z_cm": [
             80.1,
             144.5
@@ -3629,7 +3629,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        122.3,
+        123.5,
         81.7,
         31.4,
         31.4
@@ -3641,8 +3641,8 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.34,
-        "median": 1.62,
-        "max": 7.8,
+        "median": 1.65,
+        "max": 7.93,
         "min_at_xyz_cm": [
           -10.8,
           1.7,
@@ -3701,7 +3701,7 @@
       "piece_faces_area": [
         {
           "faces": 3644,
-          "area_cm2": 8248.5,
+          "area_cm2": 8282.5,
           "z_cm": [
             80.1,
             144.4
@@ -3710,7 +3710,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        122.3,
+        123.5,
         78.6,
         31.4,
         31.4
@@ -3722,8 +3722,8 @@
       "clearance_to_body_cm": {
         "min": 0.3,
         "p05": 0.35,
-        "median": 1.63,
-        "max": 7.8,
+        "median": 1.67,
+        "max": 7.93,
         "min_at_xyz_cm": [
           11.9,
           -0.8,
@@ -3883,13 +3883,13 @@
       }
     },
     "skirt_vs_tights_intersecting_pairs": 0,
-    "tee_vs_skirt_intersecting_pairs_info": 683,
+    "tee_vs_skirt_intersecting_pairs_info": 597,
     "tee_tucked": {
       "pieces": 1,
       "piece_faces_area": [
         {
           "faces": 2960,
-          "area_cm2": 5035.7,
+          "area_cm2": 5036.3,
           "z_cm": [
             105.6,
             144.5
@@ -3898,7 +3898,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        101.3,
+        101.5,
         70.7,
         31.4,
         31.4
@@ -3921,8 +3921,8 @@
       "vs_skirt_intersecting_pairs": 0,
       "vs_tights_intersecting_pairs": 0,
       "cut_height_cm": 105.6,
-      "vertices_drawn_in": 134,
-      "largest_draw_in_cm": 2.38,
+      "vertices_drawn_in": 136,
+      "largest_draw_in_cm": 2.39,
       "lowest_cm": 105.6,
       "triangles": 2960,
       "glb_kb": 55
@@ -3932,7 +3932,7 @@
       "piece_faces_area": [
         {
           "faces": 2924,
-          "area_cm2": 4955.1,
+          "area_cm2": 4955.7,
           "z_cm": [
             105.6,
             144.5
@@ -3941,7 +3941,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        101.3,
+        101.5,
         81.7,
         31.4,
         31.4
@@ -3964,8 +3964,8 @@
       "vs_skirt_intersecting_pairs": 0,
       "vs_tights_intersecting_pairs": 0,
       "cut_height_cm": 105.6,
-      "vertices_drawn_in": 134,
-      "largest_draw_in_cm": 2.38,
+      "vertices_drawn_in": 136,
+      "largest_draw_in_cm": 2.39,
       "lowest_cm": 105.6,
       "triangles": 2924,
       "glb_kb": 55
@@ -3975,7 +3975,7 @@
       "piece_faces_area": [
         {
           "faces": 2900,
-          "area_cm2": 4937.9,
+          "area_cm2": 4938.6,
           "z_cm": [
             105.6,
             144.4
@@ -3984,7 +3984,7 @@
       ],
       "openings": 4,
       "opening_lengths_cm": [
-        101.3,
+        101.5,
         78.6,
         31.4,
         31.4
@@ -4007,8 +4007,8 @@
       "vs_skirt_intersecting_pairs": 0,
       "vs_tights_intersecting_pairs": 0,
       "cut_height_cm": 105.6,
-      "vertices_drawn_in": 134,
-      "largest_draw_in_cm": 2.38,
+      "vertices_drawn_in": 136,
+      "largest_draw_in_cm": 2.39,
       "lowest_cm": 105.6,
       "triangles": 2900,
       "glb_kb": 54
@@ -4027,6 +4027,16 @@
         18.4
       ]
     ],
+    "cupsize_macro": 0.5,
+    "body_cup": {
+      "bust_circ_cm": 104.0,
+      "underbust_circ_cm": 89.1,
+      "bust_minus_underbust_cm": 14.9,
+      "projection_cm": [
+        3.63,
+        3.63
+      ]
+    },
     "tee": [
       {
         "apex_x_cm": -11.5,
@@ -4178,5 +4188,5 @@
     "glb_kb": 118,
     "start_shell_body_pairs": 0
   },
-  "fit_config_sha256": "d8d702e86de4dfefa296c1f4a5f125c5b8e9de9ac33e623c82fa3d65eeb91401"
+  "fit_config_sha256": "e90242963f3c8a1ebe25c3c6bba9aebf0db03441ae74892a1f4985ab68b18f9d"
 }

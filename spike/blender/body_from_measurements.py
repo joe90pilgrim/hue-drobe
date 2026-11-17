@@ -182,6 +182,14 @@ if "inside_leg_cm" in M:
             break
 
 # 2. landmarks, then circumferences
+# V2-09: the landmarks are found on the body at MPFB's default cup (0.5), then the real cup size is set. The chest landmark is the
+# widest point of the torso; on a small cup that point moves up to the armpit (112.8 cm instead of 110.5 cm on B), which would move the
+# bust landmark, the tee's calibration line and the garments' bust hang off the bust. The landmark is where the tape goes, so it must not
+# follow the cup. At the default cup this changes nothing.
+_cup = macros.get("cupsize", 0.5)
+if _cup != 0.5:
+    HumanObjectProperties.set_value("cupsize", 0.5, entity_reference=h)
+    TargetService.reapply_macro_details(h)
 bm = eval_bm(h)
 hgt_m = height_cm(bm) / 100.0
 zmin = min(v.co.z for v in bm.verts)
@@ -192,6 +200,9 @@ _crotch_frac = _garment.crotch_height_cm(bm, hgt_m) / 100.0 / hgt_m
 marks = {k: find_landmark(bm, hgt_m, zmin, (max(rng[0], _crotch_frac + 0.03) if k == "hips_cm" else rng[0], rng[1]), mode)
          for k, (_, rng, mode) in TORSO.items() if k in M}
 bm.free()
+if _cup != 0.5:
+    HumanObjectProperties.set_value("cupsize", _cup, entity_reference=h)
+    TargetService.reapply_macro_details(h)
 # 3. body-weight macro: pick the weight whose mean circumference over the given landmarks matches the mean target,
 #    so the fine measure controls only have to correct small residuals (they saturate at about +/-1)
 def set_macro(h, key, v):
@@ -446,7 +457,8 @@ def bust_option(cfg):
     apexes = [max((c for c in band if c.x * s > 0), key=lambda c: c.y * FRONT).copy() for s in (1, -1)]
     print("BUST apexes cm", [[round(c.x * 100, 1), round(c.y * 100, 1), round((c.z - zmin_f) * 100, 1)] for c in apexes])
     return {"apexes": apexes, "front": FRONT, "reach": cfg["hang_reach_cm"] / 100.0, "slack": cfg["hang_slack_cm_per_cm"],
-            "halfwidth": cfg["hang_halfwidth_cm"] / 100.0, "side_taper": cfg["hang_side_taper_cm_per_cm"], "pad": cfg["pad_cm"] / 100.0, "pad_radius": cfg["pad_radius_cm"] / 100.0}
+            "halfwidth": cfg["hang_halfwidth_cm"] / 100.0, "side_taper": cfg["hang_side_taper_cm_per_cm"], "pad": cfg["pad_cm"] / 100.0, "pad_radius": cfg["pad_radius_cm"] / 100.0,
+            "trousers_gap": cfg["tee_trousers_gap_cm"] / 100.0}  # V2-09: the hung tee is rebuilt over the trousers at this gap
 
 
 BUST = bust_option((G or {}).get("bust"))
@@ -621,7 +633,7 @@ if TG:
         # without it (the hung cloth reads bigger at the bust line, and calibrating on that reading shrank the tee everywhere
         # else, through the trousers' waistband). The garment is then built once more, at that ease, with the hang.
         tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
-                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True,
+                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"], extend_hem_to=tee_extend, neck=neck, settle_shoulders=True,
                                            bust=BUST)
 else:
     tee_size_chest = None
@@ -694,7 +706,7 @@ for _style, _VG in ((TG or {}).get("necklines") or {}).items():
                "reach": max(0.0, _drop - neck["drop_front"])}
         _vm, _vv = garment.build_tee(
             body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z, sleeve_t=tee_sleeve_t,
-            extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True, bust=BUST)
+            extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if BUST is not None else 0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True, bust=BUST)
         _g = bmesh.new()
         _g.from_mesh(_vm)
         _got = _measured_front_drop_cm(_g)
@@ -1057,6 +1069,7 @@ if BUST is not None:  # V2-08: how each top sits over the bust, measured on the 
     _body = bust_shape.load_glb(glb)
     _apx = bust_shape.body_apexes(_body, marks["chest_cm"] * H_f * 100)
     report["bust_shape"] = {"body_apexes_x_height_depth_cm": [[round(c, 1) for c in a] for a in _apx],
+                            "cupsize_macro": _cup, "body_cup": bust_shape.body_cup(_body, marks["chest_cm"] * H_f * 100, _apx),  # V2-09: reported, not limited
                             **{top: bust_shape.measure_top(bust_shape.load_glb(os.path.join(out_dir, f"{name}_{top}.glb")), _body[0][:, 1].min(), _apx)
                                for top in ["tee"] + [f"tee_{s}" for s in var_meshes] + (["sweatshirt"] if SG else [])}}
     print("BUST_SHAPE", json.dumps(report["bust_shape"]))

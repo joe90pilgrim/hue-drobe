@@ -32,7 +32,7 @@ Stricter than the first version:
 
 - bust shape (V2-08): on a female body (sex_base in the report) every top must have a bust_shape record (pack/bust_shape.py, written
   by the generator) and each breast's hollow_below, drop_up and drop_in must be within tolerances.json "bust_shape". Male bodies are
-  not judged on this.
+  not judged on this. The body's own bust (cup macro, bust minus underbust, projection; V2-09) is printed as information, with no limit.
 
 Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights] [--skirt]
 """
@@ -199,6 +199,10 @@ for f in reports:
                       f"{top} bust shape, {side}: hollow below {vals['hollow_below_cm']} cm (max {tol['bust_shape']['hollow_below_cm']}), "
                       f"drop up {vals['drop_up_cm']} cm, drop in {vals['drop_in_cm']} cm (max {tol['bust_shape']['drop_up_cm']}, {tol['bust_shape']['drop_in_cm']}); "
                       f"drop out {m['drop_out_cm']} cm (information)")
+        if bs.get("body_cup"):  # V2-09: the body's own bust, reported so a cup size is judged by a number; no limit is set
+            bc = bs["body_cup"]
+            print(f"  info body bust (V2-09): cup macro {bs.get('cupsize_macro')}, bust minus underbust {bc['bust_minus_underbust_cm']} cm "
+                  f"(2.5 A, 5 B, 7.5 C), projection {bc['projection_cm'][0]} cm")
 
     for lbl, cg in (r.get("tee", {}).get("circ_vs_garment_cm") or {}).items():
         if cg.get("error") is None:
