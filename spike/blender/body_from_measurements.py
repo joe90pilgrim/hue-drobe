@@ -595,6 +595,13 @@ if TT and HG:
     print("TIGHTS tuck, triangles still crossing the shorts:", tg_tuck_left)
 
 # --- tee (built over the trousers)
+# V3-05 fifth pass (off by default; ARMPIT_OPEN_CM="0.5,10" turns it on): the tee, its other necklines and the tops worn over it leave out the
+# cloth from the armpit slot (within 10 cm of each armpit apex, where the offset would come nearer the body than the ease plus 0.5 cm) and span
+# it with a patch (garment.build_tee armpit_open). See docs/decisions/2026-11-17-v3-05-layers.md, fifth pass.
+ARMPIT_OPEN = tuple(float(x) / 100.0 for x in os.environ["ARMPIT_OPEN_CM"].split(",")) if os.environ.get("ARMPIT_OPEN_CM") else None
+if ARMPIT_OPEN:
+    body_final.normal_update()
+    print("ARMPIT apexes cm", [[round(c * 100, 1) for c in _p] for _p in garment.armpit_apexes(body_final, joints_final)])
 tee_hem_z = zmin_f + 0.49 * H_f
 tee_extend = None
 tee_sleeve_t = 0.55
@@ -615,7 +622,7 @@ if TG:
     tee_ease = 0.005
     for it in range(8):
         tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
-                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True)
+                                           sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004, extend_hem_to=tee_extend, neck=neck, settle_shoulders=True, armpit_open=ARMPIT_OPEN)
         gt = bmesh.new()
         gt.from_mesh(tee_mesh)
         got = tee_chest_circ(gt)
@@ -640,11 +647,11 @@ if TG:
         # else, through the trousers' waistband). The garment is then built once more, at that ease, with the hang.
         tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
                                            sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"], extend_hem_to=tee_extend, neck=neck, settle_shoulders=True,
-                                           bust=BUST)
+                                           bust=BUST, armpit_open=ARMPIT_OPEN)
 else:
     tee_size_chest = None
     tee_mesh, vids = garment.build_tee(body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z,
-                                       sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck, settle_shoulders=True, bust=BUST)
+                                       sleeve_t=tee_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.008, neck=neck, settle_shoulders=True, bust=BUST, armpit_open=ARMPIT_OPEN)
 
 # --- sweatshirt (MVP-07): an alternative top, built over the trousers like the tee. Regular fit: more ease than the tee,
 # long sleeves, and the hem and cuffs drawn in as ribbing would. Its hem and cuffs are set by the body (hem above the crotch,
@@ -712,7 +719,7 @@ for _style, _VG in ((TG or {}).get("necklines") or {}).items():
                "reach": max(0.0, _drop - neck["drop_front"])}
         _vm, _vv = garment.build_tee(
             body_final, tee_faces, joints_final, ease=tee_ease, min_gap=tee_gap, hem_z=tee_hem_z, sleeve_t=tee_sleeve_t,
-            extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if BUST is not None else 0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True, bust=BUST)
+            extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if BUST is not None else 0.004, extend_hem_to=tee_extend, neck=_vn, settle_shoulders=True, bust=BUST, armpit_open=ARMPIT_OPEN)
         _g = bmesh.new()
         _g.from_mesh(_vm)
         _got = _measured_front_drop_cm(_g)
@@ -749,7 +756,7 @@ if SHG:
                                    extra_mesh=tr_mesh, extra_gap=BUST["trousers_gap"] if bust is not None else 0.004, extend_hem_to=shirt_extend,
                                    neck=shirt_neck, settle_shoulders=True, long_sleeves=long_,
                                    forearm_ease_frac=SHG["forearm_ease_fraction"] if long_ else 1.0, cuff_band=_cuff if long_ else None, bust=bust,
-                                   inner_mesh=inner, inner_gap=LAYER_GAP)  # V3-05: inner is the tee a shirt is worn over
+                                   inner_mesh=inner, inner_gap=LAYER_GAP, armpit_open=ARMPIT_OPEN if inner is not None else None)  # V3-05: inner is the tee a shirt is worn over
         # the chest is calibrated on the shell before the collar and placket go on: the placket's raised edges add about 0.8 cm
         # round the chest, which is a fold of cloth, not size, and counting it took ease out of the shirt until the trousers'
         # waistband showed through on the synthetic man (second pass, 17 Nov 2026)
@@ -801,7 +808,7 @@ if (G or {}).get("layers") and TG:
             body_final, sw_faces, joints_final, ease=sw_ease, min_gap=tee_gap, hem_z=sw_hem_z, sleeve_t=sw_sleeve_t, extra_mesh=tr_mesh, extra_gap=0.004,
             neck=sw_neck, settle_shoulders=True, long_sleeves=True, forearm_ease_frac=SG["forearm_ease_fraction"],
             hem_band=(SG["rib_band_cm"] / 100.0, SG["hem_rib_gap_cm"] / 100.0), cuff_band=(SG["rib_band_cm"] / 100.0, SG["cuff_rib_gap_cm"] / 100.0),
-            bust=BUST, inner_mesh=LAYER_INNER, inner_gap=LAYER_GAP)
+            bust=BUST, inner_mesh=LAYER_INNER, inner_gap=LAYER_GAP, armpit_open=ARMPIT_OPEN)
     for kind in shirt_meshes:
         _om, _ov, _oi, _ = _shirt_build(kind, shirt_ease[kind], shirt_t[kind], bust=BUST, inner=LAYER_INNER)
         over_faces[f"shirt_{kind}_over_tee"], over_ease[f"shirt_{kind}_over_tee"] = shirt_faces[kind], shirt_ease[kind]
