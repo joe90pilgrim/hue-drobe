@@ -806,6 +806,13 @@ if (G or {}).get("layers") and TG:
         _om, _ov, _oi, _ = _shirt_build(kind, shirt_ease[kind], shirt_t[kind], bust=BUST, inner=LAYER_INNER)
         over_faces[f"shirt_{kind}_over_tee"], over_ease[f"shirt_{kind}_over_tee"] = shirt_faces[kind], shirt_ease[kind]
         over_meshes[f"shirt_{kind}_over_tee"], over_vids[f"shirt_{kind}_over_tee"], over_info[f"shirt_{kind}_over_tee"] = _om, _ov, _oi
+    # V3-05 second pass: the offset shell alone crossed the tee or folded on four of the six synthetic bodies (shoulder, under the bust),
+    # so each layered top is settled with cloth over the tee in every neckline, the body and the trousers (drape.settle_over, gravity off)
+    import drape as _drape
+    over_settle = {}
+    for _lbl in list(over_meshes):
+        over_meshes[_lbl], over_settle[_lbl] = _drape.settle_over(over_meshes[_lbl], body_final, LAYER_INNER, [tr_mesh], LAYER_GAP, tee_gap)
+        print("LAYER_SETTLE", _lbl, json.dumps(over_settle[_lbl]))
     for _lbl in over_meshes:
         _g3 = bmesh.new()
         _g3.from_mesh(over_meshes[_lbl])
@@ -998,7 +1005,7 @@ for _lbl, _om in over_meshes.items():  # V3-05: one record per layered top (the 
     _alone_worn = {"sweatshirt_over_tee": sw_report["chest_circ_as_worn_cm"] if (SG and BUST is not None) else (sw_report["chest_circ_cm"] if SG else None),
                    **{f"shirt_{k}_over_tee": shirt_reports[k].get("chest_circ_as_worn_cm", shirt_reports[k]["chest_circ_cm"]) for k in shirt_reports}}[_lbl]
     _worn4 = tee_chest_circ(_g4)
-    over_reports[_lbl] = {"over": "tee", "ease_cm": round(over_ease[_lbl] * 100, 2), "layer_gap_cm": round(LAYER_GAP * 100, 2),
+    over_reports[_lbl] = {"over": "tee", "ease_cm": round(over_ease[_lbl] * 100, 2), "settle": over_settle.get(_lbl), "layer_gap_cm": round(LAYER_GAP * 100, 2),
                           "chest_circ_as_worn_cm": round(_worn4, 1), "chest_circ_alone_as_worn_cm": _alone_worn,
                           "chest_extra_from_tee_cm": None if _alone_worn is None else round(_worn4 - _alone_worn, 1),
                           **({"details": over_info[_lbl]} if _lbl in over_info else {})}
