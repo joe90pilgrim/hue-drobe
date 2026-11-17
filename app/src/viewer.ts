@@ -13,7 +13,7 @@ const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'te
 export const SHEER_OPACITY = 0.45;
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
-const groupOf = (name: string) => name.split('_')[0];
+const groupOf = (name: string) => (name.startsWith('tee_') ? 'tee' : name);
 const packUrl = () => `./pack/${person()}/`;
 
 export interface Viewer {
