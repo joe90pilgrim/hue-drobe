@@ -46,13 +46,19 @@ No open decisions for 1.2.
 
 ## v3-loose-clothes
 
-- ~~**V3-00** Experiment: loose clothes with cloth simulation: Which skirt shape matters most to Beth? For example A-line, midi, pencil, wrap. Pick one for the experiment (dresses now come from the packs).~~ **Decided 16 Nov 2026:** A-line midi.
-- **V3-00** Experiment: loose clothes with cloth simulation: Go/no-go: Joe decides from the write-up (`docs/decisions/2026-11-17-v3-00-cloth-skirt.md`) whether version 3 goes ahead on this technique. Recommendation: go, with conditions (passes on B, fails on both synthetic bodies; fix the waistband and the small body first).
-- **V3-01** Skirts: Which skirt styles and lengths, in which order?
-- **V3-02** Dresses: Which dress styles first? Sleeved or sleeveless?
-- **V3-03** Shirts (long, mid and short sleeves): Collar style (classic, button-down)? Worn tucked in or out, or both?
-- **V3-04** Jackets and coats: Which jacket and coat types first? Open or closed fronts?
-- **V3-05** Multiple top layers: How many layers at most (recommendation: three)? Which combinations are allowed?
+- ~~**V3-00** Experiment: loose clothes with cloth simulation: Which skirt shape matters most to Beth?~~ **Decided 16 Nov 2026:** A-line midi.
+- **V3-00** Go/no-go on cloth simulation for skirts. **Recorded as go, with conditions (17 Nov 2026), following Joe's request to update the version 3 tickets. Joe to confirm.** See `docs/decisions/2026-11-17-v3-00-cloth-skirt.md`.
+- ~~**V3-01a** Skirt fixes: if the small body can't be fixed within the ceiling, ship for Beth only or hold the skirt?~~ **Decided 17 Nov 2026:** ship for Beth only. Not needed in the end: the small body was fixed (see `docs/decisions/2026-11-17-v3-01a-skirt-fixes.md`).
+- **V3-01b** Skirt in the app: how should a top sit with the skirt, tucked in or worn over? Recommendation: tucked in first.
+- **V3-01b** Skirt in the app: other lengths and styles? Recommendation: midi only until it's in use.
+- **V3-02** Dresses: more dress styles beyond the shift dress? Recommendation: one more only if Beth asks (Dress 02 and 03 are CC-BY, needing a credits screen).
+- **V3-02** Dresses: tights with the dress? Recommendation: yes.
+- **V3-03** Shirts: collar style? Recommendation: classic point collar first.
+- **V3-03** Shirts: tucked in, out or both? Recommendation: untucked first.
+- **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
+- **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
+- **V3-05** Multiple top layers: how many layers at most? Recommendation: three (base, mid, outer).
+- **V3-05** Multiple top layers: which combinations? Recommendation: tee under shirt, tee under sweatshirt, shirt under sweatshirt; jackets added in V3-04.
 
 ## v4-real-wardrobe
 

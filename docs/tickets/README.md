@@ -81,9 +81,14 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V3-00 | [Experiment: skirts with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) | V2-03, V2-07 | Opus, high |
-| V3-01 | [Skirts](v3-loose-clothes/V3-01-skirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-02 | [Dresses (from the free packs)](v3-loose-clothes/V3-02-dresses.md) | V3-06 | Sonnet, medium |
+| V3-00 | [Experiment: skirts with cloth simulation](v3-loose-clothes/V3-00-cloth-experiment.md) (done: go, with conditions) | V2-03, V2-07 | Opus, high |
+| V3-01a | [Skirt: fix the waistband and the small body](v3-loose-clothes/V3-01a-skirt-fixes.md) | V3-00 | Opus, high |
+| V3-01b | [Skirt in the app](v3-loose-clothes/V3-01b-skirt-in-app.md) | V3-01a | Sonnet, high |
+| V3-02 | [Dresses from the free packs](v3-loose-clothes/V3-02-dresses.md) | V3-06 | Sonnet, medium |
+| V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) | V1.1-04; V3-05 for wearing under other tops | Sonnet, high |
+| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) | V3-05 | Opus, high |
+| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) | V3-01b | Sonnet, high |
+| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
 | V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
 | V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
