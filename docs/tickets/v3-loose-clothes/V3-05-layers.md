@@ -1,24 +1,23 @@
 # Ticket: Multiple top layers (V3-05)
 
 ## Summary
-- **Status:** stopped, not finished (17 Nov 2026). Needed before jackets (V3-04).
-- **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
-- **Worker:** Sonnet · High. Rules and checks across the pack build and the app; the geometry support (building one shell over another) already exists from the spike.
+- **Status:** ready, app side only. Joe decided on 17 Nov 2026 to ship only the layer combinations that pass on each body, with no further procedural geometry work. The remaining scope is under "Remaining work after Joe's decision" at the end of this ticket; the sections in between are the original scope, kept as history.
+- **Ceiling:** 1 hour. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
+- **Worker:** Sonnet · Medium. App-side state plus a per-body list from the existing build; no geometry.
 - **Depends on:** V3-01b (the first layering rule, top over skirt)
 
 ## Target Files
 Edit:
-- The pack build: build an outer top over the inner one (the spike's `build_tee` supports this with `extra_mesh` and `extra_gap`).
-- The checks: a layer check that the outer garment never passes through the inner one.
-- The app's clothes state: more than one top at once, in a fixed order.
+- `pack/build_pack.py`: record, per body, which layered combinations passed, in the pack the app loads. Leave failing combinations out of that body's pack.
+- The app's clothes state and outfit screen in `app/`: a base top plus one mid top at once, offering only the passing combinations for the signed-in person.
+- The end-to-end test: wear one passing combination.
 
-Paths outside `spike/` and `docs/` (the pack build and the app) were not visible when this ticket was written; confirm them before editing.
-
-Do NOT touch:
-- `spike/cloth/` (skirts and coats keep their own build).
+Do NOT touch (Joe's decision of 17 Nov 2026):
+- `spike/blender/garment.py`, `spike/blender/body_from_measurements.py`, the layer check in `spike/blender/mesh_checks.py`, and `spike/tolerances.json`. No changes to make more combinations pass.
+- `spike/cloth/`.
 - `private/`, apart from the pack output folder.
 
-## Scope
+## Scope (original, kept as history; the current scope is at the end)
 **Goal:** Wear more than one top at once, such as a tee under the sweatshirt or a shirt under the sweatshirt.
 
 **Scope:**
@@ -54,3 +53,28 @@ Fourth pass (17 Nov 2026): starting the outer top from the tee at tight spots ma
 Fifth pass (17 Nov 2026): the tee's armpit was diagnosed as a folded pocket in the A-pose slot. Opening it with a patch (`armpit_open`, off by default) keeps the tee passing on its own, removes most of the tops' self-intersections and cuts the gap from 1.19 to 0.80 cm, but female large still fails 17 checks.
 Stopped after three attempts; the six-body rebuild and `npm run check` were not run. See the decision record's fifth-pass section.
 Fifth pass, follow-up (17 Nov 2026): on all six bodies the opened armpit gave 106 failures against 56 without it (it breaks the medium and small men, which pass without it), so Joe kept it off. Still stopped: female large, female medium, female small and the large man fail the layered tops.
+
+## Direction after the template decision (17 Nov 2026)
+Joe approved the template pipeline (`docs/decisions/2026-11-17-v3-garment-pipeline-proposal.md`). No more procedural work goes into layering the legacy tops. New layered garments (V3-08 shirt, V3-09 blazer) get their layering from `pack/fit_template.py` (V3-07).
+
+**Decided by Joe (17 Nov 2026): (a).** The question was: what happens to the legacy layered combinations (sweatshirt and shirts over the tee)?
+- (a) Ship only the combinations that pass on each body (the build already checks every combination per body, and the app offers only what was built and checked), and stop there.
+- (b) Drop legacy layering and wait for template tops.
+- Recommendation: (a). It costs one short ticket (app side only) and no more geometry work. If (a), the remaining work is the app's layer state and offering only passing combinations: Sonnet · Medium, 1 hour.
+
+## Remaining work after Joe's decision (17 Nov 2026)
+- **Status:** ready, app side only.
+- **Ceiling:** 1 hour. The most this ticket may take, not a target. Stop as soon as the criteria below are met.
+- **Worker:** Sonnet · Medium.
+- **No more geometry work.** Don't change `spike/blender/garment.py`, `body_from_measurements.py`, the layer check or the tolerances to make more combinations pass.
+- **Build side:** the pack build already builds and checks every allowed combination per body (tee under shirt, tee under sweatshirt). Make it record, per body, which combinations passed, in the pack the app loads. A combination that fails on a body is left out of that body's pack, not fixed.
+- **App side:** allow a base top plus one mid top at once, in a fixed order. Offer only the combinations listed as passing for the signed-in person's body.
+
+**Acceptance criteria:**
+- For each body, the pack lists the passing combinations, and the app offers exactly those and no others.
+- `npm run check` passes, and the end-to-end test wears one passing combination.
+- Joe's visual sign-off on each combination offered to him and to B.
+
+## Note (17 Nov 2026, app side done)
+`check_reports.py --layers` now leaves a failing layered top out (`OMIT`) instead of failing the build and writes `<body>_layers_pass.json`; `build_pack.py` puts only the passing tops in the pack and lists them in `manifest.json` (`garments.layers.combinations`: top -> necklines). The app (new `Under` row, `viewer.layers()`) offers a tee under a sweatshirt or shirt only for those; unit and e2e tests added; `npm run check` passes (the e2e stubs the manifest). On the six synthetic bodies the passing set is, e.g., all three shirts on female medium and the sweatshirt on the medium man.
+Not done: the private packs for Joe and B are not rebuilt (`python pack/build_pack.py --private`), so there is no real-body render or phone frame rate yet for Joe's sign-off, and a saved outfit does not record the tee under (it needs a data-model field; ask Joe).

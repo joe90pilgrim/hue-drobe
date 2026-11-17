@@ -2,18 +2,24 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
+import { parseLayerCombos, type LayerCombos } from './wardrobe';
 
+/** V3-05: the sweatshirt and shirts as worn over the tee. A pack has only the ones that passed on that body (the manifest lists them). */
+const OVER_TEE = ['sweatshirt_over_tee', 'shirt_short_over_tee', 'shirt_mid_over_tee', 'shirt_long_over_tee'];
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb', ...OVER_TEE.map((n) => n + '.glb')];
 /** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error.
  * V3-02: so do `dress` and `body_dress` (the body with the parts under the dress removed, drawn in place of `body` while the dress is worn). */
 // The shirts (V3-03) are optional too, so a pack built before them still opens: the Dress screen offers a shirt only when its mesh loaded.
-const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress']);
+const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', ...OVER_TEE]);
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
-const groupOf = (name: string) => (name.startsWith('tee_') ? 'tee' : name);
+const groupOf = (name: string) => {
+  const n = name.replace(/_over_tee$/, ''); // a top over the tee takes the colour set for that top
+  return n.startsWith('tee_') ? 'tee' : n;
+};
 const packUrl = () => `./pack/${person()}/`;
 
 export interface Viewer {
@@ -25,6 +31,8 @@ export interface Viewer {
   setSheer: (name: string, sheer: boolean) => void;
   /** True once the pack has loaded and has this mesh. Before then, and for a mesh the person's pack lacks (a man's pack has no skirt), false. */
   has: (name: string) => boolean;
+  /** The layered combinations that passed on this person's body (V3-05); empty before the pack has loaded or when it lists none. */
+  layers: () => LayerCombos;
   /** Settles when every file has loaded or failed; never rejects. Use `has` after it. */
   ready: Promise<void>;
   dispose: () => void;
@@ -114,7 +122,12 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     if (sheers.get(name)) sheerness(gltf.scene, true);
     scene.add(gltf.scene);
   });
-  const ready = Promise.allSettled(loads).then(() => undefined);
+  let layerCombos: LayerCombos = {};
+  const manifestLoad = fetch(packUrl() + 'manifest.json')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((m) => void (layerCombos = parseLayerCombos(m)))
+    .catch(() => undefined); // no manifest, or not JSON (the dev server answers a missing file with index.html): no layering offered
+  const ready = Promise.allSettled([...loads, manifestLoad]).then(() => undefined);
   onStatus('Getting your avatar ready…');
   Promise.all(loads).then(
     () => onStatus(null),
@@ -162,6 +175,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       if (g) sheerness(g, sheer);
     },
     has: (name) => garments.has(name),
+    layers: () => layerCombos,
     ready,
     dispose() {
       disposed = true;

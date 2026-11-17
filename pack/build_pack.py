@@ -50,6 +50,7 @@ PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers
 WOMENS_ONLY = ("skirt", "tee_tucked", "tee_v_tucked", "tee_scoop_tucked", "dress", "body_dress")
 # V3-05: the sweatshirt and the shirts built over the tee (a layer on top of a tee); not for the shirt under the sweatshirt, which Joe left out
 OVER_TEE = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee", "shirt_long_over_tee")
+LAYER_TEES = {"tee": "crew", "tee_v": "v", "tee_scoop": "scoop"}  # the report's tee names -> the app's neckline names
 PACK_FILES.update({k: "{n}_" + k + ".glb" for k in OVER_TEE})
 PACK_FILES.update({"dress": "{n}_dress.glb", "body_dress": "{n}_body_dress.glb"})  # V3-06: the pack dress, and the body with its hidden parts removed (worn instead of body.glb)
 
@@ -194,8 +195,14 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         shutil.rmtree(pack_dir)
     pack_dir.mkdir(parents=True)
     files = {}
+    # V3-05 (Joe, 17 Nov 2026): the layered tops that passed on this body, and the tee necklines each passes over; the rest are left out of the pack
+    pass_file = build_dir / f"{name}_layers_pass.json"
+    passing = json.load(open(pass_file))["passing"] if pass_file.exists() and not body_only else {}
+    combos = {k[: -len("_over_tee")]: [LAYER_TEES[t] for t in passing[k]] for k in OVER_TEE if passing.get(k)}
     for key, pattern in PACK_FILES.items():
         if body_only and key != "body":
+            continue
+        if key in OVER_TEE and not passing.get(key):
             continue
         src = build_dir / pattern.format(n=name)
         if key in WOMENS_ONLY and not src.exists():  # a man's pack has no skirt; for a woman the checks have already failed without it
@@ -215,7 +222,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"},
                      "layers": {"max": 3, "base": "tee", "gap_cm": person_cfg(name)["layers"]["gap_cm"],
-                                "over_tee": {k[: -len("_over_tee")]: k + ".glb" for k in OVER_TEE}},
+                                "over_tee": {k[: -len("_over_tee")]: k + ".glb" for k in OVER_TEE if k[: -len("_over_tee")] in combos},
+                                "combinations": combos},
                      "shirt": {"fit": "regular, untucked, point collar and placket drawn as shape", "sleeves": {"short": "shirt_short.glb", "mid": "shirt_mid.glb", "long": "shirt_long.glb"}},
                      "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts", "skirt"]},
                      **({"dress": {"fit": "pack item (MakeHuman toigo_shift_dress, CC0), plain colour", "body_while_worn": "body_dress.glb",

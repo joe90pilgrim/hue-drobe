@@ -74,11 +74,21 @@ _exc_path = pathlib.Path(__file__).with_name("known_exceptions.json")
 EXCEPTIONS = {(e["body"], e["check"]): e for e in json.load(open(_exc_path))["exceptions"]} if _exc_path.exists() else {}
 
 
+omitted = {}  # V3-05 (Joe, 17 Nov 2026): over-tee tops that failed a check, {top: {tee or None for all tees: [texts]}}; they are left out of the pack, not failed
+
+
 def check(ok, text, known=None):
     """known: the matching entry from known_exceptions.json when the value is inside its limit."""
     global failures
     if not ok and known:
         print(f"  KNOWN {text} -- {known['reason']}")
+        return
+    top_ = next((o for o in OVERS if text.startswith(o + " ") or text.startswith(o + "-")), None)
+    if top_ and not ok:  # a layered top that fails is not fixed, only left out of this body's pack (the layer check names the tee it was worn over)
+        import re
+        m_ = re.match(rf"{top_} over (\w+):", text)
+        omitted.setdefault(top_, {}).setdefault(m_.group(1) if m_ else None, []).append(text)
+        print(f"  OMIT {text}")
         return
     failures += not ok
     print(f"  {'PASS' if ok else 'FAIL'} {text}")
@@ -215,6 +225,12 @@ for f in reports:
                       f"{c_['vertices']} tee vertices tested, tightest at {c_['min_at_xyz_cm']} cm")
             ov_ = r.get(o, {})
             print(f"  info {o}: chest as worn {ov_.get('chest_circ_as_worn_cm')} cm, {ov_.get('chest_extra_from_tee_cm')} cm more than the same top alone")
+        passing = {o: [t for t in ly.get(o, {}) if None not in omitted.get(o, {}) and t not in omitted.get(o, {})] for o in overs}
+        if "--layers" in sys.argv:  # only the pack build asks for the list; a checked-in reports folder is not written to
+            json.dump({"passing": {o: t for o, t in passing.items() if t}}, open(folder / f"{r['name']}_layers_pass.json", "w"), indent=2)
+        for o in overs:
+            print(f"  info {o} is offered over: {passing[o] or 'nothing (left out of the pack)'}")
+        omitted.clear()
 
     if (r.get("sex_base") == "female" and "--skirt" in sys.argv) or "skirt" in r:  # V3-01b
         mc, sk = r.get("mesh_checks", {}), r.get("skirt")
