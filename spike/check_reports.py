@@ -25,11 +25,16 @@ Stricter than the first version:
 - tights (V2-04), when the report has them, get exactly the trousers' mesh limits, and the shorts and every top are checked against
   them with the tee-with-trousers limit. --tights makes missing tights a failure.
 
+- skirt (V3-01b), on a female body (sex_base in the report) when the report has one: the trousers-style hard limits with its own pieces
+  and openings (1 and 2), the hem's lowest point within garment_landmark_cm of the target, no cloth through the tights, and the
+  tops tucked into it (tee_tucked, tee_v_tucked, tee_scoop_tucked) held to the tee's limits plus no face pairs with the skirt or
+  the tights. --skirt makes a missing skirt a failure on a female body; male bodies are never judged on it.
+
 - bust shape (V2-08): on a female body (sex_base in the report) every top must have a bust_shape record (pack/bust_shape.py, written
   by the generator) and each breast's hollow_below, drop_up and drop_in must be within tolerances.json "bust_shape". Male bodies are
   not judged on this.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights]
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shorts] [--tights] [--skirt]
 """
 import json, sys, pathlib
 
@@ -37,7 +42,7 @@ tol = json.load(open(pathlib.Path(__file__).with_name("tolerances.json")))
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 need_garments = "--no-garments" not in sys.argv
 folder = pathlib.Path(args[0])
-reports = sorted(folder.glob("*_report.json"))
+reports = sorted(f for f in folder.glob("*_report.json") if not f.name.endswith("_skirt_report.json"))  # V3-01b: the skirt script's own detail file sits beside the body reports
 failures = 0
 LENGTHS = {"height_cm", "inside_leg_cm"}
 gm = tol["garment_mesh"]
@@ -147,6 +152,38 @@ for f in reports:
                   f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
                   known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
                          and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], f"{top}_shoulder_gap_band_mean"))))
+
+    if (r.get("sex_base") == "female" and "--skirt" in sys.argv) or "skirt" in r:  # V3-01b
+        mc, sk = r.get("mesh_checks", {}), r.get("skirt")
+        if sk is None or "skirt" not in mc:
+            check(False, "skirt missing from report (rebuild with python pack/build_pack.py)")
+        else:
+            s_ = mc["skirt"]
+            check(s_["pieces"] == gm["skirt_pieces"], f"skirt pieces: {s_['pieces']} (want {gm['skirt_pieces']})")
+            check(s_["openings"] == gm["skirt_openings"], f"skirt openings: {s_['openings']} (want {gm['skirt_openings']}); lengths cm {s_['opening_lengths_cm']}")
+            check(s_["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"skirt body-through-cloth intersecting face pairs: {s_['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']}); by height cm {s_['body_intersections_by_z_cm']}")
+            check(s_["self_intersecting_pairs"] <= gm["self_intersecting_pairs_max"], f"skirt self-intersecting face pairs: {s_['self_intersecting_pairs']} (max {gm['self_intersecting_pairs_max']}); by height cm {s_['self_intersections_by_z_cm']}")
+            check(s_["clearance_to_body_cm"]["min"] >= gm["min_clearance_cm"], f"skirt minimum clearance to body: {s_['clearance_to_body_cm']['min']} cm (min {gm['min_clearance_cm']})")
+            check(abs(sk["hem_lowest_vs_target_cm"]) <= tol["garment_landmark_cm"], f"skirt hem lowest point vs target: {sk['hem_lowest_vs_target_cm']:+.1f} cm (tol {tol['garment_landmark_cm']}); target {sk['landmarks_cm']['hem_target']} cm above the floor")
+            check(sk["triangles"] <= 8000 and sk["glb_kb"] <= 150, f"skirt size: {sk['triangles']} triangles, {sk['glb_kb']} KB (max 8000 and 150, about the tee's weight)")
+            if tights:
+                n = mc.get("skirt_vs_tights_intersecting_pairs")
+                check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"skirt-through-tights intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+            for t in ("tee_tucked", "tee_v_tucked", "tee_scoop_tucked"):
+                g_ = mc.get(t)
+                if g_ is None:
+                    check(False, f"{t} missing from report")
+                    continue
+                check(g_["pieces"] == gm["tee_pieces"] and g_["openings"] == gm["tee_openings"], f"{t} pieces/openings: {g_['pieces']}/{g_['openings']} (want {gm['tee_pieces']}/{gm['tee_openings']}); lengths cm {g_['opening_lengths_cm']}")
+                check(g_["body_intersecting_pairs"] <= gm["body_intersecting_pairs_max"], f"{t} body-through-cloth intersecting face pairs: {g_['body_intersecting_pairs']} (max {gm['body_intersecting_pairs_max']}); by height cm {g_['body_intersections_by_z_cm']}")
+                check(g_["self_intersecting_pairs"] <= gm["self_intersecting_pairs_max"], f"{t} self-intersecting face pairs: {g_['self_intersecting_pairs']} (max {gm['self_intersecting_pairs_max']})")
+                check(g_["clearance_to_body_cm"]["min"] >= gm["min_clearance_cm"], f"{t} minimum clearance to body: {g_['clearance_to_body_cm']['min']} cm (min {gm['min_clearance_cm']})")
+                check(g_["vs_skirt_intersecting_pairs"] <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{t}-through-skirt intersecting face pairs: {g_['vs_skirt_intersecting_pairs']} (max {gm['tee_vs_trousers_intersecting_pairs_max']}); cut {g_['cut_height_cm']} cm above the floor, {g_['vertices_drawn_in']} vertices drawn in (largest {g_['largest_draw_in_cm']} cm)")
+                if tights:
+                    n = g_.get("vs_tights_intersecting_pairs")
+                    check(n is not None and n <= gm["tee_vs_trousers_intersecting_pairs_max"], f"{t}-through-tights intersecting face pairs: {n} (max {gm['tee_vs_trousers_intersecting_pairs_max']})")
+            print(f"  info untucked tee through skirt: {mc.get('tee_vs_skirt_intersecting_pairs_info')} face pairs (why tops are tucked)")
+
 
     if r.get("sex_base") == "female" and "bust_shape" in tol:  # V2-08
         bs = r.get("bust_shape") or {}

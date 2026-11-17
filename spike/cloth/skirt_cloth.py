@@ -16,6 +16,14 @@ What it does, in one Blender session:
     read back in. Saves the vertex positions (<name>_skirt_verts.npy) so two builds can be compared.
  5. Renders front, side and back: the skirt alone on the body, and with the app's tee over it.
 Writes <out_dir>/<name>_skirt_report.json, <name>_skirt.glb, renders/<name>__skirt.png and renders/<name>__skirt_tee.png.
+
+V3-01b (the pack build runs this in place of body_from_measurements.py for a female body; see pack/build_pack.py):
+ 6. Tucks the app's tops into the skirt (Joe's decision, 17 Nov 2026): each tee (crew, V, scoop) is cut flat at the skirt's top
+    edge (plus tuck_gap_cm), and where the cut hem is wider than the skirt's top ring it is drawn in to the ring, easing out over
+    tuck_band_cm. Writes <name>_tee_tucked.glb, <name>_tee_v_tucked.glb, <name>_tee_scoop_tucked.glb.
+ 7. Checks the tucked tops against the body, themselves, the skirt and the tights, and the skirt against the tights, then adds the
+    results to the body's own <name>_report.json (keys "skirt", and "mesh_checks": skirt, tee_tucked, ...) for spike/check_reports.py.
+Extra option: --cfg <file> reads the skirt settings from the "skirt" block of pack/fit_config.json instead of the constants below.
 """
 import sys, os, json, math, runpy, time
 import bpy, bmesh
@@ -28,6 +36,7 @@ BLENDER_DIR = os.path.normpath(os.path.join(HERE, "..", "blender"))
 argv = sys.argv[sys.argv.index("--") + 1:]
 meas_path, gar_path, out_dir, name = argv[:4]
 NO_RENDER = "--no-render" in argv
+CFG_PATH = argv[argv.index("--cfg") + 1] if "--cfg" in argv else None
 os.makedirs(os.path.join(out_dir, "renders"), exist_ok=True)
 
 # skirt pattern (A-line midi). Chosen, not calibrated; every value is written into the report.
@@ -55,6 +64,22 @@ SELF_DIST = 0.003          # V3-01a: 0.006 threw synthetic_female_small's hem up
 PIN_RINGS = 2
 FRICTION = 5.0             # body collider friction
 COLOUR = (40, 60, 110)     # plain navy, sRGB
+# V3-01b: tucked tops. All three come from the fit config's "skirt" block when --cfg is given.
+TUCK_GAP_CM = 0.1          # the tops are cut this far above the skirt's top edge (no touching faces)
+TUCK_IN_CM = 0.15          # where a cut hem is wider than the skirt's top ring it is drawn in to this far inside the ring
+TUCK_BAND_CM = 4.0         # ... easing back to the top's own shape over this height (the same 4 cm the top ring looks up, WAIST_LOOK_UP)
+if CFG_PATH:  # the pack build's fit config wins over the constants above; keys are the constants' names in lower case
+    _cfg = json.load(open(CFG_PATH))
+    for _k, _v in _cfg.items():
+        if _k.startswith("_"):
+            continue
+        _name = {"hem_above_floor_fraction": "HEM_ABOVE_FLOOR", "gravity_ramp_frames": "GRAVITY_RAMP"}.get(_k, _k.upper())
+        if _k in ("collision_dist_cm", "self_dist_cm"):
+            globals()[_name.replace("_CM", "")] = _v / 100.0
+        elif _name in globals():
+            globals()[_name] = type(globals()[_name])(_v)
+        else:
+            raise SystemExit(f"unknown skirt setting in {CFG_PATH}: {_k}")
 # experiment overrides, e.g. SKIRT_FRICTION=1; every value used is in the report
 for _k in ("HEM_RATIO", "BENDING", "MASS", "FRICTION", "FRAMES", "TENSION", "GRAVITY_RAMP", "SELF_DIST"):
     if os.environ.get("SKIRT_" + _k):
@@ -356,6 +381,112 @@ checks["passes_hard_checks"] = (checks["body_intersecting_pairs"] <= tol["body_i
                                 and checks["self_intersecting_pairs"] <= tol["self_intersecting_pairs_max"]
                                 and checks["clearance_to_body_cm"]["min"] >= tol["min_clearance_cm"]
                                 and checks["pieces"] == 1 and checks["openings"] == 2)
+checks["hem_lowest_vs_target_cm"] = round((low - hem_z) * 100, 1)
+checks["passes_hard_checks"] = checks["passes_hard_checks"] and abs(checks["hem_lowest_vs_target_cm"]) <= json.load(open(os.path.join(HERE, "..", "tolerances.json")))["garment_landmark_cm"]
+
+
+# ---- V3-01b: tops tucked into the skirt ---------------------------------------------------------------------------------------
+def garment_checks(bm, tree):
+    """The per-garment block of spike/blender/mesh_checks.run, for one garment (bm merged, tree its BVH)."""
+    p, o = mesh_checks.pieces(bm), mesh_checks.openings(bm)
+    si_, siz_ = mesh_checks.self_intersections(bm, tree, floor)
+    bp_ = body_tree.overlap(tree)
+    bz_ = sorted(collections.Counter(int(round((body_bm.faces[a].calc_center_median().z - floor) * 100)) // 5 * 5 for a, _ in bp_).items())
+    return {"pieces": len(p), "piece_faces_area": p, "openings": len(o), "opening_lengths_cm": o, "body_intersecting_pairs": len(bp_),
+            "body_intersections_by_z_cm": bz_, "self_intersecting_pairs": si_, "self_intersections_by_z_cm": siz_,
+            "clearance_to_body_cm": mesh_checks.clearance_cm(bm, body_tree)}
+
+
+# The skirt's top ring, as radius from the skirt axis at each of the N_AROUND angles. The top two rings are pinned, so the cloth
+# leaves them where the shell put them.
+ring0 = np.array([math.hypot(v.co.x - cx, v.co.y - cy) for v in baked.vertices[:N_AROUND]])
+cut_z = waist_z + TUCK_GAP_CM / 100.0
+
+
+def ring0_radius(angle):
+    f = (angle % (2 * math.pi)) / (2 * math.pi) * N_AROUND
+    i = int(f) % N_AROUND
+    t = f - int(f)
+    return ring0[i] * (1 - t) + ring0[(i + 1) % N_AROUND] * t
+
+
+def tuck_top(src):
+    """src: a top as a merged bmesh. Returns (tucked copy, vertices drawn in, largest draw-in in cm). Cut flat at cut_z, then any
+    vertex within the band above the cut that is wider than the skirt's top ring (less TUCK_IN_CM) is drawn towards the axis, fully
+    at the cut and not at all at the top of the band (smoothstep)."""
+    b = src.copy()
+    bmesh.ops.bisect_plane(b, geom=b.verts[:] + b.edges[:] + b.faces[:], plane_co=(0, 0, cut_z), plane_no=(0, 0, 1),
+                           clear_inner=True, clear_outer=False)
+    bmesh.ops.delete(b, geom=[v for v in b.verts if not v.link_faces], context="VERTS")
+    band = TUCK_BAND_CM / 100.0
+    moved_n, moved_max = 0, 0.0
+    for v in b.verts:
+        if v.co.z >= cut_z + band:
+            continue
+        dx, dy = v.co.x - cx, v.co.y - cy
+        r = math.hypot(dx, dy)
+        target = ring0_radius(math.atan2(dy, dx)) - TUCK_IN_CM / 100.0
+        if r <= target or r < 1e-6:
+            continue
+        u = 1.0 - max(0.0, v.co.z - cut_z) / band
+        w = u * u * (3 - 2 * u)
+        new_r = r - w * (r - target)
+        v.co.x, v.co.y = cx + dx * new_r / r, cy + dy * new_r / r
+        moved_n += 1
+        moved_max = max(moved_max, (r - new_r) * 100)
+    b.normal_update()
+    b.verts.index_update(); b.edges.index_update(); b.faces.index_update()
+    b.verts.ensure_lookup_table(); b.faces.ensure_lookup_table()
+    return b, moved_n, round(moved_max, 2)
+
+
+def export_top(b, key):
+    """Writes the tucked top as <name>_<key>.glb with a plain material, as the other garments, and returns the path."""
+    me = bpy.data.meshes.new(key)
+    b.to_mesh(me)
+    for pg in me.polygons:
+        pg.use_smooth = True
+    ob = bpy.data.objects.new(key, me)
+    sc.collection.objects.link(ob)
+    mat = bpy.data.materials.new(key)
+    mat.use_nodes = True
+    lin_ = [((c / 255) / 12.92 if c / 255 <= 0.04045 else (((c / 255) + 0.055) / 1.055) ** 2.4) for c in TOP_COLOUR]
+    mat.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (*lin_, 1)
+    me.materials.append(mat)
+    path = os.path.join(out_dir, f"{name}_{key}.glb")
+    bpy.ops.object.select_all(action="DESELECT")
+    ob.select_set(True)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True)
+    bpy.data.objects.remove(ob)
+    return path
+
+
+TOP_COLOUR = json.load(open(gar_path))["tee"].get("colour_srgb", [214, 214, 214])
+TIGHTS_GLB = os.path.join(out_dir, name + "_tights.glb")
+tights_bm = mesh_checks.merged(mesh_checks.load_glb(TIGHTS_GLB)) if os.path.exists(TIGHTS_GLB) else None
+tights_tree = BVHTree.FromBMesh(tights_bm) if tights_bm else None
+tucked, tucked_paths = {}, {}
+for key in ("tee", "tee_v", "tee_scoop"):
+    src = mesh_checks.merged(mesh_checks.load_glb(os.path.join(out_dir, f"{name}_{key}.glb")))
+    t_bm, n_in, max_in = tuck_top(src)
+    src.free()
+    tucked_paths[key] = export_top(t_bm, key + "_tucked")
+    t_bm.free()
+    back = mesh_checks.merged(mesh_checks.load_glb(tucked_paths[key]))  # judged as the phone loads it
+    bt_ = BVHTree.FromBMesh(back)
+    g = garment_checks(back, bt_)
+    g["vs_skirt_intersecting_pairs"] = len(bt_.overlap(skt))
+    g["vs_tights_intersecting_pairs"] = len(bt_.overlap(tights_tree)) if tights_tree else None
+    g.update({"cut_height_cm": round((cut_z - floor) * 100, 2), "vertices_drawn_in": n_in, "largest_draw_in_cm": max_in,
+              "lowest_cm": round((min(v.co.z for v in back.verts) - floor) * 100, 2), "triangles": len(back.faces),
+              "glb_kb": round(os.path.getsize(tucked_paths[key]) / 1024)})
+    tucked[key + "_tucked"] = g
+    back.free()
+checks["vs_tights_intersecting_pairs"] = len(skt.overlap(tights_tree)) if tights_tree else None
+if tights_bm:
+    tights_bm.free()
+
 report = {"name": name, "blender": bpy.app.version_string, "build_s": {"body": round(T_BODY), "cloth": round(T_SIM),
           "total_to_checks": round(time.time() - T0)},
           "pattern": {"waist_ease_cm": WAIST_EASE_CM, "hip_ease_cm": HIP_EASE_CM, "hem_ratio": HEM_RATIO, "hip_search_stop": HIP_SEARCH_STOP,
@@ -376,8 +507,22 @@ report = {"name": name, "blender": bpy.app.version_string, "build_s": {"body": r
           "start_shell": start, "hem_track": hem_track, "diagnostics": {"no_legs": DIAG_NO_LEGS, "no_self": DIAG_NO_SELF},
           "ring_profile": [{"z": round((z - floor) * 100, 1), "perim": round(perim(r) * 100, 1), "body_bound": int(b)}
                            for z, r, b in zip(zs, rings, bound)],
-          "checks": checks}
+          "tuck": {"gap_cm": TUCK_GAP_CM, "in_cm": TUCK_IN_CM, "band_cm": TUCK_BAND_CM},
+          "tucked_tops": tucked, "checks": checks}
 json.dump(report, open(os.path.join(out_dir, f"{name}_skirt_report.json"), "w"), indent=2)
+
+# the compact version goes into the body's own report, which spike/check_reports.py reads
+_brp = os.path.join(out_dir, name + "_report.json")
+_br = json.load(open(_brp))
+_br["skirt"] = {k: report[k] for k in ("blender", "pattern", "cloth", "landmarks_cm", "circumference_cm", "tuck")}
+_br["skirt"].update({"hem_lowest_vs_target_cm": checks["hem_lowest_vs_target_cm"], "triangles": checks["triangles"], "glb_kb": checks["glb_kb"],
+                     "start_shell_body_pairs": start["body_intersecting_pairs"]})
+_br["mesh_checks"]["skirt"] = {k: v for k, v in checks.items() if k not in ("passes_hard_checks", "tee_over_skirt_intersecting_pairs_info", "triangles",
+                               "glb_kb", "hem_lowest_vs_target_cm", "vs_tights_intersecting_pairs")}
+_br["mesh_checks"]["skirt_vs_tights_intersecting_pairs"] = checks["vs_tights_intersecting_pairs"]
+_br["mesh_checks"]["tee_vs_skirt_intersecting_pairs_info"] = checks["tee_over_skirt_intersecting_pairs_info"]
+_br["mesh_checks"].update(tucked)
+json.dump(_br, open(_brp, "w"), indent=2)
 print("SKIRT", json.dumps({"name": name, "cloth_s": round(T_SIM), "body_pairs": len(bp), "self_pairs": si,
                            "clearance_min": checks["clearance_to_body_cm"]["min"], "start_pairs": start["body_intersecting_pairs"]}))
 
@@ -437,7 +582,11 @@ if not NO_RENDER:
     cam.rotation_euler = (math.pi / 2, 0, 0)
     sc.collection.objects.link(cam)
     sc.camera = cam
-    body_o, tee_o, sk_o = import_glb(BODY_GLB), import_glb(TEE_GLB), import_glb(SKIRT_GLB)
+    body_o, tee_o, sk_o = import_glb(BODY_GLB), import_glb(tucked_paths["tee"]), import_glb(SKIRT_GLB)
     render_triple(body_o + sk_o, os.path.join(out_dir, "renders", f"{name}__skirt.png"))
-    render_triple(body_o + sk_o + tee_o, os.path.join(out_dir, "renders", f"{name}__skirt_tee.png"))
+    render_triple(body_o + sk_o + tee_o, os.path.join(out_dir, "renders", f"{name}__skirt_tee.png"))  # V3-01b: the tucked tee
+    if os.path.exists(TIGHTS_GLB):
+        render_triple(body_o + sk_o + tee_o + import_glb(TIGHTS_GLB), os.path.join(out_dir, "renders", f"{name}__skirt_tee_tights.png"))
+    render_triple(body_o + sk_o + import_glb(tucked_paths["tee_v"]), os.path.join(out_dir, "renders", f"{name}__skirt_tee_v.png"))
+    render_triple(body_o + sk_o + import_glb(tucked_paths["tee_scoop"]), os.path.join(out_dir, "renders", f"{name}__skirt_tee_scoop.png"))
 print("SKIRT DONE", name, "%.0f s" % (time.time() - T0))

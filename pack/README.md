@@ -59,6 +59,13 @@ The tights (V2-04) are the trousers' template as a skin-close shell, 2.5 mm off 
 the floor (`fit_config.json`, `tights`). The shorts are built over them, then the tights are tucked inside the shorts on the exported
 triangles (`garment.tuck_inside`). They get the trousers' hard mesh checks, and the shorts and every top are checked against them.
 Opaque or sheer is set in the app. Record: `docs/decisions/2026-11-16-v2-04-tights.md`.
+A woman's pack also has the skirt and the tucked-in tops (V3-01b, `fit_config.json` `skirt`): `skirt.glb`, an A-line midi draped once on her own
+body by Blender's cloth solver (`spike/cloth/skirt_cloth.py`, run in the same Blender session as the body on one thread, so two builds are identical),
+and `tee_tucked.glb`, `tee_v_tucked.glb`, `tee_scoop_tucked.glb`, the tees cut flat at the skirt's waistband. Joe's decision (17 Nov 2026): a top is
+tucked in; the app shows the tucked tee while a skirt is worn, and a sweatshirt cannot be worn with it. There are no blended sizes: each body gets its own
+skirt. A man's pack has none of these files. The checks (`spike/check_reports.py --skirt`) hold the skirt to the trousers' mesh limits, its hem to
+the target height, and each tucked tee to the tee's limits plus no face pairs with the skirt or the tights. `--renders` adds front, side and back renders
+for the synthetic women; the private bodies always render into `private/pack/build/renders`. Record: `docs/decisions/2026-11-17-v3-01b-skirt-in-app.md`.
 On a female body every top hangs from the bust instead of tucking under it (V2-08, `fit_config.json` `bust`): the top's size is
 calibrated without the hang, then the shell is built once more with it, and the report carries both `chest_circ_cm` (the size) and
 `chest_circ_as_worn_cm`. Male bodies never read the block, so their garments are unchanged. Record: `docs/decisions/2026-11-16-v2-08-bust-shape.md`.

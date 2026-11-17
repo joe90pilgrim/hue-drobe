@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
 // The avatar pack files the viewer loads (keep in step with PACK_FILES in src/viewer.ts).
-const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'tights', 'sweatshirt'];
+const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'tights', 'sweatshirt', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked'];
 
 // Self-hosted heading font files in public/fonts/ (Bricolage Grotesque, SIL OFL 1.1). Public files are not in the bundle, so list them for the precache.
 const FONT_FILES = ['bricolage-grotesque-latin-600-normal.woff2', 'bricolage-grotesque-latin-700-normal.woff2'];

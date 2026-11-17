@@ -58,5 +58,27 @@
     "hem_above_floor_cm": 8,
     "waist_below_trousers_cm": 1,
     "smooth_iterations": 4
+  },
+  "skirt": {
+    "_note": "V3-01b: the A-line midi skirt, women's bodies only, draped once at asset time with Blender's cloth solver (spike/cloth/skirt_cloth.py, V3-00 and V3-01a) and shipped as a fixed mesh on that person's own body; there are no blended sizes. Pattern: ease at the waistband and over the hip, hem circumference as a multiple of the skirt's hip, hem height as a fraction of body height (mid-calf). Cloth: Blender's cloth with the waistband pinned, the body as the collider, gravity eased in over gravity_ramp_frames (frames in all). Chosen, not calibrated; the values are those that passed on B and the small and large synthetic women in V3-01a. Tops: Joe's decision of 17 Nov 2026 is that a top is tucked in, so every tee is cut flat tuck_gap_cm above the skirt's top edge, and where the cut hem is wider than the skirt's top ring it is drawn in to tuck_in_cm inside the ring, easing out over tuck_band_cm.",
+    "waist_ease_cm": 1.0,
+    "hip_ease_cm": 2.5,
+    "hem_ratio": 1.5,
+    "hem_above_floor_fraction": 0.21,
+    "frames": 100,
+    "gravity_ramp_frames": 40,
+    "quality": 10,
+    "mass": 0.3,
+    "tension": 15,
+    "compression": 15,
+    "shear": 5,
+    "bending": 5.0,
+    "collision_dist_cm": 0.5,
+    "self_dist_cm": 0.3,
+    "pin_rings": 2,
+    "friction": 5.0,
+    "tuck_gap_cm": 0.1,
+    "tuck_in_cm": 0.15,
+    "tuck_band_cm": 4.0
   }
 }

@@ -14,13 +14,16 @@ import {
   GARMENTS,
   NECKLINES,
   NECKLINE_KEY,
+  NOT_WITH_SKIRT,
   SHEER_KEY,
   TIGHTS_BLOCKED_BY,
+  TUCKS_INTO,
   ensureItem,
   hasNecklines,
   hasSheer,
   keepLayers,
   isNeckline,
+  isTucked,
   loadItems,
   meshName,
   meshesOf,
@@ -40,7 +43,8 @@ const SLOTS: Slot[] = [
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
   { name: 'Top', options: ['T-shirt', 'Sweatshirt', 'None'], garments: { 'T-shirt': 'tee', Sweatshirt: 'sweatshirt' } },
   // Shorts (V1.1-05) are the trousers cut at a 23 cm inseam, so the tops sit over them exactly as over the trousers.
-  { name: 'Bottom', options: ['Trousers', 'Shorts', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts' } },
+  // The skirt (V3-01b) is in a woman's pack only; the panel offers it once the pack has loaded and has it. A tee worn over it is the tucked-in version.
+  { name: 'Bottom', options: ['Trousers', 'Shorts', 'Skirt', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts', Skirt: 'skirt' } },
   // Tights (V2-04) are a layer under the shorts, so they have their own slot. Nothing by default; never with trousers.
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
 ];
@@ -193,6 +197,18 @@ export function renderTryOn(el: HTMLElement): () => void {
   let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
+  /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
+  const offered = (opt: string) => opt !== TUCKS_INTO || viewer.has('skirt');
+  /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
+  const blockedNote = (slot: string, opt: string): string | null => {
+    if (slot === 'Legs' && opt === 'Tights' && outfit.Bottom === TIGHTS_BLOCKED_BY)
+      return 'Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.';
+    if (slot === 'Top' && opt === NOT_WITH_SKIRT && outfit.Bottom === TUCKS_INTO)
+      return "A sweatshirt isn't tucked in, so it can't go with a skirt. Change your bottom to trousers, shorts or nothing to wear it.";
+    if (slot === 'Bottom' && opt === TUCKS_INTO && outfit.Top === NOT_WITH_SKIRT)
+      return 'A skirt goes with a T-shirt or nothing on top. Change your top from the sweatshirt to wear a skirt.';
+    return null;
+  };
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
   const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || DEFAULT_COLOUR).toLowerCase();
   const itemKey = (slot: Slot) =>
@@ -245,15 +261,18 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s) return;
     const g = garmentOf(s) as GarmentId | undefined;
     const current = colourOf(s);
-    // Tights cannot go under trousers: the option is greyed out, with a note saying why.
-    const blocked = s.name === 'Legs' && outfit.Bottom === TIGHTS_BLOCKED_BY;
+    // A layer that never goes with what is worn (tights under trousers, a sweatshirt with a skirt) is greyed out, with a note saying why.
+    let note: string | null = null;
     for (const b of garmentGroup.querySelectorAll<HTMLButtonElement>('[data-opt]')) {
       const on = b.dataset.opt === outfit[s.name];
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
-      b.disabled = blocked && b.dataset.opt === 'Tights';
+      const why = blockedNote(s.name, b.dataset.opt!);
+      b.disabled = why !== null;
+      note ??= why;
     }
-    layerNote.hidden = !blocked;
+    layerNote.textContent = note ?? '';
+    layerNote.hidden = note === null;
     sheerField.hidden = !g || !hasSheer(g);
     for (const b of sheerGroup.querySelectorAll<HTMLButtonElement>('[data-sheer]')) {
       const on = (b.dataset.sheer === 'sheer') === sheer;
@@ -280,11 +299,12 @@ export function renderTryOn(el: HTMLElement): () => void {
     renderFavs(s);
   };
 
-  /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them. */
+  /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
+    const tucked = isTucked(outfit);
     for (const [opt, id] of Object.entries(slot.garments)) {
-      const shown = meshName(id as GarmentId, neckline);
-      for (const mesh of meshesOf(id as GarmentId)) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
+      const shown = meshName(id as GarmentId, neckline, tucked);
+      for (const mesh of new Set([...meshesOf(id as GarmentId), ...meshesOf(id as GarmentId, true)])) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
     }
   };
   const refresh = () => {
@@ -314,6 +334,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   };
   const buildGarments = (s: Slot) => {
     garmentGroup.innerHTML = s.options
+      .filter(offered)
       .map((o) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${o}">${optionLabel(o)}</button>`)
       .join('');
   };
@@ -461,6 +482,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     kvGet<unknown>(SHEER_KEY, false),
   ]).then(([saved, savedColours, favs, savedNeckline, savedSheer]) => {
     if (gone) return;
+    loadedSaved = true;
     if (isNeckline(savedNeckline)) neckline = savedNeckline;
     sheer = savedSheer === true;
     for (const s of SLOTS) if (saved[s.name] && s.options.includes(saved[s.name])) outfit[s.name] = saved[s.name];
@@ -472,6 +494,20 @@ export function renderTryOn(el: HTMLElement): () => void {
       }
     }
     favourites = favs;
+    dropMissingSkirt();
+    refresh();
+  });
+
+  // The pack may load before or after the saved outfit: once both are in, a skirt this person's pack lacks is not worn (kept in memory only; the next change saves).
+  let loadedSaved = false;
+  const dropMissingSkirt = () => {
+    if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
+  };
+  let packReady = false;
+  void viewer.ready.then(() => {
+    packReady = true;
+    if (gone) return;
+    dropMissingSkirt();
     refresh();
   });
 

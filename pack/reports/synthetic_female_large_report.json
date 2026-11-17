@@ -3725,7 +3725,7 @@
         "median": 1.63,
         "max": 7.8,
         "min_at_xyz_cm": [
-          -11.9,
+          11.9,
           -0.8,
           144.2
         ]
@@ -3858,7 +3858,161 @@
     "tee_scoop_vs_tights_intersecting_pairs": 0,
     "sweatshirt_vs_trousers_intersecting_pairs": 0,
     "tee_v_vs_trousers_intersecting_pairs": 0,
-    "tee_scoop_vs_trousers_intersecting_pairs": 0
+    "tee_scoop_vs_trousers_intersecting_pairs": 0,
+    "skirt": {
+      "pieces": 1,
+      "openings": 2,
+      "opening_lengths_cm": [
+        196.3,
+        103.0
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.62,
+        "p05": 0.84,
+        "median": 4.75,
+        "max": 20.86,
+        "min_at_xyz_cm": [
+          0.0,
+          8.9,
+          95.0
+        ]
+      }
+    },
+    "skirt_vs_tights_intersecting_pairs": 0,
+    "tee_vs_skirt_intersecting_pairs_info": 683,
+    "tee_tucked": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 2960,
+          "area_cm2": 5035.7,
+          "z_cm": [
+            105.6,
+            144.5
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        101.3,
+        70.7,
+        31.4,
+        31.4
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.32,
+        "median": 1.43,
+        "max": 5.52,
+        "min_at_xyz_cm": [
+          -10.5,
+          1.7,
+          144.8
+        ]
+      },
+      "vs_skirt_intersecting_pairs": 0,
+      "vs_tights_intersecting_pairs": 0,
+      "cut_height_cm": 105.6,
+      "vertices_drawn_in": 134,
+      "largest_draw_in_cm": 2.38,
+      "lowest_cm": 105.6,
+      "triangles": 2960,
+      "glb_kb": 55
+    },
+    "tee_v_tucked": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 2924,
+          "area_cm2": 4955.1,
+          "z_cm": [
+            105.6,
+            144.5
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        101.3,
+        81.7,
+        31.4,
+        31.4
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.33,
+        "median": 1.46,
+        "max": 5.52,
+        "min_at_xyz_cm": [
+          -10.8,
+          1.7,
+          144.7
+        ]
+      },
+      "vs_skirt_intersecting_pairs": 0,
+      "vs_tights_intersecting_pairs": 0,
+      "cut_height_cm": 105.6,
+      "vertices_drawn_in": 134,
+      "largest_draw_in_cm": 2.38,
+      "lowest_cm": 105.6,
+      "triangles": 2924,
+      "glb_kb": 55
+    },
+    "tee_scoop_tucked": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 2900,
+          "area_cm2": 4937.9,
+          "z_cm": [
+            105.6,
+            144.4
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        101.3,
+        78.6,
+        31.4,
+        31.4
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.34,
+        "median": 1.47,
+        "max": 5.52,
+        "min_at_xyz_cm": [
+          11.9,
+          -0.8,
+          144.2
+        ]
+      },
+      "vs_skirt_intersecting_pairs": 0,
+      "vs_tights_intersecting_pairs": 0,
+      "cut_height_cm": 105.6,
+      "vertices_drawn_in": 134,
+      "largest_draw_in_cm": 2.38,
+      "lowest_cm": 105.6,
+      "triangles": 2900,
+      "glb_kb": 54
+    }
   },
   "bust_shape": {
     "body_apexes_x_height_depth_cm": [
@@ -3954,5 +4108,75 @@
       }
     ]
   },
-  "fit_config_sha256": "2cfb084b341f7460f74e1b47fbf1ebcc41e2f37bcb7ea3a16c64cac3d2a11179"
+  "skirt": {
+    "blender": "5.3.0",
+    "pattern": {
+      "waist_ease_cm": 1.0,
+      "hip_ease_cm": 2.5,
+      "hem_ratio": 1.5,
+      "hip_search_stop": 0.25,
+      "hem_above_floor_fraction": 0.21,
+      "n_around": 96,
+      "ring_step_cm": 2.0,
+      "rings": 35,
+      "arm_clusters_dropped": 32
+    },
+    "cloth": {
+      "frames": 100,
+      "gravity_ramp_frames": 40,
+      "gravity_at": {
+        "1": 0.0,
+        "10": 0.129,
+        "20": 0.463,
+        "30": 0.815,
+        "40": 0.998,
+        "50": 1.0,
+        "60": 1.0,
+        "70": 1.0,
+        "80": 1.0,
+        "90": 1.0,
+        "100": 1.0
+      },
+      "quality": 10,
+      "mass": 0.3,
+      "tension": 15,
+      "compression": 15,
+      "shear": 5,
+      "bending": 5.0,
+      "friction": 5.0,
+      "collision_dist_cm": 0.5,
+      "self_dist_cm": 0.3,
+      "self_collision": true,
+      "pinned_rings": 2,
+      "threads": 1
+    },
+    "landmarks_cm": {
+      "floor": -0.0,
+      "height": 172.0,
+      "waist": 105.5,
+      "hip": 87.5,
+      "crotch": 80.6,
+      "hem_target": 36.1,
+      "hem_shell": 37.3,
+      "hem_mean_after": 36.1,
+      "hem_lowest_after": 34.8
+    },
+    "circumference_cm": {
+      "body_waist": 96.9,
+      "body_hip": 108.7,
+      "skirt_waist": 103.0,
+      "skirt_hip": 131.1,
+      "skirt_hem": 196.3
+    },
+    "tuck": {
+      "gap_cm": 0.1,
+      "in_cm": 0.15,
+      "band_cm": 4.0
+    },
+    "hem_lowest_vs_target_cm": -1.3,
+    "triangles": 6528,
+    "glb_kb": 118,
+    "start_shell_body_pairs": 0
+  },
+  "fit_config_sha256": "d8d702e86de4dfefa296c1f4a5f125c5b8e9de9ac33e623c82fa3d65eeb91401"
 }

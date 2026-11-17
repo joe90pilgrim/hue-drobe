@@ -3,11 +3,13 @@
 Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config FILE] [--reports-to DIR]
   (no flag)  build the synthetic bodies in spike/fixtures into pack/out and check them. Nothing is packed.
   --private  also build J and B from private/measurements_<person>.json (joe, b) into private/pack, check them, and write each pack
-             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, tights.glb, sweatshirt.glb, manifest.json).
+             (private/pack/<person>/: body.glb, tee.glb, tee_v.glb, tee_scoop.glb, trousers.glb, shorts.glb, tights.glb, sweatshirt.glb, manifest.json;
+             a woman's pack also has skirt.glb and tee_tucked.glb, tee_v_tucked.glb, tee_scoop_tucked.glb, V3-01b).
              A pack is written only if every check passes. A person whose file is missing is skipped. A measurements file with
              "body_only": true is built, checked and packed as a body alone (body.glb and manifest.json).
   --only     build just one body (a fixture name such as synthetic_medium, or a person: 'joe' or 'b'); use this to try a change on one body first
-  --jobs     bodies built at the same time (default 3)
+  --jobs     bodies built at the same time (default 3). A woman's body also drapes the skirt (cloth, one thread) and takes about 2 minutes.
+  --renders  also render the skirt views (front, side, back) for the synthetic women; the private bodies always render, into <out>/renders
   --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
   --reports-to  after every check passes, copy the synthetic bodies' reports to DIR (use pack/reports to refresh the ones `npm run check`
              validates). Each report is stamped with the SHA-256 of the fit config it was built from.
@@ -25,6 +27,7 @@ import fit  # noqa: E402
 
 BLENDER = os.environ.get("BLENDER", r"C:\Program Files\Blender Foundation\Blender 5.3\blender.exe")
 SCRIPT = ROOT / "spike" / "blender" / "body_from_measurements.py"
+SKIRT_SCRIPT = ROOT / "spike" / "cloth" / "skirt_cloth.py"  # V3-01b: runs SCRIPT itself, then drapes and checks the skirt and tucks the tops
 CHECKER = ROOT / "spike" / "check_reports.py"
 TOLERANCES = json.load(open(ROOT / "spike" / "tolerances.json"))
 DEFAULT_CONFIG = HERE / "fit_config.json"
@@ -33,7 +36,11 @@ PEOPLE_FIT = json.load(open(HERE / "fit_people.json"))  # V2-03: per-person over
 PEOPLE = ["joe", "b"]  # private bodies: J and B. A person is built when private/measurements_<person>.json exists.
 PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers.glb", "sweatshirt": "{n}_sweatshirt.glb",
               "tee_v": "{n}_tee_v.glb", "tee_scoop": "{n}_tee_scoop.glb", "shorts": "{n}_shorts.glb",
-              "tights": "{n}_tights.glb"}
+              "tights": "{n}_tights.glb",
+              # V3-01b, women's bodies only: the skirt, and the three tees cut at its waistband (Joe: tops are tucked in)
+              "skirt": "{n}_skirt.glb", "tee_tucked": "{n}_tee_tucked.glb", "tee_v_tucked": "{n}_tee_v_tucked.glb",
+              "tee_scoop_tucked": "{n}_tee_scoop_tucked.glb"}
+WOMENS_ONLY = ("skirt", "tee_tucked", "tee_v_tucked", "tee_scoop_tucked")
 
 
 def arg(flag, default=None):
@@ -71,6 +78,12 @@ def is_body_only(meas):
     return bool(json.load(open(meas)).get("body_only", False))
 
 
+def has_skirt(meas):
+    """True if the skirt is built for this body: a woman's, and not body-only (V3-01b)."""
+    m = json.load(open(meas))
+    return m.get("sex_base") == "female" and not m.get("body_only", False)
+
+
 def build(job):
     """job: (measurements path, out dir, name). Writes the default-fit garments file, runs Blender, returns 0 on success."""
     meas, out, name = job
@@ -84,10 +97,17 @@ def build(job):
     report = out / f"{name}_report.json"
     report.unlink(missing_ok=True)  # Blender exits 0 even when the script raises, so a missing report is the failure signal
     cmd = [BLENDER, "--background", "--python", str(SCRIPT), "--", str(meas), str(out), name] + ([str(gar)] if gar else [])
+    if gar and has_skirt(meas):  # V3-01b: one Blender session on one thread (the cloth is then identical build to build) does the body, the skirt and the tucked tops
+        skirt_cfg = out / f"{name}_skirt_cfg.json"
+        json.dump(person_cfg(name)["skirt"], open(skirt_cfg, "w"), indent=2)
+        cmd = [BLENDER, "--threads", "1", "--background", "--python", str(SKIRT_SCRIPT), "--", str(meas), str(gar), str(out), name,
+               "--cfg", str(skirt_cfg)] + ([] if name in PEOPLE or "--renders" in sys.argv else ["--no-render"])
     with open(out / f"{name}_build.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT).returncode
     if rc == 0 and not report.exists():
         rc = 1
+    if rc == 0 and gar and has_skirt(meas) and "skirt" not in json.load(open(report)):
+        rc = 1  # the body script wrote its report but the skirt script stopped before adding its own: the checks must not pass without it
     if rc == 0:
         data = json.load(open(report))
         data["fit_config_sha256"] = config_hash(person_cfg(name))
@@ -99,7 +119,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts", "--tights"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shorts", "--tights", "--skirt"]).returncode
 
 
 def config_hash(cfg):
@@ -122,6 +142,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         if body_only and key != "body":
             continue
         src = build_dir / pattern.format(n=name)
+        if key in WOMENS_ONLY and not src.exists():  # a man's pack has no skirt; for a woman the checks have already failed without it
+            continue
         dst = pack_dir / f"{key}.glb"
         shutil.copyfile(src, dst)
         files[dst.name] = {"bytes": dst.stat().st_size, "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()}
@@ -136,7 +158,10 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"},
-                     "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts"]}},
+                     "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts", "skirt"]},
+                     **({"skirt": {"fit": "A-line midi, cloth-draped on this body", "tops": "tucked",
+                                   "tucked_tops": {"crew": "tee_tucked.glb", "v": "tee_v_tucked.glb", "scoop": "tee_scoop_tucked.glb"}}}
+                        if "skirt.glb" in files else {})},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),
         "fit_overrides": {k: v for k, v in PEOPLE_FIT.get(name, {}).items() if not k.startswith("_")},

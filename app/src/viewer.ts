@@ -4,7 +4,9 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
 
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb'];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb'];
+/** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error. */
+const OPTIONAL = new Set(['skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked']);
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
@@ -13,12 +15,16 @@ const groupOf = (name: string) => name.split('_')[0];
 const packUrl = () => `./pack/${person()}/`;
 
 export interface Viewer {
-  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, `sweatshirt`, `trousers`, `shorts`, `tights`) instantly. Works before it has loaded. */
+  /** Shows or hides a pack mesh (`tee`, `tee_v`, `tee_scoop`, their `_tucked` versions, `sweatshirt`, `trousers`, `shorts`, `skirt`, `tights`) instantly. Works before it has loaded. */
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;
   /** Makes a garment partly see-through (V2-04: sheer tights) or opaque again. Works before it has loaded. */
   setSheer: (name: string, sheer: boolean) => void;
+  /** True once the pack has loaded and has this mesh. Before then, and for a mesh the person's pack lacks (a man's pack has no skirt), false. */
+  has: (name: string) => boolean;
+  /** Settles when every file has loaded or failed; never rejects. Use `has` after it. */
+  ready: Promise<void>;
   dispose: () => void;
 }
 
@@ -88,14 +94,17 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   let disposed = false;
   const loader = new GLTFLoader();
   const loads = PACK_FILES.map(async (file) => {
+    const name = file.replace('.glb', '');
     const res = await fetch(packUrl() + file);
     const buf = res.ok ? await res.arrayBuffer() : null;
     // The dev server answers a missing file with index.html, so check for the glTF magic number ("glTF").
-    if (!buf || new Uint8Array(buf)[0] !== 0x67) throw new Error(file);
+    if (!buf || new Uint8Array(buf)[0] !== 0x67) {
+      if (OPTIONAL.has(name)) return;
+      throw new Error(file);
+    }
     bytes += buf.byteLength;
     const gltf = await loader.parseAsync(buf, '');
     if (disposed) return;
-    const name = file.replace('.glb', '');
     gltf.scene.visible = wanted.get(name) ?? true;
     garments.set(name, gltf.scene);
     const colour = colours.get(groupOf(name));
@@ -103,6 +112,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     if (sheers.get(name)) sheerness(gltf.scene, true);
     scene.add(gltf.scene);
   });
+  const ready = Promise.allSettled(loads).then(() => undefined);
   onStatus('Getting your avatar ready…');
   Promise.all(loads).then(
     () => onStatus(null),
@@ -149,6 +159,8 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       const g = garments.get(name);
       if (g) sheerness(g, sheer);
     },
+    has: (name) => garments.has(name),
+    ready,
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);

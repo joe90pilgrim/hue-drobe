@@ -9,6 +9,8 @@ export const GARMENTS = {
   shorts: { label: 'shorts', slot: 'Bottom', option: 'Shorts' },
   // V2-04: a layer of its own, under the shorts (never the trousers), so it has its own slot.
   tights: { label: 'tights', slot: 'Legs', option: 'Tights' },
+  // V3-01b: a bottom, so it replaces the trousers or shorts. Women's packs only (the Dress screen offers it when the pack has it).
+  skirt: { label: 'skirt', slot: 'Bottom', option: 'Skirt' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 
@@ -35,22 +37,38 @@ export const SHEER_KEY = 'sheer';
 export const TIGHTS_BLOCKED_BY = 'Trousers';
 
 /**
- * Keeps an outfit (slot -> option) to the layering rule: tights and trousers are never worn together. `changed` is the slot
- * just set; the other one gives way, so wearing tights from the wardrobe takes the trousers off, and the other way round.
+ * Joe's decision (17 Nov 2026, V3-01b): a top is tucked into a skirt. The tee has a version cut flat at the skirt's waistband,
+ * and it is that version that is shown while the skirt is worn. The sweatshirt has no such version (its ribbed hem would not
+ * tuck), so it cannot be worn with a skirt.
+ */
+export const TUCKS_INTO = 'Skirt';
+export const NOT_WITH_SKIRT = 'Sweatshirt';
+/** True when the outfit shows the tucked-in tee: a tee over a skirt. */
+export const isTucked = (outfit: Record<string, string>) => outfit.Bottom === TUCKS_INTO && outfit.Top === GARMENTS.tee.option;
+
+/**
+ * Keeps an outfit (slot -> option) to the layering rules. `changed` is the slot just set; the other one gives way, so wearing
+ * something from the wardrobe takes off what it cannot go with, and the other way round. With no `changed`, the layer named
+ * first below gives way.
+ *  - Tights and trousers are never worn together (V2-04); the trousers give way to tights just put on, otherwise the tights go.
+ *  - A sweatshirt and a skirt are never worn together (V3-01b); the sweatshirt gives way to a skirt just put on, otherwise the skirt goes.
  */
 export function keepLayers(outfit: Record<string, string>, changed?: string): Record<string, string> {
-  if (outfit.Legs !== GARMENTS.tights.option || outfit.Bottom !== TIGHTS_BLOCKED_BY) return outfit;
-  return changed === 'Legs' ? { ...outfit, Bottom: 'None' } : { ...outfit, Legs: 'None' };
+  let o = outfit;
+  if (o.Legs === GARMENTS.tights.option && o.Bottom === TIGHTS_BLOCKED_BY) o = changed === 'Legs' ? { ...o, Bottom: 'None' } : { ...o, Legs: 'None' };
+  if (o.Top === NOT_WITH_SKIRT && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
+  return o;
 }
 
-/** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`. */
-export function meshName(garment: GarmentId, neckline: Neckline = DEFAULT_NECKLINE): string {
-  return hasNecklines(garment) && neckline !== DEFAULT_NECKLINE ? `${garment}_${neckline}` : garment;
+/** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`; `tucked` (a tee over a skirt) adds `_tucked`. */
+export function meshName(garment: GarmentId, neckline: Neckline = DEFAULT_NECKLINE, tucked = false): string {
+  const base = hasNecklines(garment) && neckline !== DEFAULT_NECKLINE ? `${garment}_${neckline}` : garment;
+  return tucked && hasNecklines(garment) ? `${base}_tucked` : base;
 }
 
-/** Every pack mesh a garment can be shown with. */
-export function meshesOf(garment: GarmentId): string[] {
-  return hasNecklines(garment) ? (Object.keys(NECKLINES) as Neckline[]).map((n) => meshName(garment, n)) : [garment];
+/** Every pack mesh a garment can be shown with: its necklines, and with `tucked` their tucked-in versions (tees only). */
+export function meshesOf(garment: GarmentId, tucked = false): string[] {
+  return hasNecklines(garment) ? (Object.keys(NECKLINES) as Neckline[]).map((n) => meshName(garment, n, tucked)) : [garment];
 }
 
 /**
