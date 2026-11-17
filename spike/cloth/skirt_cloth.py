@@ -80,6 +80,8 @@ if CFG_PATH:  # the pack build's fit config wins over the constants above; keys 
             globals()[_name] = type(globals()[_name])(_v)
         else:
             raise SystemExit(f"unknown skirt setting in {CFG_PATH}: {_k}")
+if CFG_PATH:  # the pack's garments are all in the fit config's neutral colour; the app sets the real one (the experiments keep their navy)
+    COLOUR = tuple(json.load(open(gar_path))["tee"].get("colour_srgb", COLOUR))
 # experiment overrides, e.g. SKIRT_FRICTION=1; every value used is in the report
 for _k in ("HEM_RATIO", "BENDING", "MASS", "FRICTION", "FRAMES", "TENSION", "GRAVITY_RAMP", "SELF_DIST"):
     if os.environ.get("SKIRT_" + _k):

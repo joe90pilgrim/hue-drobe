@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host",
+    "dev:b": "node scripts/dev-as.mjs b",
+    "dev:joe": "node scripts/dev-as.mjs joe",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host",
     "icons": "node scripts/make-icons.mjs",

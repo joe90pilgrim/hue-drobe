@@ -6,6 +6,7 @@ The MVP app shell: three screens (Try on, Wardrobe, My colours), installable, wo
 cd app
 npm install
 npm run dev        # local dev server, open on desktop or the Pixel 8 (same Wi-Fi)
+npm run dev:b      # the same, signed in as B (a woman's pack: skirt and tucked tops). npm run dev:joe is the same as npm run dev. Works in PowerShell and Git Bash.
 npm run build      # type-check, then build to app/dist, including sw.js
 npm run preview    # serve the built app (needed to test install and offline)
 npm run icons      # regenerate the icons in public/
