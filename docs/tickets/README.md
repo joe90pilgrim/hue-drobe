@@ -91,6 +91,7 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) (done; folded into V3-07) | V2-07, V2-09 | Sonnet, high |
 | V3-07 | [Generic template fitting: `pack/fit_template.py`](v3-loose-clothes/V3-07-fit-template.md) | V3-06, V3-07a | Opus, high |
 | V3-07a | [Archive Suits 01 and Shirts 02/03, allow CC-BY with credits](v3-loose-clothes/V3-07a-archive-template-packs.md) | V2-09 | Sonnet, low |
+| V3-07b | [Loose-fit volume for templates](v3-loose-clothes/V3-07b-loose-fit-volume.md) (V3-08 paused until done) | V3-07, V3-08 | Opus, high |
 | V3-08 | [First template: a shirt from Shirts 02/03](v3-loose-clothes/V3-08-shirt-template.md) | V3-07, V3-07a | Sonnet, medium |
 | V3-09 | [Second template: a blazer from Suits 01](v3-loose-clothes/V3-09-blazer-template.md) | V3-08 | Sonnet, high |
 | V3-10 | [Credits screen for CC-BY assets](v3-loose-clothes/V3-10-credits-screen.md) | V3-07a | Sonnet, low |
