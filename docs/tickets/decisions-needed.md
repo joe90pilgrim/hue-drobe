@@ -56,10 +56,15 @@ No open decisions for 1.2.
 - ~~**V3-03** Shirts: collar style?~~ **Decided 17 Nov 2026:** classic point collar.
 - ~~**V3-03** Shirts: tucked in, out or both?~~ **Decided 17 Nov 2026:** untucked first.
 - **V3-03** Shirts: agree the limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm; second pass: drawn collar shading at most 0.6) and `shading` (every garment's cloth shading turns at most 22 degrees in 1.5 cm); and look at the second-pass renders: does it read as a shirt, and do the tee, sweatshirt and trousers now read as cloth? (Joe asked on 17 Nov 2026 for the smoother shading on those too; done.)
-- **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
-- **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
 - ~~**V3-05** Multiple top layers: how many layers at most?~~ **Decided 17 Nov 2026:** three (base, mid, outer).
 - ~~**V3-05** Multiple top layers: which combinations?~~ **Decided 17 Nov 2026:** tee under shirt and tee under sweatshirt; not shirt under sweatshirt; jackets added in V3-04. See `docs/decisions/2026-11-17-v3-05-layers.md`.
+- ~~**V3-04** Jackets and coats: open or closed front; which jacket first?~~ **Superseded 17 Nov 2026:** the first jacket is the Suits 01 blazer template (V3-09).
+- ~~**Template pipeline** (proposal of 17 Nov 2026): approve the design, the three-round limit, the test pair and folding V3-06.~~ **Decided 17 Nov 2026:** approved across the board.
+- ~~**V3-05** Legacy layered tops: ship only the combinations that pass on each body, or drop legacy layering?~~ **Decided 17 Nov 2026:** ship only the passing combinations; no further procedural geometry work.
+- **V3-07** If MakeClothes can't run headlessly, how are templates from outside the packs authored? Decide only if V3-07 reports it.
+- **V3-08** Shirt: keep the procedural shirt, switch to the template, or offer both? Decide from the side-by-side renders.
+- **V3-09** Blazer: over the sweatshirt too, or only the tee and shirt? Recommendation: tee and shirt first.
+- **V3-10** Credits screen: where should it live? Recommendation: settings, as "About and credits".
 
 ## v4-real-wardrobe
 

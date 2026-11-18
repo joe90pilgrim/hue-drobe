@@ -86,13 +86,14 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V3-01b | [Skirt in the app](v3-loose-clothes/V3-01b-skirt-in-app.md) | V3-01a | Sonnet, high |
 | V3-02 | [Dresses from the free packs](v3-loose-clothes/V3-02-dresses.md) | V3-06 | Sonnet, medium |
 | V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) | V1.1-04; V3-05 for wearing under other tops | Sonnet, high |
-| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) | V3-05 | Opus, high |
-| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) | V3-01b | Sonnet, high |
-| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
-| V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
+| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (superseded by V3-09) | - | - |
+| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (decided: ship passing combinations only; app side remaining) | V3-01b | Sonnet, medium |
+| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) (done; folded into V3-07) | V2-07, V2-09 | Sonnet, high |
+| V3-07 | [Generic template fitting: `pack/fit_template.py`](v3-loose-clothes/V3-07-fit-template.md) | V3-06, V3-07a | Opus, high |
+| V3-07a | [Archive Suits 01 and Shirts 02/03, allow CC-BY with credits](v3-loose-clothes/V3-07a-archive-template-packs.md) | V2-09 | Sonnet, low |
+| V3-08 | [First template: a shirt from Shirts 02/03](v3-loose-clothes/V3-08-shirt-template.md) | V3-07, V3-07a | Sonnet, medium |
+| V3-09 | [Second template: a blazer from Suits 01](v3-loose-clothes/V3-09-blazer-template.md) | V3-08 | Sonnet, high |
+| V3-10 | [Credits screen for CC-BY assets](v3-loose-clothes/V3-10-credits-screen.md) | V3-07a | Sonnet, low |
 
 ### Version 4: Your real wardrobe
 
