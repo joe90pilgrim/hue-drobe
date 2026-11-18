@@ -1,0 +1,20 @@
+{
+  "_note": "V3.1-03: crude tee from the archived shirts01 pack (CC0), used as shipped, MHCLO fit. Ships alongside the legacy tee (one neckline, not tucked). approved is false until Joe and B sign off the renders.",
+  "id": "tee_male",
+  "category": "base",
+  "pack_file": "tee_male",
+  "layer": "base",
+  "allowed_bodies": "male",
+  "source": {"pack": "shirts01", "asset": "elvs_crude_t-shirt_male"},
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "64dd3e6e2fbba39cc792854e0ae3e2c4829a37fa4e4b690f463c2956476294da",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": ["all"],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain"
+}
