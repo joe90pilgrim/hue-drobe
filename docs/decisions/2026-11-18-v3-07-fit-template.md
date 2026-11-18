@@ -1,0 +1,15 @@
+# Generic template fitting (V3-07)
+
+Date: 18 November 2026. Builds the design in `2026-11-17-v3-garment-pipeline-proposal.md` (sections 1 and 2).
+
+**Result.** New garment types are now folders in `pack/templates/<category>/<id>/` with a `meta.json` (schema in `pack/templates/README.md`), fitted per person by `pack/fit_template.py`, which replaces V3-06's `pack_items.py`. The shift dress moved to `pack/templates/full/shift_dress/` and builds through it with V3-06's results: 0 face pairs and 0 gap rays on the three synthetic women and on B (the large body: 1,059 body vertices hidden, 320 restored, 1 repair round, the same as V3-06). `--no-hide` still fails (503 face pairs on the medium body). With `approved: false` the same `--no-hide` build passes, prints the numbers as REPORT-ONLY and renders front, three-quarter and back close-ups into `pack/out/renders/templates/`.
+
+**MakeClothes runs headlessly.** `pack/author_template.py --roundtrip` re-made the dress as MHCLO with MPFB's own `ClothesService.create_mhclo_from_clothes_matching` (the code behind the MakeClothes panel) in 32 s, with no Blender window. Fitted with the original and with the re-made file, the dress differs by 0.006 cm (mean) on the base body, and by 0.54 cm mean, 1.3 cm p95 and 2.1 cm max on a heavier test body (female, weight 0.8). The pack author's own binding is better on a body far from the base; `author_template.py` binds every vertex to the base body's `body` group, and helper groups may close the gap (backlog).
+
+**Deviations from the design.**
+- **Push-out off the body: V3-06's own push, not Shrinkwrap.** Shrinkwrap in Blender's 'Outside' mode (the mode that moves only vertices inside or closer than the offset; 'Outside Surface' would wrap the whole garment onto the body) gave the same numbers as V3-06's push on the large synthetic woman (603 vertices pushed, deepest 0.79 cm, the same check results), but V3-06's push is kept because it is proven. Shrinkwrap is used for the push off inner layers (`inner_layers`), which nothing exercises yet; the blazer over the shirt (V3-09) will be its first test.
+- **Read the body after attaching.** The first build read the uncovered body once, before any template was attached, and the large synthetic woman kept 19 gap rays after 6 repair rounds. Read again after each attach, as `pack_items.py` did, it matches V3-06.
+- **Authoring: no Lattice pass and no T-pose sleeve rotation yet.** `author_template.py` aligns by landmarks stored in `meta.json` (uniform scale and translation, then per-axis scale) and stops if a landmark is still more than 2 cm off. No template from outside the packs exists to test the rest on (backlog).
+- **Settle** (a short cloth pass with pinned groups, V3-00's settings, Blender on one thread) is built but no template uses it yet.
+- The licence guard still takes CC0 only; V3-07a adds CC-BY with a credit. `meta.json` validation already requires the credit.
+- The report key stays `pack_items`, so the committed reports and their checks carry on unchanged.
