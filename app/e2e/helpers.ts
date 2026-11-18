@@ -12,8 +12,24 @@ export async function closeSlot(page: Page) {
   await expect(page.getByRole('dialog')).toBeHidden();
 }
 
-/** A garment choice in the open panel, such as "Sweatshirt" or "Nothing". */
-export const garment = (page: Page, name: string) => page.getByRole('radiogroup', { name: 'Garment' }).getByRole('radio', { name, exact: true });
+/** A garment choice in the open panel, such as "Sweatshirt" or "Nothing". "Shirt, long sleeves" taps the Shirt chip, then Long (V3-11). */
+export const garment = (page: Page, name: string) => {
+  const m = /^Shirt, (short|mid|long) sleeves$/.exec(name);
+  const chip = (n: string) => page.getByRole('radiogroup', { name: 'Garment' }).getByRole('radio', { name: n, exact: true });
+  if (!m) return chip(name);
+  const long = m[1][0].toUpperCase() + m[1].slice(1);
+  const variant = page.getByRole('radiogroup', { name: 'Sleeves' }).getByRole('radio', { name: long, exact: true });
+  const loc = chip('Shirt');
+  // Tapping this selects the Shirt chip and then the sleeve length.
+  const click = loc.click.bind(loc);
+  const clickVariant = variant.click.bind(variant);
+  return Object.assign(variant, {
+    click: async (...args: Parameters<typeof loc.click>) => {
+      await click(...args);
+      await clickVariant(...args);
+    },
+  });
+};
 
 /** The neckline group and one of its choices in the open panel. */
 export const necklines = (page: Page) => page.getByRole('radiogroup', { name: 'Neckline' });

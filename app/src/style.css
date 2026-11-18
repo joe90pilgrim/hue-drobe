@@ -347,3 +347,12 @@ button { font-family: inherit; }
 }
 .outfit-save { align-self: stretch; height: 50px; font-size: 15px; margin-top: 4px; }
 .o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }
+
+/* V3-11: garment chips, one scrolling row with a fade at the right edge. */
+.chip-fade { position: relative; }
+.chip-fade::after { content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 28px; pointer-events: none; background: linear-gradient(to right, transparent, var(--surface)); }
+.chips { display: flex; gap: 8px; overflow-x: auto; padding: 2px 28px 2px 0; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 600; }
+.chips button[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
+.chips button:disabled { opacity: 0.4; cursor: not-allowed; }

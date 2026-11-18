@@ -24,6 +24,10 @@ import {
   UNDER_OPTION,
   UNDER_SLOT,
   ensureItem,
+  VARIANT_TYPES,
+  hasVariants,
+  optionFor,
+  typeVariantOf,
   layeredOk,
   necklinesUnder,
   overMeshName,
@@ -132,7 +136,11 @@ export function renderTryOn(el: HTMLElement): () => void {
         <div class="ed-controls">
         <div class="field">
           <span class="field-label" id="lbl-garment">Garment</span>
-          <div class="seg" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div>
+          <div class="chip-fade"><div class="chips" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div></div>
+        </div>
+        <div class="field" data-variant-field hidden>
+          <span class="field-label" id="lbl-variant">Sleeves</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-variant" data-variants></div>
         </div>
         <p class="help layer-note" data-layer-note hidden>Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.</p>
         <div class="field" data-sheer-field hidden>
@@ -174,6 +182,10 @@ export function renderTryOn(el: HTMLElement): () => void {
   const garmentGroup = editor.querySelector<HTMLElement>('[data-garment]')!;
   const neckField = editor.querySelector<HTMLElement>('[data-neck-field]')!;
   const neckGroup = editor.querySelector<HTMLElement>('[data-necklines]')!;
+  const variantField = editor.querySelector<HTMLElement>('[data-variant-field]')!;
+  const variantGroup = editor.querySelector<HTMLElement>('[data-variants]')!;
+  const variantLabel = editor.querySelector<HTMLElement>('#lbl-variant')!;
+  const lastVariant: Record<string, string> = {}; // type -> the variant last used this session
   const sheerField = editor.querySelector<HTMLElement>('[data-sheer-field]')!;
   const sheerGroup = editor.querySelector<HTMLElement>('[data-sheers]')!;
   const layerNote = editor.querySelector<HTMLElement>('[data-layer-note]')!;
@@ -293,13 +305,27 @@ export function renderTryOn(el: HTMLElement): () => void {
     const current = colourOf(s);
     // A layer that never goes with what is worn (tights under trousers, a sweatshirt with a skirt) is greyed out, with a note saying why.
     let note: string | null = null;
+    const cur = typeVariantOf(outfit[s.name]);
+    if (cur.variant) lastVariant[cur.type] = cur.variant;
     for (const b of garmentGroup.querySelectorAll<HTMLButtonElement>('[data-opt]')) {
-      const on = b.dataset.opt === outfit[s.name];
+      const on = b.dataset.opt === cur.type;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
-      const why = blockedNote(s.name, b.dataset.opt!);
+      const why = blockedNote(s.name, optionFor(b.dataset.opt!, lastVariant[b.dataset.opt!] ?? null) ?? b.dataset.opt!);
       b.disabled = why !== null;
       note ??= why;
+    }
+    variantField.hidden = !hasVariants(cur.type);
+    if (hasVariants(cur.type)) {
+      variantLabel.textContent = VARIANT_TYPES[cur.type].label;
+      variantGroup.innerHTML = VARIANT_TYPES[cur.type].variants
+        .map((v) => ({ v, opt: optionFor(cur.type, v.name)! }))
+        .filter(({ opt }) => offered(opt))
+        .map(({ v, opt }) => {
+          const on = v.name === cur.variant;
+          return `<button type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-variant="${v.name}"${blockedNote(s.name, opt) ? ' disabled' : ''}>${v.name}</button>`;
+        })
+        .join('');
     }
     layerNote.textContent = note ?? '';
     layerNote.hidden = note === null;
@@ -378,9 +404,10 @@ export function renderTryOn(el: HTMLElement): () => void {
     }
   };
   const buildGarments = (s: Slot) => {
-    garmentGroup.innerHTML = s.options
-      .filter(offered)
-      .map((o) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${o}">${optionLabel(o)}</button>`)
+    // One chip per garment type (the three shirts are one "Shirt" chip), "Nothing" first so it never scrolls out of reach.
+    const types = [...new Set(s.options.filter(offered).map((o) => typeVariantOf(o).type))].sort((a, b) => Number(b === 'None') - Number(a === 'None'));
+    garmentGroup.innerHTML = types
+      .map((t) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${t}">${optionLabel(t)}</button>`)
       .join('');
   };
   const openEditor = (s: Slot, row: HTMLButtonElement) => {
@@ -393,7 +420,9 @@ export function renderTryOn(el: HTMLElement): () => void {
     place();
     editor.hidden = false;
     syncEditor();
-    (editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]') ?? editor).focus();
+    const first = editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]');
+    first?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    (first ?? editor).focus();
   };
   /** Swaps between the slot's controls and the colour chooser. */
   const showChooser = (open: boolean) => {
@@ -454,12 +483,26 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   bindRadioKeys(garmentGroup);
   bindRadioKeys(neckGroup);
+  bindRadioKeys(variantGroup);
   bindRadioKeys(sheerGroup);
   garmentGroup.addEventListener('click', (e) => {
-    const opt = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
+    const type = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
     const s = editing;
-    if (!s || !opt || opt === outfit[s.name]) return;
+    if (!s || !type) return;
+    if (typeVariantOf(outfit[s.name]).type === type) return;
+    const opt = optionFor(type, lastVariant[type] ?? null);
+    if (!opt || opt === outfit[s.name]) return;
     // Putting trousers on takes the tights off (they are never worn together); the Legs panel greys tights out instead.
+    Object.assign(outfit, keepLayers({ ...outfit, [s.name]: opt }, s.name));
+    refresh();
+    void kvPut('outfit', { ...outfit });
+  });
+  variantGroup.addEventListener('click', (e) => {
+    const v = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-variant]')?.dataset.variant;
+    const s = editing;
+    if (!s || !v) return;
+    const opt = optionFor(typeVariantOf(outfit[s.name]).type, v);
+    if (!opt || opt === outfit[s.name]) return;
     Object.assign(outfit, keepLayers({ ...outfit, [s.name]: opt }, s.name));
     refresh();
     void kvPut('outfit', { ...outfit });

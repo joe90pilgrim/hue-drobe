@@ -64,3 +64,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Parked (18 Nov 2026, Joe)
 Version 3 is closed. Kept, not deleted, so the design work isn't lost; Joe re-opens it when wanted.
+
+## Note (18 Nov 2026)
+Built: scrolling garment chips (Nothing first, every slot), Sleeves row for Shirt, (type, variant) lookup in `wardrobe.ts`; stored strings unchanged. Vitest and the chips, layers, skirt, try-on and sync specs pass; Pixel 8 check and Joe's sign-off still to do. Colour row is not hidden for Nothing (left to V3-12). `check:assets` fails on `test_fit_template.py:139` (V3.1-03 tee templates), not touched here.

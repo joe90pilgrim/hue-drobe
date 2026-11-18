@@ -22,6 +22,45 @@ export const GARMENTS = {
 export type GarmentId = keyof typeof GARMENTS;
 
 /**
+ * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between
+ * (type, variant) and the garment the app already stores, so nothing stored changes. Only the shirt has variants here (the tee's
+ * necklines are a separate setting). Any other option is its own type with no variant.
+ */
+export const VARIANT_TYPES = {
+  Shirt: {
+    label: 'Sleeves',
+    default: 'Mid',
+    variants: [
+      { name: 'Short', garment: 'shirt_short' },
+      { name: 'Mid', garment: 'shirt_mid' },
+      { name: 'Long', garment: 'shirt_long' },
+    ],
+  },
+} as const satisfies Record<string, { label: string; default: string; variants: readonly { name: string; garment: GarmentId }[] }>;
+export type VariantType = keyof typeof VARIANT_TYPES;
+export const hasVariants = (type: string): type is VariantType => type in VARIANT_TYPES;
+
+/** The chip and variant a stored option string belongs to. */
+export function typeVariantOf(option: string): { type: string; variant: string | null } {
+  for (const [type, t] of Object.entries(VARIANT_TYPES)) {
+    const v = t.variants.find((x) => GARMENTS[x.garment].option === option);
+    if (v) return { type, variant: v.name };
+  }
+  return { type: option, variant: null };
+}
+/** The stored option string for a chip and variant; null for a variant the type does not have. */
+export function optionFor(type: string, variant: string | null): string | null {
+  if (!hasVariants(type)) return variant === null ? type : null;
+  const v = VARIANT_TYPES[type].variants.find((x) => x.name === (variant ?? VARIANT_TYPES[type].default));
+  return v ? GARMENTS[v.garment].option : null;
+}
+/** The garment a chip and variant show, or undefined for 'None'. */
+export const garmentFor = (type: string, variant: string | null): GarmentId | undefined => {
+  const o = optionFor(type, variant);
+  return (Object.keys(GARMENTS) as GarmentId[]).find((g) => GARMENTS[g].option === o);
+};
+
+/**
  * Tee necklines (V1.1-04). `label` is the Dress button, `words` is how a neckline reads in a list, and `name` is the
  * word put in an automatic name (the crew neck is the plain 'tee', so it adds nothing).
  */
