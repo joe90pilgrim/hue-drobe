@@ -25,7 +25,7 @@ function servePrivatePack(): Plugin {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return createReadStream(`${root}${mf[1]}/manifest.json`).pipe(res);
     }
-    const m = new RegExp(`^/pack/([a-z][a-z0-9-]*)/(${PACK_FILES.join('|')})\\.glb$`).exec(url);
+    const m = new RegExp(`^/pack/([a-z][a-z0-9-]*)/(${PACK_FILES.join('|')}|[a-z0-9_]+_under_[a-z0-9_]+)\\.glb$`).exec(url);
     const file = m && `${root}${m[1]}/${m[2]}.glb`;
     if (!file || !existsSync(file)) return next();
     res.setHeader('Content-Type', 'model/gltf-binary');
@@ -67,12 +67,18 @@ async function cachePack() {
   } catch {}
   if (typeof person !== 'string' || !/^[a-z][a-z0-9-]*$/.test(person)) return;
   const cache = await caches.open(PACK_CACHE);
+  const extra = [];
   try {
     const mu = './pack/' + person + '/manifest.json';
     const mres = await fetch(mu);
-    if (mres.ok && (mres.headers.get('Content-Type') || '').includes('json')) await cache.put(mu, mres);
+    if (mres.ok && (mres.headers.get('Content-Type') || '').includes('json')) {
+      await cache.put(mu, mres.clone());
+      // V3.1-02: the inner garments drawn under something (the manifest names the files), so they work offline too
+      const drawn = ((await mres.json()).garments || {}).inner_layers_drawn || {};
+      for (const inners of Object.values(drawn)) for (const f of Object.values(inners || {})) if (/^[A-Za-z0-9_.-]+\.glb$/.test(f)) extra.push(f.slice(0, -4));
+    }
   } catch {}
-  await Promise.all(PACK_FILES.map(async (n) => {
+  await Promise.all(PACK_FILES.concat(extra).map(async (n) => {
     const u = './pack/' + person + '/' + n + '.glb';
     try {
       const res = await fetch(u);

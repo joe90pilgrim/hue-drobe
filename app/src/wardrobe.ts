@@ -118,6 +118,23 @@ export function parseLayerCombos(manifest: unknown): LayerCombos {
   return out;
 }
 
+/**
+ * V3.1-02: reads the manifest's `garments.inner_layers_drawn` (outer pack mesh -> inner mesh -> file): the inner garment with the faces an outer
+ * garment covers removed, drawn in place of the inner one while the outer is worn. Anything not a plain `.glb` name is ignored.
+ */
+export function parseUnderFiles(manifest: unknown): Record<string, Record<string, string>> {
+  const raw = (manifest as { garments?: { inner_layers_drawn?: unknown } } | null)?.garments?.inner_layers_drawn;
+  const out: Record<string, Record<string, string>> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [outer, inners] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z0-9_]+$/.test(outer) || !inners || typeof inners !== 'object') continue;
+    for (const [inner, file] of Object.entries(inners as Record<string, unknown>)) {
+      if (/^[a-z0-9_]+$/.test(inner) && typeof file === 'string' && /^[A-Za-z0-9_.-]+\.glb$/.test(file)) (out[outer] ??= {})[inner] = file;
+    }
+  }
+  return out;
+}
+
 /** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`; `tucked` (a tee over a skirt) adds `_tucked`. */
 export function meshName(garment: GarmentId, neckline: Neckline = DEFAULT_NECKLINE, tucked = false): string {
   const base = hasNecklines(garment) && neckline !== DEFAULT_NECKLINE ? `${garment}_${neckline}` : garment;

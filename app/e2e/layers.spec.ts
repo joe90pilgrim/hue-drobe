@@ -58,3 +58,45 @@ test('a top with no passing combination is not offered a tee under it', async ({
   await closeSlot(page);
   await expect(page.locator('[data-row="Under"]')).toBeHidden();
 });
+
+// V3.1-02: an inner garment worn under something is drawn as the pack's `_under_` file (its covered faces removed), and in full again when the outer comes off.
+test('the pack\'s _under_ file is drawn while the outer garment is worn, and the full garment returns when it comes off', async ({ page }) => {
+  const json = Buffer.from(JSON.stringify({ asset: { version: '2.0' }, scenes: [{}], scene: 0 }));
+  const pad = Buffer.alloc((4 - (json.length % 4)) % 4, 0x20);
+  const jsonChunk = Buffer.concat([json, pad]);
+  const head = Buffer.alloc(20);
+  head.write('glTF', 0, 'ascii');
+  head.writeUInt32LE(2, 4);
+  head.writeUInt32LE(20 + jsonChunk.length, 8);
+  head.writeUInt32LE(jsonChunk.length, 12);
+  head.write('JSON', 16, 'ascii');
+  const glb = Buffer.concat([head, jsonChunk]);
+  let asked = 0;
+  await page.route('**/pack/*/tee_under_sweatshirt_over_tee.glb', (route) => {
+    asked++;
+    return route.fulfill({ contentType: 'model/gltf-binary', body: glb });
+  });
+  await page.route('**/pack/*/manifest.json', (route) =>
+    route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ garments: { layers: { combinations: { sweatshirt: ['crew'] } }, inner_layers_drawn: { sweatshirt_over_tee: { tee: 'tee_under_sweatshirt_over_tee.glb' } } } }),
+    }),
+  );
+  await signInAs(page, 'joe');
+  await page.goto('/#/try-on');
+  await expect(page.locator('.stage-status')).not.toHaveText('Getting your avatar ready…');
+  const stage = page.locator('.stage');
+  await expect(stage).not.toHaveAttribute('data-under', /tee_under_sweatshirt_over_tee/);
+  await openSlot(page, 'Top');
+  await garment(page, 'Sweatshirt').click();
+  await closeSlot(page);
+  await openSlot(page, 'Under');
+  await garment(page, 'T-shirt').click();
+  await closeSlot(page);
+  await expect(stage).toHaveAttribute('data-under', 'tee_under_sweatshirt_over_tee'); // the tee's covered faces are left out
+  expect(asked).toBe(1);
+  await openSlot(page, 'Top');
+  await garment(page, 'Nothing').click();
+  await closeSlot(page);
+  await expect(stage).toHaveAttribute('data-under', ''); // the full tee again
+});

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
-import { parseLayerCombos, type LayerCombos } from './wardrobe';
+import { parseLayerCombos, parseUnderFiles, type LayerCombos } from './wardrobe';
 
 /** V3-05: the sweatshirt and shirts as worn over the tee. A pack has only the ones that passed on that body (the manifest lists them). */
 const OVER_TEE = ['sweatshirt_over_tee', 'shirt_short_over_tee', 'shirt_mid_over_tee', 'shirt_long_over_tee'];
@@ -17,7 +17,7 @@ export const SHEER_OPACITY = 0.45;
 
 /** A neckline variant is the same garment: `tee_v` and `tee_scoop` take the colour set for `tee`. */
 const groupOf = (name: string) => {
-  const n = name.replace(/_over_tee$/, ''); // a top over the tee takes the colour set for that top
+  const n = name.replace(/_over_tee$/, '').replace(/_under_.+$/, ''); // a top over the tee takes the colour set for that top; an inner layer drawn under something takes its own
   return n.startsWith('tee_') ? 'tee' : n;
 };
 const packUrl = () => `./pack/${person()}/`;
@@ -100,9 +100,73 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   const wanted = new Map<string, boolean>();
   const colours = new Map<string, string>();
   const sheers = new Map<string, boolean>();
+  /** V3.1-02: the manifest's `inner_layers_drawn`: outer pack mesh -> inner mesh -> the file of the inner garment with the faces the outer covers removed. */
+  let underFiles: Record<string, Record<string, string>> = {};
+  const underLoading = new Set<string>();
   let bytes = 0;
   let disposed = false;
   const loader = new GLTFLoader();
+  const underName = (inner: string, outer: string) => `${inner}_under_${outer}`;
+  /** The inner meshes now drawn under something that is worn: inner -> outer (the first worn outer that lists it). */
+  const swaps = () => {
+    const m = new Map<string, string>();
+    for (const [outer, inners] of Object.entries(underFiles)) {
+      if (!wanted.get(outer)) continue;
+      for (const inner of Object.keys(inners)) if (!m.has(inner)) m.set(inner, outer);
+    }
+    return m;
+  };
+  /** Shows each inner garment either in full or, while something is worn over it, as its `_under_` file once that has loaded. */
+  const syncUnder = () => {
+    const active = swaps();
+    const drawn: string[] = [];
+    for (const [outer, inners] of Object.entries(underFiles)) {
+      for (const inner of Object.keys(inners)) {
+        const u = garments.get(underName(inner, outer));
+        if (u) u.visible = false;
+      }
+    }
+    for (const [inner, outer] of active) {
+      const u = garments.get(underName(inner, outer));
+      if (!u) {
+        void loadUnder(inner, outer);
+        continue;
+      }
+      if (wanted.get(inner)) {
+        u.visible = true;
+        const full = garments.get(inner);
+        if (full) full.visible = false;
+        drawn.push(underName(inner, outer));
+      }
+    }
+    for (const inner of new Set(Object.values(underFiles).flatMap((i) => Object.keys(i)))) {
+      const full = garments.get(inner);
+      if (full && !drawn.some((d) => d.startsWith(inner + '_under_'))) full.visible = wanted.get(inner) ?? false;
+    }
+    stage.dataset.under = drawn.join(',');
+  };
+  const loadUnder = async (inner: string, outer: string) => {
+    const name = underName(inner, outer);
+    const file = underFiles[outer]?.[inner];
+    if (underLoading.has(name) || !file || !/^[A-Za-z0-9_.-]+\.glb$/.test(file)) return;
+    underLoading.add(name);
+    try {
+      const res = await fetch(packUrl() + file);
+      const buf = res.ok ? await res.arrayBuffer() : null;
+      if (!buf || new Uint8Array(buf)[0] !== 0x67) return; // missing: the full inner garment stays
+      bytes += buf.byteLength;
+      const gltf = await loader.parseAsync(buf, '');
+      if (disposed) return;
+      gltf.scene.visible = false;
+      garments.set(name, gltf.scene);
+      const colour = colours.get(groupOf(name));
+      if (colour) paint(gltf.scene, colour);
+      scene.add(gltf.scene);
+      syncUnder();
+    } catch {
+      // a file that will not load leaves the full inner garment drawn
+    }
+  };
   const loads = PACK_FILES.map(async (file) => {
     const name = file.replace('.glb', '');
     const res = await fetch(packUrl() + file);
@@ -117,6 +181,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     if (disposed) return;
     gltf.scene.visible = wanted.get(name) ?? name !== 'body_dress'; // the dress's body only shows while the dress is worn
     garments.set(name, gltf.scene);
+    syncUnder();
     const colour = colours.get(groupOf(name));
     if (colour) paint(gltf.scene, colour);
     if (sheers.get(name)) sheerness(gltf.scene, true);
@@ -125,7 +190,11 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   let layerCombos: LayerCombos = {};
   const manifestLoad = fetch(packUrl() + 'manifest.json')
     .then((r) => (r.ok ? r.json() : null))
-    .then((m) => void (layerCombos = parseLayerCombos(m)))
+    .then((m) => {
+      layerCombos = parseLayerCombos(m);
+      underFiles = parseUnderFiles(m);
+      syncUnder();
+    })
     .catch(() => undefined); // no manifest, or not JSON (the dev server answers a missing file with index.html): no layering offered
   const ready = Promise.allSettled([...loads, manifestLoad]).then(() => undefined);
   onStatus('Getting your avatar ready…');
@@ -164,6 +233,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       wanted.set(name, visible);
       const g = garments.get(name);
       if (g) g.visible = visible;
+      syncUnder();
     },
     setColour(name, hex) {
       colours.set(name, hex);
