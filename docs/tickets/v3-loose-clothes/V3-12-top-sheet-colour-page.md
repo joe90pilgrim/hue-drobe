@@ -63,3 +63,7 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Parked (18 Nov 2026, Joe)
 Version 3 is closed. Kept, not deleted, so the design work isn't lost; Joe re-opens it when wanted.
+
+## Note (18 Nov 2026)
+Un-parked by Joe and done: one colour row plus a 64 px heart on the sheet; the colour page now holds current colour, Favourites (empty hint, palette key), Basics and a collapsed Fine-tune. Joe's answers: favourites move to the colour page, no "Your colours" grid, dot means "from your colour palette". Needs Joe's visual sign-off.
+`npm run check`: typecheck, Vitest, deploy tests and all Playwright specs pass; `pack/test_fit_template.py::test_committed_templates_are_valid` fails before reaching them (expects only two template ids, but `tee_female` and `tee_male` were added in c4c7ee7), which is outside this ticket.

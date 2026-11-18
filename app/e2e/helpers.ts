@@ -36,7 +36,7 @@ export const necklines = (page: Page) => page.getByRole('radiogroup', { name: 'N
 export const neckline = (page: Page, name: string) => necklines(page).getByRole('radio', { name, exact: true });
 
 /** "Choose a colour" in the open panel, which opens the built-in chooser (V1.2-05). */
-export const chooseButton = (page: Page) => page.getByRole('button', { name: 'Choose a colour', exact: true });
+export const chooseButton = (page: Page) => page.getByRole('button', { name: /^Colour(, |$)/ });
 
 /** The chooser's Back button ("‹ Top colour"). */
 export const chooserBack = (page: Page) => page.getByRole('button', { name: /^Back to the/ });
@@ -44,16 +44,23 @@ export const chooserBack = (page: Page) => page.getByRole('button', { name: /^Ba
 /** Sets the open slot's colour by typing its code into the chooser, then goes back to the slot's controls. */
 export async function setColour(page: Page, hex: string) {
   await chooseButton(page).click();
+  await openFineTune(page);
   await page.getByLabel('Colour code').fill(hex);
   await chooserBack(page).click();
   await expectColour(page, hex);
 }
 
 /** The slot's controls show this colour on the swatch (the swatch reads "Current colour #xxxxxx"). */
-export const expectColour = (page: Page, hex: string) => expect(page.getByRole('img', { name: `Current colour ${hex.toLowerCase()}` })).toBeVisible();
+export const expectColour = (page: Page, hex: string) => expect(page.getByRole('button', { name: new RegExp(`^Colour, .*${hex.toLowerCase()}$`) })).toBeVisible();
 
-export const favourite = (page: Page) => page.getByRole('button', { name: 'Favourite', exact: true });
-export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Your favourite colours' });
+/** Opens the collapsed Fine-tune section of the colour page (code field and sliders). */
+export async function openFineTune(page: Page) {
+  const t = page.getByRole('button', { name: 'Fine-tune colour' });
+  if ((await t.getAttribute('aria-expanded')) !== 'true') await t.click();
+}
+
+export const favourite = (page: Page) => page.locator('button[aria-label="Save colour to favourites"]:visible');
+export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Favourite colours' });
 export const addToWardrobe = (page: Page) => page.getByRole('button', { name: 'Add to wardrobe', exact: true });
 export const inWardrobe = (page: Page) => page.getByRole('button', { name: 'In your wardrobe', exact: true });
 

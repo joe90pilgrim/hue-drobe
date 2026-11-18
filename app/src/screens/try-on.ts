@@ -1,7 +1,6 @@
 import { createViewer } from '../viewer';
 import { kvGet, kvPut } from '../store';
 import {
-  SHOWN_FIRST,
   addFavourite,
   hasFavourite,
   loadFavourites,
@@ -42,6 +41,7 @@ import {
   saveItems,
   type GarmentId,
   type Neckline,
+  colourName,
 } from '../wardrobe';
 import { createColourChooser } from '../colour-chooser';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
@@ -156,15 +156,12 @@ export function renderTryOn(el: HTMLElement): () => void {
         <div class="field">
           <span class="field-label" id="lbl-colour">Colour</span>
           <div class="colour-row">
-            <span class="cur-swatch" role="img" aria-label="Current colour"></span>
-            <button type="button" class="secondary choose" aria-haspopup="true">Choose a colour</button>
-            <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
-          </div>
-          <span class="field-label fav-label" hidden>Favourites</span>
-          <div class="fav-row" role="group" aria-label="Your favourite colours"></div>
-          <div class="fav-foot">
-            <span class="legend" hidden><span class="legend-dot"></span>From your colour palette</span>
-            <button type="button" class="link-btn" data-more hidden></button>
+            <button type="button" class="colour-open choose" aria-haspopup="true">
+              <span class="cur-swatch" role="img" aria-hidden="true"></span>
+              <span class="cur-text"><span class="cur-name"></span><span class="cur-hex"></span></span>
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+            </button>
+            <button type="button" class="heart-btn fav-btn" aria-pressed="false" aria-label="Save colour to favourites">${HEART}</button>
           </div>
         </div>
         <button type="button" class="secondary add-wardrobe"></button>
@@ -195,10 +192,8 @@ export function renderTryOn(el: HTMLElement): () => void {
   const backBtn = editor.querySelector<HTMLButtonElement>('.editor-back')!;
   const backText = backBtn.querySelector<HTMLElement>('.editor-back-text')!;
   const favBtn = editor.querySelector<HTMLButtonElement>('.fav-btn')!;
-  const favRow = editor.querySelector<HTMLElement>('.fav-row')!;
-  const favLabel = editor.querySelector<HTMLElement>('.fav-label')!;
-  const legend = editor.querySelector<HTMLElement>('.legend')!;
-  const moreBtn = editor.querySelector<HTMLButtonElement>('[data-more]')!;
+  const curName = editor.querySelector<HTMLElement>('.cur-name')!;
+  const curHex = editor.querySelector<HTMLElement>('.cur-hex')!;
   const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
   const laptop = matchMedia('(min-width: 900px)');
   // Moving a slider changes the avatar at once; the colour is saved when the slider is released or the chooser closes.
@@ -226,7 +221,6 @@ export function renderTryOn(el: HTMLElement): () => void {
   let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
   let sheer = false; // the tights' sheerness (V2-04); like the neckline, the colour belongs to the tights either way
   let favourites: Favourite[] = []; // shared by every slot
-  let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
   let editing: Slot | null = null; // the slot whose controls are open
   let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
@@ -273,28 +267,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
     outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
-  };
-
-  /** Draws the favourite tiles and keeps the keyboard focus on the tile or link that was used. */
-  const renderFavs = (s: Slot) => {
-    const g = garmentOf(s);
-    const current = colourOf(s);
-    const active = document.activeElement as HTMLElement | null;
-    const keep = active && favRow.contains(active) ? active.dataset.hex : active === moreBtn ? 'more' : undefined;
-    const shown = showAll ? favourites : favourites.slice(0, SHOWN_FIRST);
-    favRow.innerHTML = shown
-      .map(
-        (f) =>
-          `<button type="button" class="fav-tile${f.hex === current ? ' on' : ''}" data-hex="${f.hex}" aria-pressed="${f.hex === current}" aria-label="${f.hex}${f.fromPalette ? ', from your palette' : ''}" style="background:${f.hex}" ${!g ? 'disabled' : ''}>${f.fromPalette ? '<span class="palette-dot"></span>' : ''}</button>`,
-      )
-      .join('');
-    favLabel.hidden = shown.length === 0;
-    legend.hidden = !shown.some((f) => f.fromPalette);
-    moreBtn.hidden = favourites.length <= SHOWN_FIRST;
-    moreBtn.textContent = showAll ? 'Show fewer' : 'Show all';
-    moreBtn.setAttribute('aria-expanded', String(showAll));
-    if (keep === 'more') moreBtn.focus();
-    else if (keep) favRow.querySelector<HTMLElement>(`[data-hex="${keep}"]`)?.focus();
   };
 
   /** Brings every control in the open panel up to date with the current outfit. */
@@ -344,7 +316,9 @@ export function renderTryOn(el: HTMLElement): () => void {
     }
     curSwatch.classList.toggle('o-empty', !g);
     curSwatch.style.background = g ? current : '';
-    curSwatch.setAttribute('aria-label', g ? `Current colour ${current}` : 'No colour, nothing is worn');
+    curName.textContent = g ? colourName(current) : 'Nothing worn';
+    curHex.textContent = g ? current.toUpperCase() : '';
+    chooseBtn.setAttribute('aria-label', g ? `Colour, ${colourName(current)}, ${current}` : 'Colour, nothing is worn');
     chooseBtn.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
     chooser.sync({ hex: current, favourites });
     favBtn.disabled = !g;
@@ -353,7 +327,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     const saved = !!g && savedKey === itemKey(s);
     addBtn.innerHTML = saved ? `${TICK}In your wardrobe` : `${PLUS}Add to wardrobe`;
     addBtn.classList.toggle('done', saved);
-    renderFavs(s);
   };
 
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
@@ -431,6 +404,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     chooserOpen = open;
     controls.hidden = open;
     chooser.el.hidden = !open;
+    if (open) chooser.reset();
     editorTitle.hidden = open;
     backBtn.hidden = !open;
     backText.textContent = `${editing.name} colour`;
@@ -539,16 +513,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     syncEditor();
   }
   favBtn.addEventListener('click', toggleFavourite);
-  favRow.addEventListener('click', (e) => {
-    const hex = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-hex]')?.dataset.hex;
-    if (!hex) return;
-    setColour(hex);
-    void kvPut('colours', { ...colours });
-  });
-  moreBtn.addEventListener('click', () => {
-    showAll = !showAll;
-    syncEditor();
-  });
   addBtn.addEventListener('click', async () => {
     const s = editing;
     const g = s && (garmentOf(s) as GarmentId | undefined);

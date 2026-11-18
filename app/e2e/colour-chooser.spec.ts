@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chooseButton, chooserBack, closeSlot, expectColour, favourite, openSlot } from './helpers';
+import { chooseButton, chooserBack, closeSlot, expectColour, favourite, openFineTune, openSlot } from './helpers';
 
 const chooser = (page: import('@playwright/test').Page) => page.locator('.chooser');
 const slider = (page: import('@playwright/test').Page, name: string) => chooser(page).getByRole('slider', { name });
@@ -19,6 +19,9 @@ test('opens inside the panel, keeps the avatar in view, and goes back to the con
   await expect(page.getByRole('radiogroup', { name: 'Garment' })).toBeHidden();
   const stage = await page.locator('#stage').boundingBox();
   expect(stage!.height).toBeGreaterThanOrEqual(120);
+  for (const name of ['Colour', 'Strength', 'Lightness']) await expect(slider(page, name)).toBeHidden(); // Fine-tune starts closed
+  await expect(page.getByLabel('Colour code')).toBeHidden();
+  await openFineTune(page);
   for (const name of ['Colour', 'Strength', 'Lightness']) await expect(slider(page, name)).toBeVisible();
   await expect(page.getByRole('group', { name: 'Basic colours' }).getByRole('button')).toHaveCount(6);
   await chooserBack(page).click();
@@ -31,6 +34,7 @@ test('a typed code, a Basics tile and a slider all give the exact hex on the swa
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
   await chooseButton(page).click();
+  await openFineTune(page);
   await page.getByLabel('Colour code').fill('1E2959');
   await expect(page.getByRole('img', { name: 'Chosen colour #1e2959' })).toBeVisible();
   await page.getByRole('group', { name: 'Basic colours' }).getByRole('button', { name: 'Cream' }).click();
@@ -52,14 +56,15 @@ test('the sliders work with the keyboard and the Favourite toggle works inside t
   await page.goto('/#/try-on');
   await openSlot(page, 'Top');
   await chooseButton(page).click();
+  await openFineTune(page);
   await page.getByLabel('Colour code').fill('#808080');
   const strength = slider(page, 'Strength');
   await strength.focus();
   await page.keyboard.press('ArrowRight');
   await expect(strength).toHaveValue('1');
   await expect(page.getByLabel('Colour code')).not.toHaveValue('#808080');
-  await chooser(page).getByRole('button', { name: 'Favourite', exact: true }).click();
-  await expect(chooser(page).getByRole('button', { name: 'Favourite', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await chooser(page).getByRole('button', { name: 'Save colour to favourites' }).click();
+  await expect(chooser(page).getByRole('button', { name: 'Save colour to favourites' })).toHaveAttribute('aria-pressed', 'true');
   await chooserBack(page).click();
   await expect(favourite(page)).toHaveAttribute('aria-pressed', 'true');
 });
@@ -85,6 +90,7 @@ test.describe('phone width', () => {
     await page.goto('/#/try-on');
     await openSlot(page, 'Top');
     await chooseButton(page).click();
+    await openFineTune(page);
     const overflow = await page.evaluate(() => {
       const c = document.querySelector('.chooser')!;
       return { scroll: c.scrollWidth, client: c.clientWidth, page: document.documentElement.scrollWidth };

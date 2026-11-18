@@ -63,7 +63,7 @@ test('on a phone a row opens a sheet under a smaller stage, in order garment, ne
   const y = async (locator: ReturnType<typeof page.locator>) => (await locator.first().boundingBox())!.y;
   const garmentY = await y(dialog.getByRole('radiogroup', { name: 'Garment' }));
   const neckY = await y(dialog.getByRole('radiogroup', { name: 'Neckline' }));
-  const colourY = await y(dialog.getByRole('button', { name: 'Favourite', exact: true }));
+  const colourY = await y(dialog.getByRole('button', { name: 'Save colour to favourites', exact: true }));
   const addY = await y(dialog.getByRole('button', { name: 'Add to wardrobe' }));
   expect(garmentY).toBeLessThan(neckY);
   expect(neckY).toBeLessThan(colourY);
