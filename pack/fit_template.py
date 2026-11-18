@@ -30,6 +30,16 @@ BODIES = ("female", "male", "both")
 LICENCES = ("CC0", "CC-BY")
 COLOURS = ("plain", "texture")
 TEXTURE_CATEGORIES = ("hair", "shoes")  # Joe, 16 Nov 2026: every other garment is plain colour
+def pack_licence_error(pack_lic, meta):
+    """Error text if the pack's own licence for an item can't be used for this template, else None (V3-07a): the pack must say the
+    same licence as the template, which must be CC0, or CC-BY with a credit."""
+    if pack_lic != meta.get("licence") or pack_lic not in LICENCES:
+        return f"licensed {pack_lic!r} by its pack and {meta.get('licence')!r} by template {meta.get('id')}; only {', '.join(LICENCES)} are used"
+    if pack_lic == "CC-BY" and not (isinstance(meta.get("credit"), str) and meta["credit"].strip()):
+        return f"is CC-BY but template {meta.get('id')} has no credit"
+    return None
+
+
 REQUIRED = ("id", "category", "layer", "allowed_bodies", "source", "licence", "sha256", "delete_group", "settle", "contact_groups",
             "clearance_cm", "replaces", "inner_layers", "approved", "colour")
 SETTLE_KEYS = ("pinned", "frames", "quality", "mass", "tension", "compression", "shear", "bending", "gravity_ramp")

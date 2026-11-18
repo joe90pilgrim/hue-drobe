@@ -36,6 +36,15 @@ class ValidateMeta(unittest.TestCase):
             with self.assertRaisesRegex(ft.MetaError, "not allowed"):
                 ft.validate_meta(bad(licence=lic))
 
+    def test_build_refuses_cc_by_without_credit_and_accepts_with(self):
+        m = {"id": "t", "licence": "CC-BY", "credit": None}
+        self.assertIn("no credit", ft.pack_licence_error("CC-BY", m))
+        m["credit"] = "Shirt by someone, CC-BY, makehumancommunity.org"
+        self.assertIsNone(ft.pack_licence_error("CC-BY", m))
+        self.assertIsNone(ft.pack_licence_error("CC0", {"id": "t", "licence": "CC0"}))
+        self.assertIn("only", ft.pack_licence_error("CC-BY", {"id": "t", "licence": "CC0"}))
+        self.assertIn("only", ft.pack_licence_error("CC-BY-NC", {"id": "t", "licence": "CC-BY-NC", "credit": "x"}))
+
     def test_cc_by_needs_a_credit(self):
         for credit in (None, "", "   "):
             with self.assertRaisesRegex(ft.MetaError, "CC-BY template needs a credit"):

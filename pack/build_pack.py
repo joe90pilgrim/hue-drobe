@@ -106,14 +106,14 @@ def templates_for(meas):
 def prepare_templates(metas):
     """Unpack, from the archived zips (assets/packs/zips, V2-09), just the pack items the templates use, into assets/packs/extracted/<pack>/.
     Checks the zip against the sha256 in assets/packs/MANIFEST.md, the item's .mhclo against the template's sha256, and that the pack's
-    own licence for the item is the template's and is CC0 (the manifest's shoes01 note; V3-07a widens this to CC-BY with a credit).
+    own licence for the item is the template's, and CC0 or CC-BY with a credit.
     Returns an error text, or None."""
     manifest = (ROOT / "assets" / "packs" / "MANIFEST.md").read_text(encoding="utf8")
     for meta in metas:
         if "pack" not in meta["source"]:
             continue
         it = {"pack": meta["source"]["pack"], "asset": meta["source"]["asset"], "kind": "hair" if meta["category"] == "hair" else "clothes"}
-        zpath = PACKS_ZIPS / f"{it['pack']}_cc0.zip"
+        zpath = next(iter(sorted(PACKS_ZIPS.glob(f"{it['pack']}_*.zip"))), PACKS_ZIPS / f"{it['pack']}_cc0.zip")
         want = re.search(rf"\|\s*{it['pack']}\s*\|[^|]*\|\s*`([0-9a-f]{{64}})`", manifest)
         if not zpath.exists() or not want:
             return f"{zpath} is missing or not in assets/packs/MANIFEST.md; fetch it with python -I assets/packs/fetch_packs.py"
@@ -125,8 +125,9 @@ def prepare_templates(metas):
                 return f"{zpath} does not match the sha256 in assets/packs/MANIFEST.md"
             with zipfile.ZipFile(zpath) as z:
                 lic = json.loads(z.read(f"packs/{it['pack']}.json")).get(it["asset"], {}).get("license")
-                if lic != "CC0" or lic != meta["licence"]:
-                    return f"{it['asset']} is licensed {lic!r} by its pack and {meta['licence']!r} by template {meta['id']}; only CC0 is used"
+                err = fit_template.pack_licence_error(lic, meta)
+                if err:
+                    return f"{it['asset']} {err}"
                 folder = "hair" if it["kind"] == "hair" else "clothes"
                 for n in z.namelist():  # the pack folder may already hold other templates' items: add this one, keep the rest
                     if n.startswith(f"{folder}/{it['asset']}/") and not n.endswith("/"):

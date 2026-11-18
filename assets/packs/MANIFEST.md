@@ -19,9 +19,14 @@ Rebuild or check with `python -I assets/packs/fetch_packs.py` (`--check` to veri
 | hair01 | 227,775,853 | `49445d69848a313ec41a9970f6a0fe4bcf925c9f1c6ef40a76f119c2e07940c9` | CC0 (25 items) | Hair. Spike used `cortu_short_messy_hair` / `toigo_blunt_bob`. |
 | hats01 | 6,636,192 | `97b70d7bd90e74ee87a49faeb7c4a1b2762b311902974db575851daaae05b50e` | CC0 (6 items) | Hats, for later tickets. |
 | underwear01 | 60,561,755 | `8c3b51cf18d26ea096cb92b79a7a379d1a00273ef029b5779715486180fd47d5` | CC0 (19 items) | Underwear, stockings, sleeves, for later tickets. |
+| suits01 | 42,624,017 | `2b1d8676f3863b188e9eea98c1d8f234543d54c440e791d92b819f8ee1861f19` | CC0 (8 items) | Suits and jackets (V3-07a). File `suits01_cc0.zip`. |
+| shirts02 | 175,395,076 | `d711ca9f73212de855257ac08422e1e0ccb802e5231315c2a360d0fcfea5033e` | **CC-BY** (13 items; authors EWS, Elvaerwyn, Mindfront, janexx, punkduck) | Shirts (V3-07a). File `shirts02_ccby.zip`. Needs a credit in `CREDITS.md`. |
+| shirts03 | 71,659,687 | `b3ff3596723dbc87cb07389895da760b667cf413f2c67869ccb0cdfb82a79a8a` | **CC-BY** (19 items; authors DredNicolson, Elvaerwyn, Mindfront, punkduck) | Shirts (V3-07a). File `shirts03_ccby.zip`. Needs a credit in `CREDITS.md`. |
 
 The six spike packs match the sha256 prefixes recorded in `docs/decisions/2026-11-16-v2-07-asset-pack-spike.md`.
 
 ## Licence exception
 
 `shoes01_cc0.zip` is not wholly CC0. In `packs/shoes01.json`, `culturalibre_heroine_boots_4` (author culturalibre) is **CC-BY**, which needs credit. Do not use that item unless we add the credit. The other 22 shoes are CC0. All other packs list CC0 for every item.
+
+CC-BY packs download from `.../asset_packs/<pack>/<pack>_ccby.zip`. The build accepts a CC-BY item only when its template's `meta.json` has a `credit` (`fit_template.pack_licence_error`). Downloaded 18 November 2026.
