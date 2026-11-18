@@ -15,7 +15,7 @@ The server makes two kinds of outgoing call: it fetches Google's IAP public keys
 
 ## Gemini key (V4-01)
 
-Get an API key from [Google AI Studio](https://aistudio.google.com/apikey) and save it as `private/gemini-key.txt` (git-ignored, one line). `deploy.mjs` puts it in the service's environment as `GEMINI_API_KEY` (never in the app bundle or the repo). Without the file the deploy works as before and "Add from photo" shows that matching is not switched on. The model is `gemini-2.5-flash` unless `GEMINI_MODEL` is set; check it is still offered when you first deploy.
+Get an API key from [Google AI Studio](https://aistudio.google.com/apikey) and save it as `private/gemini-key.txt` (git-ignored, one line). `deploy.mjs` puts it in the service's environment as `GEMINI_API_KEY` (never in the app bundle or the repo). Without the file the deploy works as before and "Add from photo" shows that matching is not switched on. The model is `gemini-flash-latest` (Google's own alias for its current Flash model) unless `GEMINI_MODEL` is set. `gemini-2.5-flash` appears in the model list but answers 404, so it is not used.
 
 ## One-off setup
 

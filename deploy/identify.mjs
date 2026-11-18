@@ -4,7 +4,7 @@
 //
 // Decision record: docs/decisions/2026-11-18-v4-data-off-device.md.md (garments only; never people, faces or body data).
 
-export const DEFAULT_MODEL = 'gemini-2.5-flash';
+export const DEFAULT_MODEL = 'gemini-flash-latest';
 /** Largest photo accepted, as base64 text. The app shrinks photos to about 1024 px first (roughly 150 KB). */
 export const MAX_IMAGE_CHARS = 3_000_000;
 export const MAX_BODY_BYTES = MAX_IMAGE_CHARS + 20_000;

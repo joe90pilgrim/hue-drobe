@@ -28,7 +28,7 @@ Upload or snap a photo of a garment on mobile or desktop; the app identifies the
 - [ ] `npm run check` passes and changes are committed cleanly. (See notes: one Python test fails from before this ticket.)
 
 ## Notes (18 Nov 2026)
-- Needs from Joe before it works live: put the Gemini key in `private/gemini-key.txt`, then `node deploy/deploy.mjs` (see `deploy/README.md`). Without the key the button opens the sheet with "not switched on yet" and the garment is chosen by hand. The model defaults to `gemini-2.5-flash` (set `GEMINI_MODEL` to change it); it has not been called for real, so check it is still offered.
+- Needs from Joe before it works live: put the Gemini key in `private/gemini-key.txt`, then `node deploy/deploy.mjs` (see `deploy/README.md`). Without the key the button opens the sheet with "not switched on yet" and the garment is chosen by hand. The model is `gemini-flash-latest` (set `GEMINI_MODEL` to change it). `gemini-2.5-flash` is listed but answered 404 on the first live try, so the default was changed. Checked live with a plain test image: structured answer and colour came back correctly. Gemini needed prepaid credit on the account first (it answered 402 until then).
 - The key is a Cloud Run environment variable, not a Secret Manager secret (simpler, nothing else to set up). Say if you want Secret Manager instead.
 - "Clothes only, never people" shows as a tooltip on the buttons and in the sheet while it reads. A permanent line on the page pushed the 4th row of cards off a phone screen (the 20-pieces test), so I left it out.
 - Skirt and dress are offered to everyone, including Joe, whose pack has neither.
