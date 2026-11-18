@@ -4,7 +4,7 @@
 - **Status:** ready once V3-08 is done. Replaces the jacket part of V3-04.
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · High. The first outer layer: it must sit over the shirt and tee, which tests the push-out and layering of V3-07. If layering fails three times, stop: Joe decides whether to move up to Opus.
-- **Depends on:** V3-07, V3-07a, V3-08
+- **Depends on:** V3-07, V3-07a, V3-08, V3-07c (`keep_islands`: every Suits 01 item is a whole suit in one mesh, so the jacket is picked out by island; the pipeline cannot do that before V3-07c)
 
 ## Target Files
 Create:
@@ -46,3 +46,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - **Visual first, gates second:** while tuning a template, render with `spike/blender/render_closeup.py` and report the check numbers without trying to force them to pass. At most three render rounds, then stop and ask Joe.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
+
+## Note (18 Nov 2026)
+Stopped after three render rounds: `blazer_suit3` (men) and `blazer_suit_f2` (women) are built from the Suits 01 jackets with `keep_islands`, body as drawn 0 pairs and 0 gap rays everywhere, and the male jacket over the tee on synthetic medium looks right. On every female body, with either jacket, the bust and front are shredded by the push-off against the tee or shirt (layer pairs 102 to 1061, limit 0); `loose` did not help. Needs a `fit_template.py` follow-up (Opus), and nothing has gone to Joe or B for sign-off: see `pack/templates/outer/blazer_suit3/notes.md`.
