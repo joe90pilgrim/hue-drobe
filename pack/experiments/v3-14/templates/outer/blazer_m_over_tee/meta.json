@@ -1,0 +1,44 @@
+{
+  "_note": "V3-14 copy of blazer_suit3 (men): over the tee.",
+  "id": "blazer_m_over_tee",
+  "category": "outer",
+  "pack_file": "blazer_m_over_tee",
+  "layer": "outer",
+  "allowed_bodies": "male",
+  "source": {
+    "pack": "suits01",
+    "asset": "toigo_male_suit_3"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "e5457dffafce4a5f44e179278c712e64a040b5e5e3aa41f15ed8100be5694c01",
+  "keep_islands": [
+    0,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "keep_islands_vertices": 5033,
+  "delete_group": true,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.3,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain",
+  "v3_14": {
+    "inner": "tee",
+    "cloth": "blazer"
+  }
+}
