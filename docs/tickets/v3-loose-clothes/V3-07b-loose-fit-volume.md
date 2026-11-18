@@ -47,3 +47,6 @@ Ideas, not a prescription (Opus to choose, after measuring on `synthetic_female_
 - Run Blender builds in a subagent and bring back only the numbers and render paths. Try one body first (`python pack/build_pack.py --only synthetic_female_large`), with the real Python (see `pack/README.md`).
 - Three failed attempts at the same problem, or the ceiling: stop, write down what was done and what is left, and ask Joe.
 - When done: commit, add a two-line note here, and stop. Then V3-08 resumes (Sonnet): rebuild, re-render, ask Joe to choose which shirt wins.
+
+## Note (18 Nov 2026)
+Stopped: `loose`, `inner_push` and a height-pinned `settle` were added to `fit_template.py` (off by default, tested), but on synthetic_female_large the shirt still showed cups after three rounds and the cloth settle blew up. Joe's call: shirt stays as it is for both; follow-up in `docs/tickets/backlog.md`.
