@@ -239,5 +239,51 @@ class LooseGeometry(unittest.TestCase):
         self.assertEqual(ft.hem_lower(0.80, 1.00, 0.80, 0.85), 0.80)  # already low enough
 
 
+class KeepIslands(unittest.TestCase):
+    """V3-07c: keep_islands keeps whole islands of a pack item's mesh (a suit's jacket), checked against a recorded vertex count."""
+
+    def test_off_by_default(self):
+        self.assertIsNone(ft.validate_meta(GOOD).get("keep_islands"))
+        self.assertIsNone(ft.validate_meta({**GOOD, "keep_islands": None}).get("keep_islands"))
+
+    def test_valid(self):
+        m = ft.validate_meta({**GOOD, "keep_islands": [0, 2, 4], "keep_islands_vertices": 5000})
+        self.assertEqual(m["keep_islands"], [0, 2, 4])
+
+    def test_bad_values_refused(self):
+        for ki, msg in (("0", "non-empty list"), (0, "non-empty list"), ([], "non-empty list"), ([0, 1.5], "whole numbers"),
+                        ([True], "whole numbers"), ([-1], "whole numbers"), (["jacket"], "whole numbers"), ([0, 2, 0], "duplicate")):
+            with self.subTest(ki=ki), self.assertRaisesRegex(ft.MetaError, msg):
+                ft.validate_meta({**GOOD, "keep_islands": ki, "keep_islands_vertices": 10})
+
+    def test_vertex_count_required(self):
+        for kv in (KeyError, None, 0, -3, 2.5, True, "10"):
+            m = {**GOOD, "keep_islands": [0]}
+            if kv is not KeyError:
+                m["keep_islands_vertices"] = kv
+            with self.subTest(kv=kv), self.assertRaisesRegex(ft.MetaError, "keep_islands_vertices"):
+                ft.validate_meta(m)
+        with self.assertRaisesRegex(ft.MetaError, "keep_islands is not"):
+            ft.validate_meta({**GOOD, "keep_islands_vertices": 10})
+
+    def test_islands_numbered_largest_first(self):
+        # vertices 0-2: a triangle; 3-6: two triangles sharing an edge; 7: alone; 8-10: another triangle
+        faces = [[0, 1, 2], [3, 4, 5], [4, 5, 6], [8, 9, 10]]
+        self.assertEqual(ft.islands(11, faces), [[3, 4, 5, 6], [0, 1, 2], [8, 9, 10], [7]])
+
+    def test_read_obj(self):
+        v, f = ft.read_obj("\n".join(["# x", "v 0 0 0", "v 1 0 0", "v 0 1 0", "v 0 0 1", "vt 0 0", "f 1/1 2/1 3/1", "f -1 -2 -3"]))
+        self.assertEqual(len(v), 4)
+        self.assertEqual(f, [[0, 1, 2], [3, 2, 1]])
+
+    def test_kept_vertices_and_refusals(self):
+        isl = ft.islands(11, [[0, 1, 2], [3, 4, 5], [4, 5, 6], [8, 9, 10]])
+        self.assertEqual(ft.kept_vertices(isl, [0, 2], 7), [3, 4, 5, 6, 8, 9, 10])
+        with self.assertRaisesRegex(ValueError, "out of range"):
+            ft.kept_vertices(isl, [4], 1)
+        with self.assertRaisesRegex(ValueError, "the mesh has changed"):
+            ft.kept_vertices(isl, [0], 5)
+
+
 if __name__ == "__main__":
     unittest.main()

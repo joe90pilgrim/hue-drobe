@@ -9,6 +9,7 @@ It runs the inner script (spike/blender/body_from_measurements.py, or spike/clot
 the body and the app's own garments are exactly what the pack build makes, then for each template, in layer order (base, bottom, mid,
 outer, full):
  1. attaches it with MPFB's own loader (HumanService.add_mhclo_asset): the pack's .mhclo, or the template's own template.mhclo;
+ 1a. with meta "keep_islands" (V3-07c), deletes every other island of the attached mesh (a suit's trousers, keeping its jacket);
  1b. with meta "loose" (V3-07b), lowers the hem and moves the cloth out to hang off the torso (loose_fit);
  2. settles it with a short Blender cloth pass, pinned groups held (only when meta "settle" is set; V3-00's skirt settings);
  3. pushes it out with Shrinkwrap modifiers in Blender's 'Outside' mode (only vertices inside, or closer than clearance_cm, move),
@@ -237,6 +238,70 @@ def hem_lower(z, z_from, z_lowest, z_target):
     return z_from - (z_from - z) * (z_from - z_target) / (z_from - z_lowest)
 
 
+# --- V3-07c keep_islands: use part of a pack item (a suit's jacket) by deleting whole islands; pure Python ---------------------------
+
+def read_obj(text):
+    """Vertices [(x, y, z)] and faces [[vertex index, ...]] (0-based) of a Wavefront .obj's text."""
+    verts, faces = [], []
+    for line in text.splitlines():
+        if line.startswith("v "):
+            verts.append(tuple(float(x) for x in line.split()[1:4]))
+        elif line.startswith("f "):
+            faces.append([int(t.split("/")[0]) - 1 for t in line.split()[1:]])
+    return verts, [[i if i >= 0 else len(verts) + i + 1 for i in f] for f in faces]
+
+
+def islands(n_verts, faces):
+    """The mesh's islands (vertices joined through faces), each a sorted list of vertex indices, largest first; equal sizes in order
+    of their lowest vertex index. The numbering keep_islands uses and pack/list_islands.py prints. A vertex in no face is its own island."""
+    parent = list(range(n_verts))
+
+    def root(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+    for f in faces:
+        r0 = root(f[0])
+        for i in f[1:]:
+            ri = root(i)
+            if ri != r0:
+                parent[ri] = r0
+    groups = {}
+    for i in range(n_verts):
+        groups.setdefault(root(i), []).append(i)
+    return sorted(groups.values(), key=lambda g: (-len(g), g[0]))
+
+
+def kept_vertices(isl, keep, want_vertices):
+    """The vertex indices of the islands numbered in keep. Raises ValueError if an index is out of range, or if the kept islands do not
+    have want_vertices vertices in all (meta keep_islands_vertices): the pack item is not the mesh the template was set up on."""
+    bad = [k for k in keep if k >= len(isl)]
+    if bad:
+        raise ValueError(f"keep_islands {bad} out of range: the mesh has {len(isl)} islands (0 to {len(isl) - 1})")
+    got = sorted(i for k in keep for i in isl[k])
+    if len(got) != want_vertices:
+        raise ValueError(f"keep_islands {keep} have {len(got)} vertices, meta keep_islands_vertices says {want_vertices}: "
+                         "the mesh has changed; check it again with pack/list_islands.py")
+    return got
+
+
+def _validate_keep_islands(m, p):
+    ki, kv = m.get("keep_islands"), m.get("keep_islands_vertices")
+    if ki is None:
+        if kv is not None:
+            p.append("keep_islands_vertices is set but keep_islands is not")
+        return
+    if not isinstance(ki, list) or not ki:
+        p.append("keep_islands must be null or a non-empty list of island indices")
+    elif not all(isinstance(k, int) and not isinstance(k, bool) and k >= 0 for k in ki):
+        p.append("keep_islands must hold whole numbers from 0 (islands numbered by pack/list_islands.py)")
+    elif len(set(ki)) != len(ki):
+        p.append("keep_islands has duplicate indices")
+    if not (isinstance(kv, int) and not isinstance(kv, bool) and kv > 0):
+        p.append("keep_islands needs keep_islands_vertices: the kept islands' vertex count, from pack/list_islands.py")
+
+
 def validate_meta(m, where="meta.json"):
     """Returns the meta with defaults filled in (pack_file), or raises MetaError naming every problem."""
     if not isinstance(m, dict):
@@ -292,6 +357,7 @@ def validate_meta(m, where="meta.json"):
     elif m["colour"] == "texture" and m["category"] not in TEXTURE_CATEGORIES:
         p.append("only hair and shoes keep a texture; every other garment is plain colour")
     _validate_loose(m, p)
+    _validate_keep_islands(m, p)
     if p:
         raise MetaError(f"{where}: " + "; ".join(p))
     return {**m, "pack_file": m.get("pack_file") or m["id"]}
@@ -632,6 +698,18 @@ def run():
             fb, kd = read_body()
             wm = ob.data.copy()  # the item in world space, to settle, push and test on; the MPFB object stays until the body is exported
             wm.transform(ob.matrix_world)
+            if meta.get("keep_islands") is not None:  # V3-07c: only these islands go on; the rest are deleted before any fitting
+                _kb = bmesh.new()
+                _kb.from_mesh(wm)
+                _kb.verts.ensure_lookup_table()
+                _isl = islands(len(_kb.verts), [[v.index for v in f.verts] for f in _kb.faces])
+                _keep = set(kept_vertices(_isl, meta["keep_islands"], meta["keep_islands_vertices"]))
+                bmesh.ops.delete(_kb, geom=[v for v in _kb.verts if v.index not in _keep], context="VERTS")
+                _kb.to_mesh(wm)
+                _kb.free()
+                R["keep_islands"] = {"kept": meta["keep_islands"], "islands_in_source": len(_isl),
+                                     "vertices_kept": len(_keep), "vertices_removed": sum(map(len, _isl)) - len(_keep),
+                                     "kept_island_vertices": [len(_isl[k]) for k in meta["keep_islands"]]}
             iob = bpy.data.objects.new(f"{name}_{pf}", wm)
             sc.collection.objects.link(iob)
             _sb = bmesh.new()  # the item exactly as the pack fits it: the control, which must cross the whole body or the check proves nothing
