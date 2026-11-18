@@ -68,12 +68,12 @@ class ValidateMeta(unittest.TestCase):
     def test_source_sha_settle_and_lists(self):
         for m, words in ((bad(source={"pack": "p"}), "source must be"), (bad(source={"pack": "p", "asset": "a", "url": "u"}), "source must be"),
                          (bad(sha256="abc"), "sha256"), (bad(approved="yes"), "approved must be"),
-                         (bad(settle={"frames": 30}), "pinned"), (bad(settle={"pinned": ["body"], "wind": 1}), "unknown keys"),
+                         (bad(settle={"frames": 30}), "needs pin"), (bad(settle={"pin": {}, "wind": 1}), "unknown keys"),
                          (bad(contact_groups=[]), "contact_groups is empty"), (bad(replaces=["tops"]), "replaces names unknown"),
                          (bad(id="Plain Shirt"), "id 'Plain Shirt'")):
             with self.assertRaisesRegex(ft.MetaError, words):
                 ft.validate_meta(m)
-        self.assertEqual(ft.validate_meta(bad(settle={"pinned": ["joint-neck"], "frames": 40}))["settle"]["frames"], 40)
+        self.assertEqual(ft.validate_meta(bad(settle={"pin": {}, "frames": 40}))["settle"]["frames"], 40)
 
     def test_texture_allowed_for_hair_and_shoes(self):
         self.assertEqual(ft.validate_meta(bad(category="shoes", colour="texture"))["colour"], "texture")
@@ -134,109 +134,120 @@ class LoadTemplates(unittest.TestCase):
         dress = next(m for m in metas if m["id"] == "shift_dress")
         self.assertEqual((dress["pack_file"], dress["layer"], dress["licence"], dress["approved"]), ("dress", "full", "CC0", True))
         self.assertTrue(ft.mhclo_path(dress, "X").replace("\\", "/").endswith("X/dress01/clothes/toigo_shift_dress/toigo_shift_dress.mhclo"))
-        self.assertIsNone(ft.loose_settings(dress))  # the approved dress is fitted exactly as before
-        self.assertEqual(dress.get("inner_push", "shrinkwrap"), "shrinkwrap")
+        self.assertIsNone(ft.settle_settings(dress))  # the approved dress is fitted exactly as before
+        self.assertFalse(ft.hides_inner(dress))
+        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd"})  # V3.1-01: the V3-09 blazers are retired
 
 
-class LooseFields(unittest.TestCase):
-    """V3-07b: "loose" and "inner_push" are optional and off by default."""
+class Settle(unittest.TestCase):
+    """V3.1-01: settle is cloth pinned on the garment (settle.pin), with rest "fitted" or "template"."""
+    OK = {**GOOD, "settle": {"pin": {}}}
 
-    def test_off_by_default(self):
-        self.assertIsNone(ft.loose_settings(ft.validate_meta(GOOD)))
-        self.assertIsNone(ft.loose_settings(ft.validate_meta({**GOOD, "loose": "none"})))
+    def test_none_and_defaults(self):
+        self.assertIsNone(ft.settle_settings(ft.validate_meta(GOOD)))
+        s = ft.settle_settings(ft.validate_meta(self.OK))
+        self.assertEqual(s["pin"], ft.PIN_DEFAULTS)
+        self.assertEqual((s["rest"], s["frames"], s["collide_with"]), ("fitted", 60, []))
+        s = ft.settle_settings(ft.validate_meta({**GOOD, "settle": {"pin": {"back_cm": 1.5, "cuffs_cm": 4}, "rest": "template",
+                                                                      "collide_with": ["trousers"], "grow_from_skin": ["trousers"],
+                                                                      "frames": 90, "bending": 0.1}}))
+        self.assertEqual(s["pin"], {"front_cm": 3.5, "back_cm": 1.5, "cuffs_cm": 4})
+        self.assertEqual((s["rest"], s["frames"], s["bending"], s["morph_frames"]), ("template", 90, 0.1, 20))
 
-    def test_defaults_filled_in(self):
-        lo = ft.loose_settings(ft.validate_meta({**GOOD, "loose": {"hem_to_crotch_cm": -2}}))
-        self.assertEqual(lo, {**ft.LOOSE_DEFAULTS, "hem_to_crotch_cm": -2})
-
-    def test_bad_loose_values_refused(self):
-        for lo, msg in (("yes", "loose must be"), ({"puff": 1}, "unknown keys"), ({"ease_fraction": 0.5}, "ease_fraction"),
-                        ({"drape_taper": -1}, "drape_taper"), ({"smooth_iterations": 2.5}, "whole number"),
-                        ({"hem_to_crotch_cm": "low"}, "hem_to_crotch_cm"), ({"fade_cm": True}, "fade_cm"),
-                        ({"hem_curve_keep": 1.5}, "hem_curve_keep"), ({"chest_above_armpit_cm": -1}, "chest_above_armpit_cm")):
-            with self.assertRaisesRegex(ft.MetaError, msg):
-                ft.validate_meta({**GOOD, "loose": lo})
-
-    def test_settle_pinned_by_height(self):
-        ok = {**GOOD, "loose": {}, "settle": {"pin_above_armpit_cm": 4}}
-        self.assertEqual(ft.validate_meta(ok)["settle"]["pin_above_armpit_cm"], 4)
-        with self.assertRaisesRegex(ft.MetaError, "needs loose"):
-            ft.validate_meta({**GOOD, "settle": {"pin_above_armpit_cm": 4}})
-        with self.assertRaisesRegex(ft.MetaError, "pin_above_armpit_cm must be"):
-            ft.validate_meta({**ok, "settle": {"pin_above_armpit_cm": "high"}})
-
-    def test_inner_push(self):
-        self.assertEqual(ft.validate_meta({**GOOD, "inner_push": "body_normal"})["inner_push"], "body_normal")
-        with self.assertRaisesRegex(ft.MetaError, "inner_push"):
-            ft.validate_meta({**GOOD, "inner_push": "magnet"})
+    def test_bad_values_refused(self):
+        for st, msg in (("yes", "settle must be"), ({"frames": 30}, "settle needs pin"), ({"pin": []}, "pin must be an object"),
+                        ({"pin": {"top_cm": 1}}, "pin has unknown keys"), ({"pin": {"front_cm": -1}}, "front_cm"),
+                        ({"pin": {"cuffs_cm": 0}}, "cuffs_cm"), ({"pin": {}, "rest": "loose"}, "settle.rest"),
+                        ({"pin": {}, "wind": 1}, "unknown keys"), ({"pin": {}, "frames": 60.5}, "whole number"),
+                        ({"pin": {}, "mass": 0}, "settle.mass"), ({"pin": {}, "collide_with": "trousers"}, "collide_with must be"),
+                        ({"pin": {}, "grow_from_skin": ["trousers"]}, "grow_from_skin may only"),
+                        ({"pin": {}, "collide_with": ["tee"]}, "must not repeat inner_layers"),
+                        ({"pin": {}, "rest": "template", "frames": 20, "morph_frames": 20}, "morph_frames must be fewer")):
+            with self.subTest(st=st), self.assertRaisesRegex(ft.MetaError, msg):
+                ft.validate_meta({**GOOD, "settle": st})
 
 
-class LooseGeometry(unittest.TestCase):
-    """The pure-Python pieces of the loose fit, on made-up shapes."""
+class Removed(unittest.TestCase):
+    """V3.1-01: the V3-07b loose fit, inner_push and body-group pins are gone, and named clearly when a meta still has them."""
 
-    def test_split_by_gap_separates_arms(self):
-        xs = [-0.30, -0.29, -0.12, -0.11, -0.10, 0.29, 0.30]
-        runs = ft.split_by_gap(xs, 0.02)
-        self.assertEqual([sorted(xs[i] for i in r) for r in runs], [[-0.30, -0.29], [-0.12, -0.11, -0.10], [0.29, 0.30]])
+    def test_removed_fields_refused_by_name(self):
+        for m, msg in (({**GOOD, "loose": {}}, "loose was removed in V3.1-01"), ({**GOOD, "loose": "none"}, "loose was removed"),
+                       ({**GOOD, "inner_push": "shrinkwrap"}, "inner_push was removed in V3.1-01.*hide_inner"),
+                       ({**GOOD, "settle": {"pinned": ["joint-neck"]}}, "settle.pinned was removed.*settle.pin"),
+                       ({**GOOD, "settle": {"pin": {}, "pin_above_armpit_cm": 4}}, "settle.pin_above_armpit_cm was removed"),
+                       ({**GOOD, "settle": {"pin": {}, "gravity_ramp": 20}}, "settle.gravity_ramp was removed"),
+                       ({**GOOD, "settle": {"pin": {}, "pin_small_pieces": True}}, "settle.pin_small_pieces was removed")):
+            with self.subTest(m=m), self.assertRaisesRegex(ft.MetaError, msg):
+                ft.validate_meta(m)
 
-    def test_hull_bridges_a_hollow(self):
-        # two "cups" with a hollow between: the hull's radius straight ahead is the cups' reach, not the hollow's
-        pts = [(-0.1, 0.0), (0.1, 0.0), (-0.05, 0.12), (0.05, 0.12), (0.0, 0.08), (0.0, -0.1)]
-        hull = ft.convex_hull(pts)
-        self.assertNotIn((0.0, 0.08), hull)
-        r, per = ft.hull_radii(hull, (0.0, 0.0), 72)
-        self.assertAlmostEqual(r[18], 0.12, places=3)  # bin 18 points along +y
-        self.assertGreater(per, 0.5)
+    def test_loose_code_is_gone(self):
+        for f in ("loose_settings", "loose_fit", "torso_bands", "convex_hull", "hull_radii", "drape_envelope", "smooth_up", "hem_lower",
+                  "split_by_gap", "LOOSE_DEFAULTS", "INNER_PUSH"):
+            self.assertFalse(hasattr(ft, f), f)
+        src = open(ft.__file__, encoding="utf8").read()
+        for word in ("SHRINKWRAP", "body_normal"):
+            self.assertNotIn(word, src)
 
-    def test_hull_radii_of_a_square(self):
-        r, per = ft.hull_radii([(-1, -1), (1, -1), (1, 1), (-1, 1)], (0, 0), 8)
-        self.assertAlmostEqual(per, 8.0)
-        self.assertAlmostEqual(r[0], 1.0, places=2)
-        self.assertAlmostEqual(r[1], 2 ** 0.5, places=2)
 
-    def test_envelope_hangs_from_a_fuller_band_above(self):
-        zs = [0.0, 0.1, 0.2]
-        radii = [[0.10, 0.10], [0.10, 0.10], [0.20, 0.10]]  # the top band sticks out in direction 0
-        env = ft.drape_envelope(zs, radii, [0.0, 0.0, 0.0], 0.0, 0.5)
-        self.assertAlmostEqual(env[2][0], 0.20)
-        self.assertAlmostEqual(env[1][0], 0.15)  # stepped in by 0.5 per metre of drop
-        self.assertAlmostEqual(env[0][0], 0.10)  # back to the body's own surface
-        self.assertAlmostEqual(env[1][1], 0.10)
+class HideInner(unittest.TestCase):
+    """V3.1-01: hide_inner is on by default for a mid or outer layer with inner_layers."""
 
-    def test_envelope_adds_ease_from_the_perimeter(self):
-        import math
-        env = ft.drape_envelope([0.0], [[0.1]], [2 * math.pi], 0.05, 0.0)
-        self.assertAlmostEqual(env[0][0], 0.15)
+    def test_default(self):
+        self.assertTrue(ft.hides_inner(ft.validate_meta(GOOD)))  # mid, over the tee
+        self.assertTrue(ft.hides_inner(ft.validate_meta({**GOOD, "layer": "outer"})))
+        self.assertFalse(ft.hides_inner(ft.validate_meta({**GOOD, "layer": "full"})))
+        self.assertFalse(ft.hides_inner(ft.validate_meta({**GOOD, "inner_layers": []})))
+        self.assertFalse(ft.hides_inner(ft.validate_meta({**GOOD, "hide_inner": False})))
+        self.assertTrue(ft.hides_inner(ft.validate_meta({**GOOD, "layer": "full", "hide_inner": True})))
 
-    def test_smooth_up_spreads_and_never_lowers(self):
-        g = [[0.0] * 4 for _ in range(3)]
-        g[1][0] = 1.0
-        s = ft.smooth_up(g, 3)
-        self.assertEqual(s[1][0], 1.0)
-        self.assertGreater(s[1][3], 0.0)  # wraps round the body
-        self.assertTrue(all(s[k][b] >= g[k][b] for k in range(3) for b in range(4)))
+    def test_bad_values_refused(self):
+        with self.assertRaisesRegex(ft.MetaError, "hide_inner must be"):
+            ft.validate_meta({**GOOD, "hide_inner": "yes"})
+        with self.assertRaisesRegex(ft.MetaError, "hide_inner needs inner_layers"):
+            ft.validate_meta({**GOOD, "inner_layers": [], "hide_inner": True})
 
-    def test_torso_bands_finds_the_armpit_and_leaves_the_arms(self):
-        import math
-        BV = []
-        for zi in range(40, 160):  # a torso ring 15 cm round the centre line, every 1 cm
-            z = zi / 100
-            BV += [(0.15 * math.cos(a / 12 * math.pi), 0.15 * math.sin(a / 12 * math.pi), z) for a in range(24)]
-            if z < 1.20:  # arms hanging apart from the torso below the armpit
-                BV += [(s * 0.30 + 0.03 * math.cos(a), 0.03 * math.sin(a), z) for s in (-1, 1) for a in range(8)]
-            else:  # above it they join the shoulders
-                BV += [(s * x / 100, 0.0, z) for s in (-1, 1) for x in range(15, 34, 3)]
-        bands, armpit = ft.torso_bands(BV, 0.80, 0.0, above=0.05)
-        self.assertAlmostEqual(armpit, 1.19, delta=0.02)
-        inside = {i for b in bands.values() for i in b}
-        self.assertTrue(all(abs(BV[i][0]) <= 0.151 for i in inside))  # no arm or shoulder vertex, also in the chest bands above
-        self.assertGreater(max(BV[i][2] for i in inside), armpit + 0.03)
 
-    def test_hem_lower_keeps_shape(self):
-        self.assertAlmostEqual(ft.hem_lower(0.80, 1.00, 0.80, 0.70), 0.70)
-        self.assertAlmostEqual(ft.hem_lower(0.90, 1.00, 0.80, 0.70), 0.85)
-        self.assertEqual(ft.hem_lower(1.10, 1.00, 0.80, 0.70), 1.10)  # above the stretch: unchanged
-        self.assertEqual(ft.hem_lower(0.80, 1.00, 0.80, 0.85), 0.80)  # already low enough
+class GarmentPins(unittest.TestCase):
+    """The garment-side pins, on made-up shapes in MakeHuman units (x across, y up, z forward; 1 unit = 10 cm)."""
+
+    @staticmethod
+    def shirt():
+        # columns x = -3.0 .. 3.0 (step 0.2); the shoulder line at y 15 for |x| <= 2, dropping steeply past it (the sleeve);
+        # each column has a front (z 1) and a back (z -1) running down from its top in 0.1 steps
+        V = []
+        for c in range(-15, 16):
+            x = c * 0.2
+            top = 15.0 if abs(x) <= 2.0 + 1e-9 else 15.0 - (abs(x) - 2.0) * 3
+            for z in (1.0, -1.0):
+                for k in range(12):
+                    V.append((x, top - k * 0.1, z))
+        return V
+
+    def test_bands_front_and_back(self):
+        V = self.shirt()
+        pins, xl, xr = ft.garment_pins(V, range(len(V)), front_cm=3.5, back_cm=8.0)
+        self.assertEqual((xl, xr), (-2.0, 2.0))  # the shoulder tips: the top line drops 0.6 units in the next column
+        front = {i for i in pins if V[i][2] > 0}
+        self.assertTrue(all(abs(V[i][0]) <= 2.0 + 1e-9 for i in pins))
+        self.assertEqual(len(front), 21 * 4)  # 21 columns; the front 0 to 0.3 below the top
+        self.assertEqual(len(pins - front), 21 * 9)  # the back 0 to 0.8 below the top
+        narrow, _, _ = ft.garment_pins(V, range(len(V)), front_cm=3.5, back_cm=1.5)
+        self.assertEqual(len(narrow - front), 21 * 2)
+
+    def test_cuff_pins_by_the_sleeve_openings(self):
+        # two square tubes along x (sleeves), open at both ends; the outermost open loops are the cuffs
+        V, F = [], []
+        for side in (-1, 1):
+            base = len(V)
+            for s in range(5):  # rings at |x| = 2.0 .. 2.4
+                for (y, z) in ((0, 0), (0.1, 0), (0.1, 0.1), (0, 0.1)):
+                    V.append((side * (2.0 + s * 0.1), y, z))
+            for s in range(4):
+                for k in range(4):
+                    a, b = base + s * 4 + k, base + s * 4 + (k + 1) % 4
+                    F.append([a, b, b + 4, a + 4])
+        pins = ft.cuff_pins(V, F, range(len(V)), cuffs_cm=1.5)  # within 0.15 units of the outermost ring
+        self.assertEqual(sorted(round(abs(V[i][0]), 1) for i in pins), [2.3] * 8 + [2.4] * 8)
 
 
 class KeepIslands(unittest.TestCase):

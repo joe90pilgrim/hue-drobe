@@ -152,9 +152,13 @@ def render_templates(name, out, metas):
         body = out / (f"{name}_body_{meta['pack_file']}.glb" if meta["delete_group"] else f"{name}.glb")
         shutil.copyfile(body, folder / "body.glb")
         shutil.copyfile(out / f"{name}_{meta['pack_file']}.glb", folder / f"{meta['pack_file']}.glb")
+        shown = [meta["pack_file"]]
+        for inner, hi in (r.get("inner_hidden") or {}).items():  # V3.1-01: the inner layer as drawn under it, staged as trousers_* so
+            shutil.copyfile(out / hi["glb"], folder / f"trousers_{inner}_as_drawn.glb")  # render_closeup.py draws it light grey
+            shown.append(f"trousers_{inner}_as_drawn")
         top, bottom = r["top_z_m"], r["bottom_z_m"]
         prefix = folder / meta["pack_file"]
-        cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), meta["pack_file"], "", "",
+        cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), ",".join(shown), "", "",
                f"{(top + bottom) / 2:.3f}", f"{top - bottom + 0.15:.3f}"]
         with open(out / f"{name}_render_{meta['pack_file']}.log", "w") as log:
             subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
@@ -245,6 +249,17 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         dst = pack_dir / f"{key}.glb"
         shutil.copyfile(src, dst)
         files[dst.name] = {"bytes": dst.stat().st_size, "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()}
+    # V3.1-01: each inner layer as drawn under a template that hides it (<inner>_under_<pack_file>.glb), drawn by the app in place of
+    # the inner layer while that template is worn
+    under = {}
+    report = build_dir / f"{name}_report.json"
+    items = json.load(open(report)).get("pack_items", {}) if report.exists() and not body_only else {}
+    for pf, r in sorted(items.items()):
+        for inner, hi in sorted((r.get("inner_hidden") or {}).items()) if r.get("status") == "ok" else []:
+            dst = pack_dir / f"{inner}_under_{pf}.glb"
+            shutil.copyfile(build_dir / hi["glb"], dst)
+            files[dst.name] = {"bytes": dst.stat().st_size, "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()}
+            under.setdefault(pf, {})[inner] = dst.name
     total = sum(f["bytes"] for f in files.values())
     manifest = {
         "pack_version": 1,
@@ -265,7 +280,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
                                    "replaces": ["Top", "Bottom"]}} if "dress.glb" in files else {}),
                      **({"skirt": {"fit": "A-line midi, cloth-draped on this body", "tops": "tucked",
                                    "tucked_tops": {"crew": "tee_tucked.glb", "v": "tee_v_tucked.glb", "scoop": "tee_scoop_tucked.glb"}}}
-                        if "skirt.glb" in files else {})},
+                        if "skirt.glb" in files else {}),
+                     "inner_layers_drawn": under},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),
         "fit_overrides": {k: v for k, v in PEOPLE_FIT.get(name, {}).items() if not k.startswith("_")},

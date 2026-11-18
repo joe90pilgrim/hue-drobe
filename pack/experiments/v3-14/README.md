@@ -1,5 +1,9 @@
 # V3-14 experiment: cloth, garment-side pins and inner-layer hiding
 
+**Closed (V3.1-01, 18 November 2026).** The two techniques that worked, cloth with garment-side pins (with the V3-15/V3-16 rest shape)
+and hiding the covered inner layer, are now in `pack/fit_template.py` as `settle` and `hide_inner` (see `pack/templates/README.md`).
+This script is kept as a record and is not maintained: its template copies use fields that `fit_template.py` no longer has.
+
 A one-off experiment (ticket `docs/tickets/v3-loose-clothes/V3-14-cloth-layering-experiment.md`, write-up
 `docs/decisions/2026-11-18-v3-14-cloth-layering-experiment.md`). It is not part of the pack build and changes nothing in `pack/` outside this folder.
 

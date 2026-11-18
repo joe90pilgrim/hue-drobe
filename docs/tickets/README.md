@@ -109,7 +109,7 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V3.1-01 | [Close out V3-14; fold rest-shape cloth and inner-layer hiding into `fit_template.py`](v3.1-templates/V3.1-01-fold-experiment-into-fit-template.md) | V3-14 | Opus, high |
+| V3.1-01 | [Close out V3-14; fold rest-shape cloth and inner-layer hiding into `fit_template.py`](v3.1-templates/V3.1-01-fold-experiment-into-fit-template.md) (done) | V3-14 | Opus, high |
 | V3.1-02 | [App: draw the inner garment with covered parts hidden](v3.1-templates/V3.1-02-app-draws-hidden-inner-layer.md) | V3.1-01 | Sonnet, medium |
 | V3.1-03 | [T-shirt template](v3.1-templates/V3.1-03-tee-template.md) | V3.1-01 | Sonnet, medium |
 | V3.1-04 | [Straight-leg trousers template](v3.1-templates/V3.1-04-straight-leg-trousers-template.md) | V3.1-01 | Sonnet, high |

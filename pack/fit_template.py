@@ -10,16 +10,20 @@ the body and the app's own garments are exactly what the pack build makes, then 
 outer, full):
  1. attaches it with MPFB's own loader (HumanService.add_mhclo_asset): the pack's .mhclo, or the template's own template.mhclo;
  1a. with meta "keep_islands" (V3-07c), deletes every other island of the attached mesh (a suit's trousers, keeping its jacket);
- 1b. with meta "loose" (V3-07b), lowers the hem and moves the cloth out to hang off the torso (loose_fit);
- 2. settles it with a short Blender cloth pass, pinned groups held (only when meta "settle" is set; V3-00's skirt settings);
- 3. pushes it out with Shrinkwrap modifiers in Blender's 'Outside' mode (only vertices inside, or closer than clearance_cm, move),
-    limited to contact_groups, against the body and then each garment in inner_layers (or, with inner_push "body_normal",
-    along the body's normal). Shrinkwrap is never the main fit;
+ 2. with meta "settle" (V3.1-01, from the V3-14 experiment), runs Blender's cloth on it from the MHCLO fit: pinned on the garment itself
+    (settle.pin, chosen on the template's own .obj), colliding with the body, the garments in settle.collide_with and the inner layers
+    (grown out from the skin), small pieces following by Surface Deform; with settle.rest "template" its rest shape is the template as
+    made (Blender's dynamic base mesh), so it relaxes towards its designed shape instead of the skin-tight fit;
+ 3. pushes it out of the body by clearance_cm, limited to contact_groups (V3-06's push). Shrinkwrap is never the main fit, and an
+    outer garment is not pushed off its inner layers;
  4. bakes it in world space and exports <name>_<pack_file>.glb in plain colour (texture only when colour is "texture": hair, shoes);
     with delete_group, hides the body under it, gives back what the cloth does not cover and exports <name>_body_<pack_file>.glb;
  5. writes into <name>_report.json under "pack_items" (the V3-06 key, so the checks and committed reports carry on): "body as drawn",
-    the layer check against each inner layer, and the item's mesh facts. spike/check_reports.py enforces them only when approved is true.
-With --no-hide nothing is pushed or hidden, which is how the "body as drawn" check is shown to fail.
+    the layer check against each inner layer, and the item's mesh facts. With hide_inner (default for a mid or outer layer with
+    inner_layers) each inner layer's faces the item covers are removed and the rest exported as <name>_<inner>_under_<pack_file>.glb,
+    which the app draws in place of the inner layer while the item is worn; the layer check runs against that.
+    spike/check_reports.py enforces them only when approved is true.
+With --no-hide nothing is settled, pushed or hidden, which is how the "body as drawn" check is shown to fail.
 
 The functions above run() need no Blender: build_pack.py and pack/test_fit_template.py use them to load and validate meta.json.
 """
@@ -45,198 +49,159 @@ def pack_licence_error(pack_lic, meta):
 
 REQUIRED = ("id", "category", "layer", "allowed_bodies", "source", "licence", "sha256", "delete_group", "settle", "contact_groups",
             "clearance_cm", "replaces", "inner_layers", "approved", "colour")
-SETTLE_KEYS = ("pinned", "pin_above_armpit_cm", "pin_small_pieces", "frames", "quality", "mass", "tension", "compression", "shear", "bending", "gravity_ramp")
-SETTLE_DEFAULTS = {"frames": 60, "quality": 10, "mass": 0.3, "tension": 15, "compression": 15, "shear": 5, "bending": 5.0,
-                   "gravity_ramp": 20}  # spike/cloth/skirt_cloth.py (V3-00/V3-01a), fewer frames: a settle, not a full drape
 
+# V3.1-01: "settle" is Blender's cloth from the MHCLO fit, pinned on the garment itself and colliding with the body, the garments in
+# collide_with and the inner layers (the V3-14 experiment, with the V3-15/V3-16 rest shape). Defaults: V3-14's shirt cloth.
+SETTLE_DEFAULTS = {"pin": {}, "rest": "fitted", "collide_with": [], "grow_from_skin": [], "frames": 60, "quality": 10, "mass": 0.15,
+                   "tension": 15, "compression": 15, "shear": 5, "bending": 0.3, "morph_frames": 20}
+SETTLE_LIMITS = {"frames": (10, 300), "quality": (1, 30), "mass": (0.01, 5), "tension": (0.1, 200), "compression": (0.1, 200),
+                 "shear": (0.1, 200), "bending": (0.01, 100), "morph_frames": (1, 100)}
+WHOLE = ("frames", "quality", "morph_frames")
+RESTS = ("fitted", "template")
+# Garment-side pins, chosen on the template's own .obj (MakeHuman base space, 1 unit = 10 cm), so the same vertices on every body:
+# the top band of the front and of the back across the shoulders (collar, shoulder seams; a deeper back band is a shirt's yoke), and
+# optionally the cloth within cuffs_cm of the two sleeve openings.
+PIN_DEFAULTS = {"front_cm": 3.5, "back_cm": 8.0, "cuffs_cm": None}
+PIN_LIMITS = {"front_cm": (0, 30), "back_cm": (0, 30), "cuffs_cm": (0, 20)}
+PIN_COLUMN, PIN_COLLAR_X, PIN_TIP_DROP, PIN_TOP_DEPTH = 0.2, 6, 0.3, 1.5  # units: 2 cm columns; start 6 columns out (past the collar)
+# Fixed cloth settings (V3-14 round 2): collision distances, the inner layers' collider growing out from the skin over GROW_FRAMES,
+# small pieces (buttons, pockets, cuff pieces: islands under BIG_ISLAND of the garment) following the cloth by Surface Deform.
+COLLIDE = {"thickness_outer": 0.002, "friction": 1.0, "cloth_distance": 0.004, "self_distance": 0.002}
+AIR_DAMPING, GROW_FRAMES, FOLLOW_FALLOFF, BIG_ISLAND = 1.0, 25, 16.0, 0.10
+HIDE_RAY_START, HIDE_RAY_LENGTH = 0.03, 0.08  # hide_inner: a ray from 3 cm under each inner face, out along its normal, up to 8 cm
 
-# V3-07b: optional fields, off unless set. "loose" lets a template stand off the torso; "inner_push" picks how it is kept off inner layers.
-LOOSE_DEFAULTS = {"ease_fraction": 0.06, "drape_taper": 0.25, "fade_cm": 6.0, "smooth_iterations": 6, "hem_to_crotch_cm": None,
-                  "hem_from_crotch_cm": 20.0, "hem_curve_keep": 1.0, "chest_above_armpit_cm": 10.0}
-LOOSE_LIMITS = {"ease_fraction": (0, 0.3), "drape_taper": (0, 2), "fade_cm": (0, 30), "smooth_iterations": (0, 50),
-                "hem_to_crotch_cm": (-40, 40), "hem_from_crotch_cm": (5, 60), "hem_curve_keep": (0, 1),
-                "chest_above_armpit_cm": (0, 20)}
-INNER_PUSH = ("shrinkwrap", "body_normal")
+# V3.1-01: removed with the V3-07b loose fit (CLAUDE.md: no scripted reshaping of garments). validate_meta names them.
+REMOVED = {"loose": "the scripted loose fit is gone; a loose item gets its volume from settle (cloth, rest \"template\")",
+           "inner_push": "an outer garment is no longer pushed off its inner layers; the covered inner faces are hidden (hide_inner)"}
+REMOVED_SETTLE = {"pinned": "body-group pins are gone; use settle.pin (pins on the garment itself)",
+                  "pin_above_armpit_cm": "pins by height are gone; use settle.pin (pins on the garment itself)",
+                  "pin_small_pieces": "small pieces now follow the cloth (Surface Deform); nothing to set",
+                  "gravity_ramp": "gravity is on from the first frame"}
 
 
 class MetaError(ValueError):
     """A template's meta.json is missing something or has a value the build does not accept."""
 
 
-def loose_settings(meta):
-    """The template's loose-fit settings with defaults filled in, or None when it is fitted as the .mhclo binds it (the default)."""
-    lo = meta.get("loose", "none")
-    return None if lo == "none" else {**LOOSE_DEFAULTS, **lo}
-
-
 def _num(x):
     return isinstance(x, (int, float)) and not isinstance(x, bool)
 
 
-def _validate_loose(m, p):
-    lo = m.get("loose", "none")
-    if lo != "none":
-        if not isinstance(lo, dict):
-            p.append('loose must be "none" or an object')
-        else:
-            if set(lo) - set(LOOSE_DEFAULTS):
-                p.append(f"loose has unknown keys {sorted(set(lo) - set(LOOSE_DEFAULTS))}")
-            for k, (a, b) in LOOSE_LIMITS.items():
-                if k in lo and not (lo[k] is None and k == "hem_to_crotch_cm") and not (_num(lo[k]) and a <= lo[k] <= b):
-                    p.append(f"loose.{k} must be a number from {a} to {b}" + (" or null" if k == "hem_to_crotch_cm" else ""))
-            if "smooth_iterations" in lo and _num(lo["smooth_iterations"]) and lo["smooth_iterations"] != int(lo["smooth_iterations"]):
-                p.append("loose.smooth_iterations must be a whole number")
-    if m.get("inner_push", "shrinkwrap") not in INNER_PUSH:
-        p.append(f"inner_push {m.get('inner_push')!r} is not one of {', '.join(INNER_PUSH)}")
+def settle_settings(meta):
+    """The template's cloth settings with defaults filled in (pin included), or None when it is not settled (settle "none")."""
+    s = meta.get("settle", "none")
+    if s == "none":
+        return None
+    return {**SETTLE_DEFAULTS, **s, "pin": {**PIN_DEFAULTS, **s.get("pin", {})}}
 
 
-# --- V3-07b loose fit: pure Python, so pack/test_fit_template.py can test it without Blender -------------------------------------
-
-def split_by_gap(xs, gap):
-    """Indices of xs grouped into runs along x, split wherever two neighbouring values are more than gap apart. Sorted by x."""
-    order = sorted(range(len(xs)), key=lambda i: xs[i])
-    runs = []
-    for i in order:
-        if runs and xs[i] - xs[runs[-1][-1]] <= gap:
-            runs[-1].append(i)
-        else:
-            runs.append([i])
-    return runs
+def hides_inner(meta):
+    """True when the inner layers' covered faces are hidden: meta hide_inner, by default on for a mid or outer layer with inner_layers."""
+    h = meta.get("hide_inner")
+    return bool(meta.get("inner_layers")) and (h if isinstance(h, bool) else meta.get("layer") in ("mid", "outer"))
 
 
-def convex_hull(pts):
-    """2-D convex hull (Andrew's monotone chain), counter-clockwise, no repeated first point."""
-    pts = sorted(set(pts))
-    if len(pts) < 3:
-        return pts
-    cross = lambda o, a, b: (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0])
-    lo, up = [], []
-    for q in pts:
-        while len(lo) >= 2 and cross(lo[-2], lo[-1], q) <= 0:
-            lo.pop()
-        lo.append(q)
-    for q in reversed(pts):
-        while len(up) >= 2 and cross(up[-2], up[-1], q) <= 0:
-            up.pop()
-        up.append(q)
-    return lo[:-1] + up[:-1]
+def _validate_settle(m, p):
+    s = m["settle"]
+    if s == "none":
+        return
+    if not isinstance(s, dict):
+        p.append('settle must be "none" or an object')
+        return
+    for k in sorted(set(s) & set(REMOVED_SETTLE)):
+        p.append(f"settle.{k} was removed in V3.1-01: {REMOVED_SETTLE[k]}")
+    unknown = set(s) - set(SETTLE_DEFAULTS) - set(REMOVED_SETTLE)
+    if unknown:
+        p.append(f"settle has unknown keys {sorted(unknown)}")
+    if "pin" not in s:
+        p.append("settle needs pin (an object; {} for the defaults: front_cm, back_cm, cuffs_cm)")
+    elif not isinstance(s["pin"], dict):
+        p.append("settle.pin must be an object")
+    else:
+        if set(s["pin"]) - set(PIN_DEFAULTS):
+            p.append(f"settle.pin has unknown keys {sorted(set(s['pin']) - set(PIN_DEFAULTS))}")
+        for k, (a, b) in PIN_LIMITS.items():
+            v = s["pin"].get(k, PIN_DEFAULTS[k])
+            if not (v is None and k == "cuffs_cm") and not (_num(v) and a <= v <= b and (v > 0 or k != "cuffs_cm")):
+                p.append(f"settle.pin.{k} must be a number from {a} to {b}" + (" (above 0) or null" if k == "cuffs_cm" else ""))
+    if s.get("rest", "fitted") not in RESTS:
+        p.append(f"settle.rest {s.get('rest')!r} is not one of {', '.join(RESTS)}")
+    for k in ("collide_with", "grow_from_skin"):
+        if not (isinstance(s.get(k, []), list) and all(isinstance(x, str) for x in s.get(k, []))):
+            p.append(f"settle.{k} must be a list of garment names")
+    if isinstance(s.get("grow_from_skin", []), list) and isinstance(s.get("collide_with", []), list):
+        if set(s.get("grow_from_skin", [])) - set(s.get("collide_with", [])):
+            p.append("settle.grow_from_skin may only name garments in settle.collide_with (inner layers always grow from the skin)")
+        if isinstance(m["inner_layers"], list) and set(s.get("collide_with", [])) & set(m["inner_layers"]):
+            p.append("settle.collide_with must not repeat inner_layers (they are colliders already)")
+    for k, (a, b) in SETTLE_LIMITS.items():
+        if k in s and not (_num(s[k]) and a <= s[k] <= b and (k not in WHOLE or s[k] == int(s[k]))):
+            p.append(f"settle.{k} must be a {'whole ' if k in WHOLE else ''}number from {a} to {b}")
+    st = {**SETTLE_DEFAULTS, **s}
+    if st["rest"] == "template" and _num(st["morph_frames"]) and _num(st["frames"]) and st["morph_frames"] >= st["frames"]:
+        p.append("settle.morph_frames must be fewer than settle.frames")
 
 
-def hull_radii(hull, centre, nbins):
-    """Distance from centre to the hull's edge along each of nbins equal directions (bin b points at angle 2*pi*b/nbins), and the
-    hull's perimeter. The centre should be inside the hull; a direction that meets no edge gets the furthest hull point's distance."""
-    import math
-    n = len(hull)
-    per = sum(math.dist(hull[i], hull[(i + 1) % n]) for i in range(n))
-    far = max((math.dist(p, centre) for p in hull), default=0.0)
-    r = []
-    for k in range(nbins):
-        ux, uy = math.cos(2 * math.pi * k / nbins), math.sin(2 * math.pi * k / nbins)
-        best = 0.0
-        for i in range(n):
-            (ax, ay), (bx, by) = hull[i], hull[(i + 1) % n]
-            ex, ey, wx, wy = bx - ax, by - ay, ax - centre[0], ay - centre[1]
-            den = ux * ey - uy * ex
-            if abs(den) < 1e-12:
-                continue
-            t, s = (wx * ey - wy * ex) / den, (wx * uy - wy * ux) / den
-            if t > 0 and -1e-9 <= s <= 1 + 1e-9:
-                best = max(best, t)
-        r.append(best or far)
-    return r, per
+def garment_pins(V0, cloth_v, front_cm, back_cm):
+    """Garment-side pins (V3-14), chosen on the template's own vertices V0 (MakeHuman base space: x across, y up, z forward; 1 unit =
+    10 cm). Across the shoulders, in each PIN_COLUMN-wide column of the cloth vertices cloth_v out to the shoulder tips (where the top
+    line drops more than PIN_TIP_DROP between columns), the front and back are split at the column's mid-depth, and the cloth within
+    front_cm / back_cm of each side's top is pinned. Returns (pinned vertex indices, left and right shoulder tip x in units)."""
+    front, back = front_cm / 10, back_cm / 10
+    bins = {}
+    for i in cloth_v:
+        bins.setdefault(round(V0[i][0] / PIN_COLUMN), []).append(i)
+    ytop = {b: max(V0[i][1] for i in g) for b, g in bins.items()}
 
-
-def drape_envelope(zs, radii, perims, ease_fraction, taper):
-    """How far out a loose top hangs at each height and direction: the torso's hull plus ease (ease_fraction of the hull's perimeter,
-    as a radius), or, where a band above sticks out further, that band's surface stepping in by taper per metre of drop, so the cloth
-    falls from the bust and the belly instead of following the body in under them. zs ascending; radii[k][b] for band k, direction b."""
-    import math
-    nb = len(radii[0]) if radii else 0
-    own = [[radii[k][b] + ease_fraction * perims[k] / (2 * math.pi) for b in range(nb)] for k in range(len(zs))]
-    env = [row[:] for row in own]
-    for k in range(len(zs) - 2, -1, -1):  # from the top down: each band is at least the band above, stepped in
-        dz = zs[k + 1] - zs[k]
-        env[k] = [max(own[k][b], env[k + 1][b] - taper * dz) for b in range(nb)]
-    return env
-
-
-def smooth_up(grid, iterations):
-    """Spreads a grid of outward moves (rows: heights, columns: directions round the body, wrapping) so neighbouring cloth moves
-    together and the move reads as ease, not as a bump. Never lowers a cell: what each cell needs to clear the envelope is kept."""
-    g = [row[:] for row in grid]
-    nk, nb = len(g), len(g[0]) if g else 0
-    for _ in range(iterations):
-        g = [[max(g[k][b], (g[k][b - 1] + g[k][(b + 1) % nb] + g[max(k - 1, 0)][b] + g[min(k + 1, nk - 1)][b]) / 4.0)
-              for b in range(nb)] for k in range(nk)]
-    return g
-
-
-def torso_bands(BV, cz, xc, dz=0.01, gap=0.05, jump=0.06, half=0.015, persist=3, above=0.0):
-    """The torso's vertices in horizontal bands dz apart, from z_start = cz + 12 cm (the lower belly). BV: body vertex (x, y, z) list,
-    cz: crotch height, xc: the body's centre x. In each band the vertices within half of it are split into runs along x wherever two
-    neighbours are more than gap apart (the mesh is coarse: 2-4 cm gaps inside one torso slice, more between torso and arm in the
-    A-pose). The start band takes the run nearest xc; each band above and below takes the runs overlapping the band before it. Going
-    up, the armpit is the last band before the torso widens by more than jump (the arms join it) in persist bands running;
-    one odd band on the coarse mesh is skipped (a single band once put the armpit 32 cm low on synthetic_female_large). Going down it carries on
-    35 cm below the crotch (both legs), for tails that hang below it. Above the armpit it carries on for `above` metres with only the
-    vertices inside the torso's x range at the armpit (the chest and upper back, not the shoulders or arms).
-    Returns ({band offset k: [vertex indices]}, armpit height)."""
-    import math
-    buckets = {}
-    for i, p in enumerate(BV):
-        buckets.setdefault(int(math.floor(p[2] / dz)), []).append(i)
-
-    def band(z):
-        k0 = int(math.floor(z / dz))
-        n = int(math.ceil(half / dz))
-        return [i for kk in range(k0 - n, k0 + n + 1) for i in buckets.get(kk, []) if abs(BV[i][2] - z) <= half]
-
-    def pick(idx, rng):
-        runs = split_by_gap([BV[i][0] for i in idx], gap)
-        if rng is None:
-            best = min(runs, key=lambda r: min(abs(BV[idx[j]][0] - xc) for j in r))
-            sel = [best]
-        else:
-            sel = [r for r in runs if BV[idx[r[-1]]][0] >= rng[0] - 0.01 and BV[idx[r[0]]][0] <= rng[1] + 0.01]
-        pts = [idx[j] for r in sel for j in r]
-        return pts, ((min(BV[i][0] for i in pts), max(BV[i][0] for i in pts)) if pts else rng)
-
-    z_start = cz + 0.12
-    start, rng0 = pick(band(z_start), None)
-    bands = {0: start}
-    rng, k, last, armpit = rng0, 0, 0, None
-    while True:  # up to the armpit: the torso must widen in `persist` bands running; a single odd band is skipped
-        k += 1
-        pts, nr = pick(band(z_start + k * dz), rng)
-        if not pts or nr[1] - nr[0] > rng[1] - rng[0] + jump:
-            if k - last >= persist:
-                armpit = z_start + last * dz
-                break
+    def tip(sign):
+        b = PIN_COLLAR_X * sign
+        while (b + sign) in ytop and ytop[b] - ytop[b + sign] <= PIN_TIP_DROP:
+            b += sign
+        return b
+    bl, br = tip(-1), tip(1)
+    pins = set()
+    for b, g in bins.items():
+        if not bl <= b <= br:
             continue
-        bands[k], rng, last = pts, nr, k
-    if armpit is not None:
-        lo_x, hi_x = rng
-        for k in range(last + 1, last + 1 + int(round(above / dz))):
-            pts = [i for i in band(z_start + k * dz) if lo_x <= BV[i][0] <= hi_x]
-            if pts:
-                bands[k] = pts
-    rng, k = rng0, 0
-    while z_start + (k - 1) * dz > cz - 0.35:  # down past the crotch, for tails that hang below it
-        k -= 1
-        pts, nr = pick(band(z_start + k * dz), rng)
-        if not pts:
-            break
-        bands[k], rng = pts, nr
-    return bands, armpit
+        top = [i for i in g if V0[i][1] > ytop[b] - PIN_TOP_DEPTH]
+        zmid = (min(V0[i][2] for i in top) + max(V0[i][2] for i in top)) / 2
+        for part, bd in (([i for i in g if V0[i][2] >= zmid], front), ([i for i in g if V0[i][2] < zmid], back)):
+            if part:
+                yt = max(V0[i][1] for i in part)
+                pins.update(i for i in part if V0[i][1] >= yt - bd)
+    return pins, round(bl * PIN_COLUMN, 1), round(br * PIN_COLUMN, 1)
 
 
-def hem_lower(z, z_from, z_lowest, z_target):
-    """New height for a cloth vertex when the hem is lowered from z_lowest to z_target: everything below z_from is stretched down
-    evenly, so the hem keeps its shape (a shirt's curved tails stay curved). Unchanged above z_from, or when the hem is already low enough."""
-    if z >= z_from or z_target >= z_lowest or z_lowest >= z_from:
-        return z
-    return z_from - (z_from - z) * (z_from - z_target) / (z_from - z_lowest)
-
+def cuff_pins(V0, F0, cloth_v, cuffs_cm):
+    """V3-16: the cloth within cuffs_cm of the two sleeve openings (the two open-edge loops furthest out in x on the template)."""
+    band = cuffs_cm / 10
+    cset = set(cloth_v)
+    ec = {}
+    for f in F0:
+        if f[0] in cset:
+            for a_, b_ in zip(f, f[1:] + f[:1]):
+                k_ = (min(a_, b_), max(a_, b_))
+                ec[k_] = ec.get(k_, 0) + 1
+    adj = {}
+    for (a_, b_), c_ in ec.items():
+        if c_ == 1:
+            adj.setdefault(a_, set()).add(b_)
+            adj.setdefault(b_, set()).add(a_)
+    loops, seen = [], set()
+    for s0 in adj:
+        if s0 not in seen:
+            st, comp = [s0], []
+            seen.add(s0)
+            while st:
+                x_ = st.pop()
+                comp.append(x_)
+                for y_ in adj[x_] - seen:
+                    seen.add(y_)
+                    st.append(y_)
+            loops.append(comp)
+    loops.sort(key=lambda L: -abs(sum(V0[i][0] for i in L) / len(L)))
+    ring = [i for L in loops[:2] for i in L]
+    return {i for i in cloth_v if min(sum((V0[i][t] - V0[j][t]) ** 2 for t in range(3)) for j in ring) <= band ** 2}
 
 # --- V3-07c keep_islands: use part of a pack item (a suit's jacket) by deleting whole islands; pure Python ---------------------------
 
@@ -332,17 +297,6 @@ def validate_meta(m, where="meta.json"):
     for f in ("delete_group", "approved"):
         if not isinstance(m[f], bool):
             p.append(f"{f} must be true or false")
-    s = m["settle"]
-    if s != "none":
-        if not isinstance(s, dict) or not ((s.get("pinned") and isinstance(s["pinned"], list) and all(isinstance(g, str) for g in s["pinned"]))
-                                           or "pin_above_armpit_cm" in s):
-            p.append('settle must be "none" or an object with a non-empty "pinned" list of body vertex groups or "pin_above_armpit_cm"')
-        elif "pin_above_armpit_cm" in s and not (_num(s["pin_above_armpit_cm"]) and -20 <= s["pin_above_armpit_cm"] <= 30):
-            p.append("settle.pin_above_armpit_cm must be a number from -20 to 30")
-        elif "pin_above_armpit_cm" in s and m.get("loose", "none") == "none":
-            p.append("settle.pin_above_armpit_cm needs loose (the armpit is found there)")
-        elif set(s) - set(SETTLE_KEYS):
-            p.append(f"settle has unknown keys {sorted(set(s) - set(SETTLE_KEYS))}")
     for f in ("contact_groups", "replaces", "inner_layers"):
         if not isinstance(m[f], list) or not all(isinstance(x, str) for x in m[f]):
             p.append(f"{f} must be a list of names")
@@ -356,7 +310,13 @@ def validate_meta(m, where="meta.json"):
         p.append(f"colour {m['colour']!r} is not one of {', '.join(COLOURS)}")
     elif m["colour"] == "texture" and m["category"] not in TEXTURE_CATEGORIES:
         p.append("only hair and shoes keep a texture; every other garment is plain colour")
-    _validate_loose(m, p)
+    for k in sorted(set(m) & set(REMOVED)):
+        p.append(f"{k} was removed in V3.1-01: {REMOVED[k]}")
+    if "hide_inner" in m and not isinstance(m["hide_inner"], bool):
+        p.append("hide_inner must be true or false")
+    elif m.get("hide_inner") is True and not m["inner_layers"]:
+        p.append("hide_inner needs inner_layers")
+    _validate_settle(m, p)
     _validate_keep_islands(m, p)
     if p:
         raise MetaError(f"{where}: " + "; ".join(p))
@@ -497,19 +457,6 @@ def run():
     def tris(bm):
         return sum(len(f.verts) - 2 for f in bm.faces)
 
-    def apply_modifiers(ob, me):
-        """Bakes ob's modifier stack into me's vertex positions (same vertex count) and removes the modifiers."""
-        bpy.context.view_layer.update()
-        ev = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
-        em = ev.to_mesh()
-        assert len(em.vertices) == len(me.vertices), "a modifier changed the garment's vertex count"
-        moved = max(((a.co - b.co).length for a, b in zip(me.vertices, em.vertices)), default=0.0)
-        for a, b in zip(me.vertices, em.vertices):
-            a.co = b.co
-        ev.to_mesh_clear()
-        ob.modifiers.clear()
-        return moved
-
     report_path = os.path.join(out_dir, name + "_report.json")
     report = json.load(open(report_path))
     report["pack_items"] = {}
@@ -517,10 +464,6 @@ def run():
     full_m = mesh_checks.merged(full_bm)
     floor = min(v.co.z for v in full_m.verts)
     full_tree = BVHTree.FromBMesh(full_m)
-    body_ob = bpy.data.objects.new(f"{name}_fit_body", bpy.data.meshes.new(f"{name}_fit_body"))  # the body as exported: push-out target and collider
-    full_m.to_mesh(body_ob.data)
-    sc.collection.objects.link(body_ob)
-    body_ob.hide_render = True
 
     # The body with every modifier off (the base mesh's own vertices, helpers included), for the delete-group restore and for mapping
     # garment vertices to the body's vertex groups (contact_groups, settle pinned).
@@ -568,115 +511,190 @@ def run():
         loc, nor, _i, d = full_tree.find_nearest(co)
         return d if (co - loc).dot(nor) > 0 else -d
 
-    full_kd = KDTree(len(full_m.verts))
-    for q_ in full_m.verts:
-        full_kd.insert(q_.co, q_.index)
-    full_kd.balance()
+    def collider(cname, path, grow, trees):
+        """A cloth collider from a built GLB (triangulated, single-sided, so cloth on the wrong side is pushed out along its normals).
+        With grow, its basis shape lies on the skin and a shape key moves it out to where it really is over GROW_FRAMES: the cloth
+        starts inside it (the MHCLO fit lies on the skin) and is carried out with it. Animates the collider only, never the garment."""
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{cname} was not built before this template ({path})")
+        bm = mesh_checks.load_glb(path)
+        bmesh.ops.triangulate(bm, faces=bm.faces[:])
+        bm.normal_update()
+        trees[cname] = BVHTree.FromBMesh(bm)
+        me = bpy.data.meshes.new(f"fit_col_{cname}")
+        bm.to_mesh(me)
+        bm.free()
+        co = bpy.data.objects.new(f"fit_col_{cname}", me)
+        sc.collection.objects.link(co)
+        if grow and GROW_FRAMES:
+            btree = trees["body"]
+            sk0 = co.shape_key_add(name="on_skin")
+            for v in co.data.vertices:
+                loc, nor, _i, _d = btree.find_nearest(v.co)
+                sk0.data[v.index].co = loc + nor * 0.001
+            sk1 = co.shape_key_add(name="worn", from_mix=False)
+            for v in co.data.vertices:
+                sk1.data[v.index].co = v.co
+            sk1.value = 0.0
+            sk1.keyframe_insert("value", frame=1)
+            sk1.value = 1.0
+            sk1.keyframe_insert("value", frame=1 + GROW_FRAMES)
+        co.modifiers.new("Collision", "COLLISION")
+        c = co.collision
+        c.thickness_outer, c.cloth_friction = COLLIDE["thickness_outer"], COLLIDE["friction"]
+        c.use_culling = c.use_normal = True
+        return co
 
-    def loose_fit(wm, lo):
-        """V3-07b: lets a template stand off the torso as a loose top does. Works on the body as exported, in 1 cm horizontal bands:
-        the torso in each band is found by following it up and down from the lower belly (in the A-pose the arms and hands are
-        separate in x below the armpit; the armpit is where the torso suddenly widens). Optionally lowers the hem first
-        (hem_to_crotch_cm, stretching the cloth below hem_from_crotch_cm evenly). Then every garment vertex whose nearest body vertex is
-        torso, below the armpit, is moved straight out from the torso's centre line to at least drape_envelope(): the band's convex hull
-        (so no cleavage or tuck under the bust) plus ease, or the cloth hanging from a fuller band above. The move is set per height
-        and direction (smooth_up), not per vertex, so layered pieces (placket, pockets, buttons) keep their order, and it fades to
-        nothing over fade_cm below the armpit, so the shoulders and sleeves stay as fitted. Only Blender's own data; no physics."""
-        import math
-        dz, nb = 0.01, 72
-        BV = [(q.co.x, q.co.y, q.co.z) for q in full_m.verts]
-        top, bot = max(p[2] for p in BV), min(p[2] for p in BV)
-        cz = body_ns.get("crotch_z")
-        xc = sum(p[0] for p in BV) / len(BV)
-        if not isinstance(cz, (int, float)):  # the lowest body point on the centre line above the knees
-            cz = min(p[2] for p in BV if abs(p[0] - xc) < 0.01 and p[2] > bot + 0.35 * (top - bot))
-        bands, armpit = torso_bands(BV, cz, xc, dz, above=lo["chest_above_armpit_cm"] / 100)
-        z_top = armpit + lo["chest_above_armpit_cm"] / 100  # the loose zone's top: the move fades out over fade_cm below it
-        z_start = cz + 0.12  # torso_bands' start band
-        if armpit < cz + 0.25:  # the torso was not followed up to the chest: fail loudly rather than fit a shirt that is not loose
-            raise ValueError(f"loose fit: armpit found at {armpit * 100:.1f} cm, only {(armpit - cz) * 100:.1f} cm above the crotch "
-                             f"({len(BV)} body vertices, centre x {xc * 100:.1f} cm, {len(bands)} bands)")
-        ks = sorted(bands)
-        zs = [z_start + kk * dz for kk in ks]
-        torso = {i for kk in ks for i in bands[kk]}
-        hulls = [convex_hull([(BV[i][0], BV[i][1]) for i in bands[kk]]) for kk in ks]
-        mid = [h_ for h_, z in zip(hulls, zs) if cz <= z <= armpit] or hulls
-        cx = sum(sum(p[0] for p in h_) / len(h_) for h_ in mid) / len(mid)
-        cy = sum(sum(p[1] for p in h_) / len(h_) for h_ in mid) / len(mid)
-        rp = [hull_radii(h_, (cx, cy), nb) for h_ in hulls]
-        env = drape_envelope(zs, [r for r, _ in rp], [p for _, p in rp], lo["ease_fraction"], lo["drape_taper"])
+    def cloth_settle(wm, meta, s, mhclo, kept):
+        """V3.1-01 (from the V3-14 experiment, with V3-15/V3-16's rest shape): Blender cloth on the garment from its MHCLO fit, in place
+        (wm, world space), pinned on the garment itself (garment_pins, cuff_pins on the template's .obj), colliding with the body, the
+        garments in collide_with and the inner layers. Small pieces follow the cloth by Surface Deform. With rest "template" the cloth's
+        rest lengths go from the fit to the template as made over morph_frames (Blender's dynamic base mesh; rest_shape_key is ignored
+        headless, pack/experiments/v3-15/rest_key_check.py). kept: the .obj vertex index of each wm vertex. Returns the numbers."""
+        t0 = time.time()
+        n = len(wm.vertices)
+        faces = [list(p_.vertices) for p_ in wm.polygons]
+        isl = islands(n, faces)
+        cloth_v = sorted(i for g in isl if len(g) >= BIG_ISLAND * n for i in g)
+        follow_v = sorted(set(range(n)) - set(cloth_v))
+        obj_file = next(l.split(None, 1)[1].strip() for l in open(mhclo, encoding="utf8", errors="replace") if l.startswith("obj_file"))
+        V0a, F0a = read_obj(open(os.path.join(os.path.dirname(mhclo), obj_file), encoding="utf8", errors="replace").read())
+        new_of = {o: k for k, o in enumerate(kept)}
+        V0 = [V0a[o] for o in kept]
+        F0 = [[new_of[i] for i in f] for f in F0a if f[0] in new_of]
+        assert len(V0) == n, f"template .obj keeps {len(V0)} vertices, the attached mesh has {n}"
+        assert [len(g) for g in islands(n, F0)] == [len(g) for g in isl], "template .obj and attached mesh islands differ"
+        pins, x_l, x_r = garment_pins(V0, cloth_v, s["pin"]["front_cm"], s["pin"]["back_cm"])
+        shoulder_pins = set(pins)
+        cuffs = cuff_pins(V0, F0, cloth_v, s["pin"]["cuffs_cm"]) if s["pin"]["cuffs_cm"] else set()
+        pins |= cuffs
+        W = {i: wm.vertices[i].co.copy() for i in range(n)}
 
-        tv = [v.index for v in wm.vertices if v.co.z < z_top and full_kd.find(v.co)[1] in torso]
-        out = {"crotch_z_cm": round(cz * 100, 1), "armpit_z_cm": round(armpit * 100, 1), "torso_bands": len(zs),
-               "torso_vertices": len(tv)}
-        if lo["hem_to_crotch_cm"] is not None:
-            z_from, z_target = cz + lo["hem_from_crotch_cm"] / 100, cz + lo["hem_to_crotch_cm"] / 100
-            # each direction round the body is lowered to its own target: the lowest point to z_target, the rest keeping
-            # hem_curve_keep of how far above the lowest point they were (1: the hem's shape kept, 0: a level hem)
-            nh = 36
-            hx = sum(wm.vertices[i].co.x for i in tv) / len(tv)
-            hy = sum(wm.vertices[i].co.y for i in tv) / len(tv)
-            hb = {i: math.atan2(wm.vertices[i].co.y - hy, wm.vertices[i].co.x - hx) / (2 * math.pi) * nh % nh for i in tv}
-            low = [None] * nh
-            for i in tv:
-                b = int(hb[i]) % nh
-                z = wm.vertices[i].co.z
-                low[b] = z if low[b] is None else min(low[b], z)
-            known = [b for b in range(nh) if low[b] is not None]
-            for b in range(nh):  # empty directions: the nearer known one
-                if low[b] is None:
-                    low[b] = low[min(known, key=lambda j: min(abs(j - b), nh - abs(j - b)))]
-            z_low = min(low)
-            for i in tv:
-                f = hb[i] - 0.5
-                b0, t = int(f // 1) % nh, f - f // 1
-                L = low[b0] * (1 - t) + low[(b0 + 1) % nh] * t
-                wm.vertices[i].co.z = hem_lower(wm.vertices[i].co.z, z_from, L, z_target + lo["hem_curve_keep"] * (L - z_low))
-            out["hem_lowered_cm"] = round(max(0.0, z_low - z_target) * 100, 1)
+        trees, temp = {}, []
+        names = ["body"] + s["collide_with"] + meta["inner_layers"]
+        grow = set(meta["inner_layers"]) | set(s["grow_from_skin"])
+        for cn in names:
+            path = BODY_GLB if cn == "body" else os.path.join(out_dir, f"{name}_{cn}.glb")
+            temp.append(collider(cn, path, cn in grow, trees))
 
-        fade = max(lo["fade_cm"] / 100, 1e-6)
-        w = lambda z: (lambda t: t * t * (3 - 2 * t))(min(max((z_top - z) / fade, 0.0), 1.0))
-        polar = {}
-        grid = [[0.0] * nb for _ in zs]
-        for i in tv:
-            c = wm.vertices[i].co
-            th = math.atan2(c.y - cy, c.x - cx)
-            fk = min(max((c.z - zs[0]) / dz, 0.0), len(zs) - 1.0)
-            fb = th / (2 * math.pi) * nb % nb
-            polar[i] = (th, fk, fb)
-            kk, bb = int(round(fk)), int(round(fb)) % nb
-            grid[kk][bb] = max(grid[kk][bb], (env[kk][bb] - math.hypot(c.x - cx, c.y - cy)) * w(c.z))
-        grid = smooth_up(grid, int(lo["smooth_iterations"]))
-        largest = moved = 0
-        for i, (th, fk, fb) in polar.items():
-            k0, b0 = int(fk), int(fb)
-            k1, b1, tk, tb = min(k0 + 1, len(zs) - 1), (b0 + 1) % nb, fk - int(fk), fb - int(fb)
-            d = ((grid[k0][b0] * (1 - tb) + grid[k0][b1] * tb) * (1 - tk) + (grid[k1][b0] * (1 - tb) + grid[k1][b1] * tb) * tk)
-            if d > 0:
-                c = wm.vertices[i].co
-                c.x, c.y = c.x + math.cos(th) * d, c.y + math.sin(th) * d
-                largest, moved = max(largest, d), moved + (d > 0.001)
-        out["vertices_moved_out"], out["largest_move_out_cm"] = moved, round(largest * 100, 2)
-        return out, cz, armpit, set(tv)
+        ci = {v: k for k, v in enumerate(cloth_v)}
+        cm = bpy.data.meshes.new("fit_cloth")
+        cm.from_pydata([W[v] for v in cloth_v], [], [[ci[i] for i in f] for f in faces if f[0] in ci])
+        cloth_ob = bpy.data.objects.new("fit_cloth", cm)
+        sc.collection.objects.link(cloth_ob)
+        temp.append(cloth_ob)
+        cloth_ob.vertex_groups.new(name="pin").add([ci[i] for i in pins], 1.0, "REPLACE")
+        out = {"rest": s["rest"], "pinned_vertices": len(pins), "cuff_pinned_vertices": len(cuffs), "pin_cm": s["pin"],
+               "pin_shoulder_x_cm": [x_l * 10, x_r * 10], "cloth_vertices": len(cloth_v), "follower_vertices": len(follow_v),
+               "colliders": names, "grown_from_skin": sorted(grow), "frames": s["frames"]}
+        if s["rest"] == "template":
+            # the template as made (base space to Blender: (x, -z, y) / 10), scaled once, uniformly, so its pinned shoulder span is
+            # the fit's, and moved so the shoulder pins' centres meet; pinned vertices keep the fit (their goal)
+            Rv = [Vector((V0[v][0], -V0[v][2], V0[v][1])) * 0.1 for v in cloth_v]
+            pk = [ci[i] for i in shoulder_pins]
+            pin_all = {ci[i] for i in pins}
+            span_fit = max(W[cloth_v[k]].x for k in pk) - min(W[cloth_v[k]].x for k in pk)
+            sc_ = span_fit / (max(Rv[k].x for k in pk) - min(Rv[k].x for k in pk))
+            c_fit = sum((W[cloth_v[k]] for k in pk), Vector()) / len(pk)
+            c_t = sum((Rv[k] * sc_ for k in pk), Vector()) / len(pk)
+            T = [W[cloth_v[k]] if k in pin_all else Rv[k] * sc_ + (c_fit - c_t) for k in range(len(Rv))]
+            cloth_ob.shape_key_add(name="Basis")
+            rk = cloth_ob.shape_key_add(name="rest", from_mix=False)
+            for k, p_ in enumerate(T):
+                rk.data[k].co = p_
+            rk.value = 0.0
+            rk.keyframe_insert("value", frame=1)
+            rk.value = 1.0
+            rk.keyframe_insert("value", frame=1 + s["morph_frames"])
+            out.update({"rest_scale": round(sc_, 4), "pin_span_fit_cm": round(span_fit * 100, 1), "morph_frames": s["morph_frames"]})
+        follow_ob = fi = None
+        if follow_v:
+            fi = {v: k for k, v in enumerate(follow_v)}
+            fm = bpy.data.meshes.new("fit_follow")
+            fm.from_pydata([W[v] for v in follow_v], [], [[fi[i] for i in f] for f in faces if f[0] in fi])
+            follow_ob = bpy.data.objects.new("fit_follow", fm)
+            sc.collection.objects.link(follow_ob)
+            temp.append(follow_ob)
 
-    def hem_heights(wm, tv, cz):
-        """Lowest and highest point of the hem: the lowest open edge of the torso cloth in each of 36 directions round the body."""
-        import math
-        count = {}
-        for poly in wm.polygons:
-            for ek in poly.edge_keys:
-                count[ek] = count.get(ek, 0) + 1
-        edge_v = {i for ek, n in count.items() if n == 1 for i in ek if i in tv and wm.vertices[i].co.z < cz + 0.25}
-        if not edge_v:
-            return None
-        cx = sum(wm.vertices[i].co.x for i in edge_v) / len(edge_v)
-        cy = sum(wm.vertices[i].co.y for i in edge_v) / len(edge_v)
-        low = {}
-        for i in edge_v:
-            c = wm.vertices[i].co
-            b = int(math.atan2(c.y - cy, c.x - cx) / (2 * math.pi) * 36) % 36
-            low[b] = min(low.get(b, 9.0), c.z)
-        return [round(min(low.values()) * 100, 1), round(max(low.values()) * 100, 1)]
+        mod = cloth_ob.modifiers.new("Cloth", "CLOTH")
+        cs = mod.settings
+        cs.quality, cs.mass = s["quality"], s["mass"]
+        cs.tension_stiffness, cs.compression_stiffness = s["tension"], s["compression"]
+        cs.shear_stiffness, cs.bending_stiffness = s["shear"], s["bending"]
+        cs.air_damping, cs.vertex_group_mass, cs.pin_stiffness = AIR_DAMPING, "pin", 1.0
+        cs.use_dynamic_mesh = s["rest"] == "template"
+        cc = mod.collision_settings
+        cc.use_collision, cc.distance_min, cc.collision_quality = True, COLLIDE["cloth_distance"], 5
+        cc.use_self_collision, cc.self_distance_min = True, COLLIDE["self_distance"]
+        was = (sc.frame_start, sc.frame_end, sc.frame_current)
+        sc.frame_start, sc.frame_end = 1, s["frames"]
+        mod.point_cache.frame_start, mod.point_cache.frame_end = 1, s["frames"]
+        bpy.context.view_layer.update()
+        sc.frame_set(0)
+        if follow_ob is not None:
+            sd = follow_ob.modifiers.new("SD", "SURFACE_DEFORM")
+            sd.target, sd.falloff = cloth_ob, FOLLOW_FALLOFF
+            bpy.context.view_layer.objects.active = follow_ob
+            with bpy.context.temp_override(object=follow_ob, active_object=follow_ob, selected_objects=[follow_ob]):
+                bpy.ops.object.surfacedeform_bind(modifier="SD")
+            out["followers_bound"] = bool(sd.is_bound)
+        for f in range(1, s["frames"] + 1):
+            sc.frame_set(f)
+        dg = bpy.context.evaluated_depsgraph_get()
+        ev = cloth_ob.evaluated_get(dg).data
+        moved = []
+        for v, k in ci.items():
+            p_ = ev.vertices[k].co.copy()
+            moved.append((p_ - W[v]).length)
+            W[v] = p_
+        if follow_ob is not None:
+            fe = follow_ob.evaluated_get(dg).data
+            for v, k in fi.items():
+                W[v] = fe.vertices[k].co.copy()
+        for v in range(n):
+            wm.vertices[v].co = W[v]
+        wm.update()
+        for o in temp:
+            bpy.data.objects.remove(o)
+        sc.frame_start, sc.frame_end = was[:2]
+        sc.frame_set(was[2])
+        moved.sort()
+        out["moved_cm_median_p99_max"] = [round(moved[len(moved) // 2] * 100, 2), round(moved[int(len(moved) * 0.99)] * 100, 2),
+                                          round(moved[-1] * 100, 2)]
+        out["seconds"] = round(time.time() - t0, 1)
+        return out
+
+    def hide_covered(item_bm, inner_, pf):
+        """V3.1-01 (V3-14): the inner layer as drawn under this item. A ray from HIDE_RAY_START under each inner face, out along its
+        normal, that meets the item marks the face covered; covered faces are removed (as the body is under the dress) and the rest is
+        exported, with the inner layer's own material, as <name>_<inner>_under_<pack_file>.glb. Returns (path, faces, faces hidden)."""
+        otb = item_bm.copy()
+        bmesh.ops.triangulate(otb, faces=otb.faces[:])
+        otree = BVHTree.FromBMesh(otb)
+        otb.free()
+        io_ = import_glb(os.path.join(out_dir, f"{name}_{inner_}.glb"))
+        bm = bmesh.new()
+        bm.from_mesh(io_.data)
+        bm.normal_update()
+        covered = [f for f in bm.faces if otree.ray_cast(f.calc_center_median() - f.normal * HIDE_RAY_START, f.normal, HIDE_RAY_LENGTH)[0] is not None]
+        total = len(bm.faces)
+        bmesh.ops.delete(bm, geom=covered, context="FACES")
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
+        bm.to_mesh(io_.data)
+        bm.free()
+        path = os.path.join(out_dir, f"{name}_{inner_}_under_{pf}.glb")
+        export_glb(io_, path)
+        bpy.data.objects.remove(io_)
+        return path, total, len(covered)
+
+    def joined(*bms):
+        out = bmesh.new()
+        for x in bms:
+            me_ = bpy.data.meshes.new("joined")
+            x.to_mesh(me_)
+            out.from_mesh(me_)
+            bpy.data.meshes.remove(me_)
+        return out
 
     for meta in metas:
         tid, pf = meta["id"], meta["pack_file"]
@@ -684,7 +702,6 @@ def run():
         R = {"template": tid, "category": meta["category"], "layer": meta["layer"], "source": meta["source"], "licence": meta["licence"],
              "approved": meta["approved"], "delete_group": meta["delete_group"], "hides_body": hides, "inner_layers": meta["inner_layers"]}
         report["pack_items"][pf] = R
-        inner_obs = []
         try:
             mhclo = mhclo_path(meta, job["packs_dir"])
             before_mods = {m.name for m in h.modifiers}
@@ -698,12 +715,14 @@ def run():
             fb, kd = read_body()
             wm = ob.data.copy()  # the item in world space, to settle, push and test on; the MPFB object stays until the body is exported
             wm.transform(ob.matrix_world)
+            kept = list(range(len(wm.vertices)))  # the template .obj's vertex index of each wm vertex
             if meta.get("keep_islands") is not None:  # V3-07c: only these islands go on; the rest are deleted before any fitting
                 _kb = bmesh.new()
                 _kb.from_mesh(wm)
                 _kb.verts.ensure_lookup_table()
                 _isl = islands(len(_kb.verts), [[v.index for v in f.verts] for f in _kb.faces])
-                _keep = set(kept_vertices(_isl, meta["keep_islands"], meta["keep_islands_vertices"]))
+                kept = kept_vertices(_isl, meta["keep_islands"], meta["keep_islands_vertices"])
+                _keep = set(kept)
                 bmesh.ops.delete(_kb, geom=[v for v in _kb.verts if v.index not in _keep], context="VERTS")
                 _kb.to_mesh(wm)
                 _kb.free()
@@ -718,78 +737,14 @@ def run():
             R["pairs_with_whole_body_as_shipped"] = len(full_tree.overlap(BVHTree.FromBMesh(_sb)))
             _sb.free()
 
-            # 1b. loose (V3-07b, only when meta "loose" is set): hem lowered, cloth moved out to hang off the torso
-            lo = loose_settings(meta)
-            loose_tv, _armpit = None, None
-            if lo is not None and HIDE:
-                t1 = time.time()
-                R["loose"], loose_cz, _armpit, loose_tv = loose_fit(wm, lo)
-                R["loose"]["seconds"] = round(time.time() - t1, 1)
+            # 2. settle (only when meta "settle" is set): Blender cloth, pinned on the garment, colliding with the body, collide_with and
+            # the inner layers, on one thread (build_pack.py), fixed frames
+            st = settle_settings(meta)
+            if st is not None and HIDE:
+                R["settle"] = cloth_settle(wm, meta, st, mhclo, kept)
 
-            # 2. settle (loose garments only): a short cloth pass with the pinned groups held, on one thread (build_pack.py), fixed frames
-            if meta["settle"] != "none" and HIDE and ("pin_above_armpit_cm" not in meta["settle"] or lo is not None):
-                s = {**SETTLE_DEFAULTS, **meta["settle"]}
-                t1 = time.time()
-                if "pin_above_armpit_cm" in s:  # V3-07b: hang from the shoulders: pin everything above a height, plus small loose pieces
-                    pz = _armpit + s["pin_above_armpit_cm"] / 100
-                    pin_idx = {v.index for v in wm.vertices if v.co.z >= pz}
-                    if s.get("pin_small_pieces", True):  # buttons and pocket flaps are separate pieces; cloth would drop them
-                        _pb = bmesh.new()
-                        _pb.from_mesh(wm)
-                        _pb.verts.ensure_lookup_table()
-                        seen_ = set()
-                        for v0 in _pb.verts:
-                            if v0.index in seen_:
-                                continue
-                            comp, stack = [], [v0]
-                            seen_.add(v0.index)
-                            while stack:
-                                q = stack.pop()
-                                comp.append(q.index)
-                                for e in q.link_edges:
-                                    o_ = e.other_vert(q)
-                                    if o_.index not in seen_:
-                                        seen_.add(o_.index)
-                                        stack.append(o_)
-                            if len(comp) < 0.02 * len(wm.vertices):
-                                pin_idx.update(comp)
-                        _pb.free()
-                    iob.vertex_groups.new(name="pin").add(sorted(pin_idx), 1.0, "REPLACE")
-                    R["settle"] = {"pinned_vertices": len(pin_idx), "pinned_above_z_cm": round(pz * 100, 1), "frames": s["frames"]}
-                else:
-                    R["settle"] = {"pinned_vertices": len(garment_group(iob, "pin", s["pinned"])), "frames": s["frames"]}
-                col = body_ob.modifiers.new("Collision", "COLLISION")
-                body_ob.collision.thickness_outer = 0.002
-                body_ob.collision.cloth_friction = 5.0
-                cm = iob.modifiers.new("Cloth", "CLOTH")
-                cs = cm.settings
-                cs.quality, cs.mass = s["quality"], s["mass"]
-                cs.tension_stiffness, cs.compression_stiffness = s["tension"], s["compression"]
-                cs.shear_stiffness, cs.bending_stiffness = s["shear"], s["bending"]
-                cs.air_damping, cs.vertex_group_mass, cs.pin_stiffness = 1.0, "pin", 1.0
-                if s["gravity_ramp"] > 0:
-                    cs.effector_weights.gravity = 0.0
-                    cs.effector_weights.keyframe_insert("gravity", frame=1)
-                    cs.effector_weights.gravity = 1.0
-                    cs.effector_weights.keyframe_insert("gravity", frame=1 + s["gravity_ramp"])
-                cc = cm.collision_settings
-                cc.use_collision, cc.distance_min, cc.collision_quality = True, 0.005, 5
-                cc.use_self_collision, cc.self_distance_min = True, 0.003
-                was_frames = (sc.frame_start, sc.frame_end, sc.frame_current)
-                sc.frame_start, sc.frame_end = 1, s["frames"]
-                cm.point_cache.frame_start, cm.point_cache.frame_end = 1, s["frames"]
-                sc.frame_set(0)
-                for f in range(1, s["frames"] + 1):
-                    sc.frame_set(f)
-                R["settle"]["largest_move_cm"] = round(apply_modifiers(iob, wm) * 100, 2)
-                R["settle"]["seconds"] = round(time.time() - t1, 1)
-                body_ob.modifiers.remove(col)
-                iob.animation_data_clear()
-                sc.frame_start, sc.frame_end = was_frames[:2]
-                sc.frame_set(was_frames[2])
-
-            # 3. push out of the body, then out of each inner layer: Blender's Shrinkwrap in 'Outside' mode moves only the vertices that
-            # are inside the target or closer than its offset, so the garment keeps its own shape everywhere else
+            # 3. push out of the body (V3-06's push, kept exactly: two passes; a vertex pushed off one face can land inside the next).
+            # Inner layers are not pushed off: with hide_inner their covered faces are hidden after export.
             clear = meta["clearance_cm"] / 100
             close = [signed_to_body(v.co) for v in wm.vertices]
             R["item_vertices_pushed_out_of_skin"] = sum(d < clear for d in close)
@@ -797,60 +752,13 @@ def run():
             if HIDE:  # --no-hide leaves the item as the pack fits it, so the check shows what it is for
                 contact = garment_group(iob, "contact", meta["contact_groups"])
                 R["contact_vertices"] = len(contact)
-                # Off the body: V3-06's push, kept exactly (two passes; a vertex pushed off one face can land inside the next). With a
-                # Shrinkwrap in 'Outside' mode here instead, the dress left 19 gap rays on synthetic_female_large (V3-07 record).
                 for _pass in range(2):
                     for vi in contact:
                         v = wm.vertices[vi]
                         loc, nor, _i, d = full_tree.find_nearest(v.co)
                         if (d if (v.co - loc).dot(nor) > 0 else -d) < clear:
                             v.co = loc + nor * clear
-                targets = []  # off each inner layer: Shrinkwrap in 'Outside' mode
-                for inner_name_ in meta["inner_layers"]:
-                    path = os.path.join(out_dir, f"{name}_{inner_name_}.glb")
-                    if not os.path.exists(path):
-                        raise FileNotFoundError(f"inner layer {inner_name_} was not built before {tid} ({path})")
-                    io_ = import_glb(path)
-                    io_.hide_render = True
-                    inner_obs.append(io_)
-                    targets.append(io_)
-                if targets and meta.get("inner_push", "shrinkwrap") == "body_normal":
-                    # V3-07b: off each inner layer along the body's own normal. From the nearest skin point a ray goes straight out; if
-                    # it meets the inner layer from inside (within 5 cm) and the garment is not clearance_cm beyond it, the garment
-                    # vertex moves out along that normal. Where the inner layer stops (a tee's short sleeve) the ray meets nothing and
-                    # nothing moves, so the cloth is no longer dragged to the inner layer's open edge.
-                    trees = []
-                    for tgt in targets:
-                        _tb = bmesh.new()
-                        _tb.from_mesh(tgt.data)
-                        bmesh.ops.triangulate(_tb, faces=_tb.faces[:])
-                        trees.append(BVHTree.FromBMesh(_tb))
-                        _tb.free()
-                    largest = 0.0
-                    for _pass in range(2):
-                        for vi in contact:
-                            v = wm.vertices[vi]
-                            loc, nor, _i, _d = full_tree.find_nearest(v.co)
-                            dg = (v.co - loc).dot(nor)
-                            for tr in trees:
-                                hit, hn, _i, _d = tr.ray_cast(loc + nor * 0.0005, nor, 0.05)
-                                if hit is not None and hn.dot(nor) > 0:
-                                    need = (hit - loc).dot(nor) + clear - dg
-                                    if need > 0:
-                                        v.co += nor * need
-                                        dg += need
-                                        largest = max(largest, need)
-                    R["largest_push_off_inner_layers_cm"] = round(largest * 100, 2)
-                else:
-                    for i_, tgt in enumerate(targets):
-                        sw = iob.modifiers.new(f"push_{i_}", "SHRINKWRAP")
-                        sw.target, sw.wrap_method, sw.wrap_mode = tgt, "NEAREST_SURFACEPOINT", "OUTSIDE"
-                        sw.offset, sw.vertex_group = clear, "contact"
-                    if targets:
-                        R["largest_push_off_inner_layers_cm"] = round(apply_modifiers(iob, wm) * 100, 2)
             R["min_clearance_to_body_after_push_cm"] = round(min(signed_to_body(v.co) for v in wm.vertices) * 100, 2)
-            if loose_tv is not None:
-                R["loose"]["hem_z_cm"] = hem_heights(wm, loose_tv, loose_cz)
             for vg_ in list(iob.vertex_groups):
                 iob.vertex_groups.remove(vg_)
 
@@ -927,9 +835,6 @@ def run():
             R["info_self_intersecting_pairs"] = mesh_checks.self_intersections(im, BVHTree.FromBMesh(im), floor)[0]
             R["info_clearance_to_full_body_cm"] = mesh_checks.clearance_cm(im, full_tree)
             im.free()
-            if meta["inner_layers"]:  # the V3-05 layer check against each garment it is worn over
-                inners = {n_: mesh_checks.load_glb(os.path.join(out_dir, f"{name}_{n_}.glb")) for n_ in meta["inner_layers"]}
-                R["layers"] = mesh_checks.layers({pf: item_bm}, inners)[pf]
             # Export, check, and where a gap ray shows the inside of the cloth where skin was removed, give back the body vertices nearest
             # to what that ray would have seen, then export and check again. The final check is the same independent function either way.
             R["body_faces_trimmed_where_skin_pokes_through"] = 0
@@ -962,6 +867,36 @@ def run():
             R["body_vertices_hidden"] = hidden
             R["body_vertices_restored_where_cloth_does_not_cover"] = restored
             R["body_glb_kb"] = round(os.path.getsize(body_glb) / 1024) if meta["delete_group"] else 0
+            # the V3-05 layer check against each inner layer: as drawn under this item (hide_inner), else the whole inner layer
+            R["hides_inner"] = HIDE and hides_inner(meta)
+            if meta["inner_layers"]:
+                R["layers"], whole, drawn = {}, [], []
+                for inner_ in meta["inner_layers"]:
+                    ipath = os.path.join(out_dir, f"{name}_{inner_}.glb")
+                    if not os.path.exists(ipath):
+                        raise FileNotFoundError(f"inner layer {inner_} was not built before {tid} ({ipath})")
+                    ib = mesh_checks.load_glb(ipath)
+                    whole.append(ib)
+                    if not R["hides_inner"]:
+                        R["layers"][inner_] = mesh_checks.layers({pf: item_bm}, {inner_: ib})[pf][inner_]
+                        continue
+                    upath, nf, nh = hide_covered(item_bm, inner_, pf)
+                    db = mesh_checks.load_glb(upath)
+                    drawn.append(db)
+                    R["layers"][inner_] = (mesh_checks.layers({pf: item_bm}, {inner_: db})[pf][inner_] if len(db.faces)
+                                           else {"intersecting_pairs": 0, "inner_inside_clearance_cm": {"min": None}})
+                    R.setdefault("inner_hidden", {})[inner_] = {
+                        "glb": os.path.basename(upath), "faces": nf, "faces_hidden": nh, "glb_kb": round(os.path.getsize(upath) / 1024),
+                        "info_pairs_with_whole_inner": mesh_checks.layers({pf: item_bm}, {inner_: ib})[pf][inner_]["intersecting_pairs"]}
+                if drawn:  # information: the body and the inner layers as drawn together, under the item (gap rays see through both)
+                    full_j, drawn_j = joined(full_bm, *whole), joined(mesh_checks.load_glb(body_glb), *drawn)
+                    bad_ = mesh_checks.body_as_drawn(full_j, drawn_j, item_bm, floor, tol)
+                    R["info_body_and_inner_as_drawn"] = {k: bad_[k] for k in ("visible_body_intersecting_pairs", "gap_rays", "gap_by_z_cm",
+                                                                             "worst_view")}
+                    full_j.free()
+                    drawn_j.free()
+                for b_ in whole + drawn:
+                    b_.free()
             for m in new_mods:
                 h.modifiers.remove(m)
             bpy.data.objects.remove(iob)
@@ -971,8 +906,6 @@ def run():
         except Exception as e:  # noqa: BLE001  recorded; check_reports.py fails the build on it
             R["status"] = "failed: " + repr(e)
             R["traceback"] = traceback.format_exc()
-        for io_ in inner_obs:
-            bpy.data.objects.remove(io_)
         print("TEMPLATE", name, tid, R.get("status"), json.dumps(R.get("body_as_drawn", {})), flush=True)
 
     json.dump(report, open(report_path, "w"), indent=2)
