@@ -39,6 +39,7 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - **Three strikes.** If a fix fails three times, stop and ask Joe, even with time left.
 - **Open decisions stop the work.** If a ticket has an open decision for Joe, stop and ask rather than guess.
 - **Only Joe creates or starts tickets.** Don't write new tickets, split a ticket, or start another one. If more work is needed, propose it in the ticket's note or the decision record, and stop.
+- **Joe and B only (Joe's decision, 18 Nov 2026; definitive, overrides any ticket, spec or doc that says otherwise).** Builds, template tuning, renders, comparisons and acceptance numbers use only Joe's and B's real bodies (`python pack/build_pack.py --private --only joe`, then `--only b`). Skip all synthetic bodies in builds: do not build them, render them or report on them, and do not list them in acceptance criteria. Synthetic bodies remain only where committed tests need them (they cannot use private data), and `npm run check` is unchanged until Joe says otherwise.
 - **Test on one body first.** Don't run a full multi-body build to try a parameter. Run Blender builds, checks and tests in a subagent, and bring back only the results and render paths.
 - **Measure, never assert.** Every accuracy claim needs a number, the script that produced it and a render. Never call a result good without the comparison.
 - **Scripts over manual steps.** Blender work runs headlessly from Python so it can be re-run from the repo. Record the Blender and library versions used.
