@@ -78,7 +78,44 @@ export function keepLayers(outfit: Record<string, string>, changed?: string): Re
   }
   if (o.Legs === GARMENTS.tights.option && o.Bottom === TIGHTS_BLOCKED_BY) o = changed === 'Legs' ? { ...o, Bottom: 'None' } : { ...o, Legs: 'None' };
   if (isUntuckedTop(o.Top) && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
+  if (isOn(o[UNDER_SLOT]) && !isMidTop(o.Top)) o = { ...o, [UNDER_SLOT]: 'None' }; // V3-05: a tee under needs a sweatshirt or shirt over it
   return o;
+}
+
+/**
+ * V3-05 (Joe, 17 Nov 2026): a base top (the tee) under one mid top (the sweatshirt or a shirt), in that fixed order. Only the combinations
+ * that passed the build's checks on this person's body are offered: the pack's manifest lists them (`garments.layers.combinations`),
+ * as the mid top's garment name -> the tee necklines it can be worn over. A pack without the list offers none.
+ */
+export const UNDER_SLOT = 'Under';
+export const UNDER_OPTION = GARMENTS.tee.option;
+export type LayerCombos = Record<string, Neckline[]>;
+/** The mid tops that can go over a tee: Top option -> garment name. */
+export const MID_TOPS: Record<string, GarmentId> = {
+  [GARMENTS.sweatshirt.option]: 'sweatshirt',
+  [GARMENTS.shirt_short.option]: 'shirt_short',
+  [GARMENTS.shirt_mid.option]: 'shirt_mid',
+  [GARMENTS.shirt_long.option]: 'shirt_long',
+};
+export const isMidTop = (option: string | undefined) => !!option && option in MID_TOPS;
+/** The pack mesh for a mid top as worn over the tee. */
+export const overMeshName = (garment: string) => `${garment}_over_tee`;
+/** The tee necklines this person can wear under the top option; empty when the top is not a mid top or nothing passed. */
+export const necklinesUnder = (combos: LayerCombos, topOption: string | undefined): Neckline[] => (isMidTop(topOption) ? combos[MID_TOPS[topOption!]] ?? [] : []);
+/** True when the outfit's tee under the top is a combination that passed on this body, with this neckline. */
+export const layeredOk = (combos: LayerCombos, outfit: Record<string, string>, neckline: Neckline) =>
+  isOn(outfit[UNDER_SLOT]) && necklinesUnder(combos, outfit.Top).includes(neckline);
+/** Reads the combinations from a pack manifest, ignoring anything that is not a known mid top over a known neckline. */
+export function parseLayerCombos(manifest: unknown): LayerCombos {
+  const raw = (manifest as { garments?: { layers?: { combinations?: unknown } } } | null)?.garments?.layers?.combinations;
+  const out: LayerCombos = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const g of Object.values(MID_TOPS)) {
+    const list = (raw as Record<string, unknown>)[g];
+    const ok = Array.isArray(list) ? list.filter(isNeckline) : [];
+    if (ok.length) out[g] = ok;
+  }
+  return out;
 }
 
 /** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`; `tucked` (a tee over a skirt) adds `_tucked`. */

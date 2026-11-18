@@ -8,8 +8,8 @@ test('on a phone the stage uses the full width and each row is at least 64 px hi
   expect(stage!.x).toBe(0);
   expect(stage!.width).toBe(412);
   const rows = page.locator('.wear-row');
-  await expect(rows).toHaveCount(3); // Top, Bottom and Legs (V2-04)
-  for (const row of await rows.all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(64);
+  await expect(rows).toHaveCount(5); // Dress, Top, Bottom, Legs and Under (the dress and under rows are hidden unless the pack allows them)
+  for (const row of await rows.all()) if (await row.isVisible()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(64);
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   expect((await page.getByRole('button', { name: 'Save outfit' }).boundingBox())!.height).toBe(50);
 });

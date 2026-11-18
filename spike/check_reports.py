@@ -46,8 +46,19 @@ Stricter than the first version:
   garment_mesh limits (Joe, 16 Nov 2026): no face pairs between the body as drawn (the hidden parts removed) and the item, and no gap ray
   where the removed body would have been seen (tolerances.json "pack_item_body_as_drawn"). The item as the pack fits it, over the whole body, must have
   face pairs, or the check proves nothing; build_pack.py --no-hide builds without hiding or our fitting and fails it. --pack-items makes a missing dress a failure on a female body.
+  V3-07: these are now garment templates (pack/fit_template.py). A template with "approved": false in its report (from its meta.json) is
+  printed as REPORT-ONLY and does not fail; a template that did not build at all still fails. A template with inner_layers is also held
+  to the V3-05 layer limits (tolerances.json "layers") over each of them.
 
-Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shirts] [--shorts] [--tights] [--skirt] [--pack-items]
+- layers (V3-05), when the report has them: the sweatshirt and the three shirts built over the tee (sweatshirt_over_tee, shirt_short_over_tee,
+  shirt_mid_over_tee, shirt_long_over_tee) are held to the tee's hard mesh limits, to the shading and bust-shape limits, and against the trousers,
+  shorts and tights like any top, except that their shoulders may stand tolerances.json "layers" shoulder_gap_extra_cm further off the body (the
+  tee is under them). They are not calibrated to a size of their own (they are the standalone garment's ease, pushed out by the tee), so the
+  calibration record is not asked for. The layer check proper: against each tee it can be worn over (crew, V, scoop) there are no intersecting
+  face pairs, and no tee vertex under the outer top is less than tolerances.json "layers" inner_clearance_cm_min inside it. --layers makes
+  missing ones a failure.
+
+Usage: python spike/check_reports.py <folder> [--no-garments] [--sweatshirt] [--necklines] [--shirts] [--layers] [--shorts] [--tights] [--skirt] [--pack-items]
 """
 import json, sys, pathlib
 
@@ -61,8 +72,12 @@ LENGTHS = {"height_cm", "inside_leg_cm"}
 gm = tol["garment_mesh"]
 NECKLINE_TEES = ("tee_v", "tee_scoop")  # V1.1-04
 SHIRTS = ("shirt_short", "shirt_mid", "shirt_long")  # V3-03
+OVERS = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee", "shirt_long_over_tee")  # V3-05
 _exc_path = pathlib.Path(__file__).with_name("known_exceptions.json")
 EXCEPTIONS = {(e["body"], e["check"]): e for e in json.load(open(_exc_path))["exceptions"]} if _exc_path.exists() else {}
+
+
+omitted = {}  # V3-05 (Joe, 17 Nov 2026): over-tee tops that failed a check, {top: {tee or None for all tees: [texts]}}; they are left out of the pack, not failed
 
 
 def check(ok, text, known=None):
@@ -70,6 +85,13 @@ def check(ok, text, known=None):
     global failures
     if not ok and known:
         print(f"  KNOWN {text} -- {known['reason']}")
+        return
+    top_ = next((o for o in OVERS if text.startswith(o + " ") or text.startswith(o + "-")), None)
+    if top_ and not ok:  # a layered top that fails is not fixed, only left out of this body's pack (the layer check names the tee it was worn over)
+        import re
+        m_ = re.match(rf"{top_} over (\w+):", text)
+        omitted.setdefault(top_, {}).setdefault(m_.group(1) if m_ else None, []).append(text)
+        print(f"  OMIT {text}")
         return
     failures += not ok
     print(f"  {'PASS' if ok else 'FAIL'} {text}")
@@ -99,6 +121,8 @@ for f in reports:
     variants = tuple(g for g in NECKLINE_TEES if g in r or "--necklines" in sys.argv)
     shirts = tuple(g for g in SHIRTS if g in r or "--shirts" in sys.argv)  # V3-03: held to the tee's limits like the necklines, so they join `variants` below
     variants += shirts
+    overs = tuple(g for g in OVERS if g in r or "--layers" in sys.argv)  # V3-05: held to the tee's limits too, with the shoulder allowance below
+    variants += overs
     shorts = ("shorts",) if "shorts" in r or "--shorts" in sys.argv else ()  # V1.1-05
     tights = ("tights",) if "tights" in r or "--tights" in sys.argv else ()  # V2-04
     for g in ("tee", "trousers") + (("sweatshirt",) if "sweatshirt" in r or "--sweatshirt" in sys.argv else ()) + variants + shorts + tights:
@@ -124,7 +148,7 @@ for f in reports:
         if old:
             print(f"  info {g} old nearest-point test: {old['fraction']*100:.2f}%, worst {old['worst_penetration_cm']} cm (not used for pass/fail)")
         cal = gr.get("calibration")
-        if need_garments:
+        if need_garments and g not in overs:
             if cal is None:
                 check(False, f"{g} has no calibration record (was a garment fixture supplied?)")
             else:
@@ -135,7 +159,7 @@ for f in reports:
                 if cal["ease_at_floor"]:
                     print(f"  info {g} ease at its floor for: {cal['ease_at_floor']} (real item smaller than body plus 3 mm; stretch is not modelled)")
 
-    for g in shirts:  # V3-03: what makes it a shirt and not a tee with a neckline
+    for g in shirts + tuple(o for o in overs if o.startswith("shirt")):  # V3-03: what makes it a shirt and not a tee with a neckline
         d_ = (r.get(g) or {}).get("details")
         if d_ is None:
             check(False, f"{g} collar and placket record missing from report")
@@ -182,12 +206,34 @@ for f in reports:
             if top not in r["mesh_checks"]:
                 continue
             sg = r["mesh_checks"][top]["shoulder_gap"]
-            check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"]
-                  and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"],
-                  f"{top} shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {gm['tee_shoulder_gap_band_mean_max_cm']}), "
-                  f"max {sg['max_cm']} cm (max {gm['tee_shoulder_gap_max_cm']})",
+            extra_ = tol["layers"]["shoulder_gap_extra_cm"] if top in OVERS else 0.0  # V3-05: a top over a tee stands the tee's thickness further off the shoulder
+            check(sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= gm["tee_shoulder_gap_band_mean_max_cm"] + extra_
+                  and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] + extra_,
+                  f"{top} shoulder gap: worst band mean {sg['worst_band_mean_cm']} cm (max {round(gm['tee_shoulder_gap_band_mean_max_cm'] + extra_, 2)}), "
+                  f"max {sg['max_cm']} cm (max {round(gm['tee_shoulder_gap_max_cm'] + extra_, 2)})",
                   known=(lambda e: e if e and sg["worst_band_mean_cm"] is not None and sg["worst_band_mean_cm"] <= e["limit"]
                          and sg["max_cm"] <= gm["tee_shoulder_gap_max_cm"] else None)(EXCEPTIONS.get((r["name"], f"{top}_shoulder_gap_band_mean"))))
+
+    if overs:  # V3-05: the layer check, against each tee the top can be worn over
+        lt, ly = tol["layers"], r.get("layers") or {}
+        for o in overs:
+            if o not in ly:
+                check(False, f"{o} layer check missing from report (rebuild with python pack/build_pack.py)")
+                continue
+            for tee_, m_ in ly[o].items():
+                c_ = m_["inner_inside_clearance_cm"]
+                check(m_["intersecting_pairs"] <= lt["intersecting_pairs_max"], f"{o} over {tee_}: intersecting face pairs {m_['intersecting_pairs']} (max {lt['intersecting_pairs_max']})")
+                check(c_["min"] is not None and c_["min"] >= lt["inner_clearance_cm_min"],
+                      f"{o} over {tee_}: the tee is at least {c_['min']} cm inside it (min {lt['inner_clearance_cm_min']}); p05 {c_['p05']}, median {c_['median']}, "
+                      f"{c_['vertices']} tee vertices tested, tightest at {c_['min_at_xyz_cm']} cm")
+            ov_ = r.get(o, {})
+            print(f"  info {o}: chest as worn {ov_.get('chest_circ_as_worn_cm')} cm, {ov_.get('chest_extra_from_tee_cm')} cm more than the same top alone")
+        passing = {o: [t for t in ly.get(o, {}) if None not in omitted.get(o, {}) and t not in omitted.get(o, {})] for o in overs}
+        if "--layers" in sys.argv:  # only the pack build asks for the list; a checked-in reports folder is not written to
+            json.dump({"passing": {o: t for o, t in passing.items() if t}}, open(folder / f"{r['name']}_layers_pass.json", "w"), indent=2)
+        for o in overs:
+            print(f"  info {o} is offered over: {passing[o] or 'nothing (left out of the pack)'}")
+        omitted.clear()
 
     if (r.get("sex_base") == "female" and "--skirt" in sys.argv) or "skirt" in r:  # V3-01b
         mc, sk = r.get("mesh_checks", {}), r.get("skirt")
@@ -226,18 +272,33 @@ for f in reports:
             check(False, "pack items missing from report (rebuild with python pack/build_pack.py)")
         for iid, p_ in pi.items():
             b_ = p_.get("body_as_drawn")
-            if p_.get("status") != "ok" or b_ is None:
+            if p_.get("status") != "ok" or b_ is None:  # a template that did not build has no numbers to report: always a failure
                 check(False, f"pack item {iid}: {p_.get('status')}")
                 continue
-            check(p_["hides_body"] and p_["body_vertices_hidden"] > 0, f"pack item {iid} hides the body: {p_['body_vertices_hidden']} body vertices removed (the pack's delete group, less {p_['body_vertices_restored_where_cloth_does_not_cover']} the cloth does not cover), after {p_['item_vertices_pushed_out_of_skin']} item vertices were pushed out of the skin (deepest {p_['deepest_push_cm']} cm), {p_['body_faces_trimmed_where_skin_pokes_through']} body faces still crossed the cloth and were removed")
-            check(0 < b_["body_faces_as_drawn"] < b_["body_faces_full"], f"pack item {iid} body as drawn has fewer faces than the whole body: {b_['body_faces_as_drawn']} of {b_['body_faces_full']} (more means helper geometry is showing)")
-            check(b_["visible_body_intersecting_pairs"] <= pt["visible_body_intersecting_pairs_max"],
-                  f"pack item {iid} body as drawn, intersecting face pairs: {b_['visible_body_intersecting_pairs']} (max {pt['visible_body_intersecting_pairs_max']}); by height cm {b_['visible_body_intersections_by_z_cm']}")
-            check(b_["gap_rays"] <= pt["gap_rays_max"],
-                  f"pack item {iid} body as drawn, gap rays: {b_['gap_rays']} of {b_['rays_on_body']} on the body (max {pt['gap_rays_max']}); by height cm {b_['gap_by_z_cm']}; worst view {b_['worst_view']}")
-            check(p_["pairs_with_whole_body_as_shipped"] > pt["visible_body_intersecting_pairs_max"],
-                  f"pack item {iid} check has teeth: the item as the pack fits it, over the whole body, has {p_['pairs_with_whole_body_as_shipped']} face pairs (must be over {pt['visible_body_intersecting_pairs_max']}); "
-                  f"after our fitting, with no hiding: {b_['intersecting_pairs_with_hiding_off']} (information)")
+            # V3-07: a template Joe has not approved yet (meta.json "approved": false) is reported, not enforced. Reports from before
+            # V3-07 have no "approved" and are enforced, as they were.
+            ck = check
+            if p_.get("approved") is False:
+                ck = lambda ok, text, known=None: print(f"  REPORT-ONLY ({'pass' if ok else 'would fail'}; not approved) {text}")
+            if p_.get("delete_group", True):
+                ck(p_["hides_body"] and p_["body_vertices_hidden"] > 0, f"pack item {iid} hides the body: {p_['body_vertices_hidden']} body vertices removed (the pack's delete group, less {p_['body_vertices_restored_where_cloth_does_not_cover']} the cloth does not cover), after {p_['item_vertices_pushed_out_of_skin']} item vertices were pushed out of the skin (deepest {p_['deepest_push_cm']} cm), {p_['body_faces_trimmed_where_skin_pokes_through']} body faces still crossed the cloth and were removed")
+                ck(0 < b_["body_faces_as_drawn"] < b_["body_faces_full"], f"pack item {iid} body as drawn has fewer faces than the whole body: {b_['body_faces_as_drawn']} of {b_['body_faces_full']} (more means helper geometry is showing)")
+            ck(b_["visible_body_intersecting_pairs"] <= pt["visible_body_intersecting_pairs_max"],
+               f"pack item {iid} body as drawn, intersecting face pairs: {b_['visible_body_intersecting_pairs']} (max {pt['visible_body_intersecting_pairs_max']}); by height cm {b_['visible_body_intersections_by_z_cm']}")
+            ck(b_["gap_rays"] <= pt["gap_rays_max"],
+               f"pack item {iid} body as drawn, gap rays: {b_['gap_rays']} of {b_['rays_on_body']} on the body (max {pt['gap_rays_max']}); by height cm {b_['gap_by_z_cm']}; worst view {b_['worst_view']}")
+            if p_.get("delete_group", True):
+                ck(p_["pairs_with_whole_body_as_shipped"] > pt["visible_body_intersecting_pairs_max"],
+                   f"pack item {iid} check has teeth: the item as the pack fits it, over the whole body, has {p_['pairs_with_whole_body_as_shipped']} face pairs (must be over {pt['visible_body_intersecting_pairs_max']}); "
+                   f"after our fitting, with no hiding: {b_['intersecting_pairs_with_hiding_off']} (information)")
+            for inner_, lc in (p_.get("layers") or {}).items():  # V3-07: over each inner layer, as V3-05's layer check
+                cl = lc["inner_inside_clearance_cm"]["min"]
+                ck(lc["intersecting_pairs"] <= tol["layers"]["intersecting_pairs_max"] and (cl is None or cl >= tol["layers"]["inner_clearance_cm_min"]),
+                   f"pack item {iid} over {inner_}: {lc['intersecting_pairs']} intersecting face pairs (max {tol['layers']['intersecting_pairs_max']}), "
+                   f"inner garment at least {cl} cm inside it (min {tol['layers']['inner_clearance_cm_min']})")
+            for inner_ in p_.get("inner_layers", []):
+                if inner_ not in (p_.get("layers") or {}):
+                    ck(False, f"pack item {iid} over {inner_}: layer check missing from report")
             print(f"  info pack item {iid}: {p_['triangles']} triangles, {p_['glb_kb']} KB item + {p_['body_glb_kb']} KB body-as-drawn, "
                   f"{p_['pieces']} piece(s), {p_['openings']} opening(s), {p_['info_self_intersecting_pairs']} self-intersecting pairs, "
                   f"min clearance to the full body {p_['info_clearance_to_full_body_cm']['min']} cm (all information; not the app's strict limits)")

@@ -14,13 +14,19 @@ import {
   DRESS_OPTION,
   DRESS_SLOT,
   GARMENTS,
+  MID_TOPS,
   NECKLINES,
   NECKLINE_KEY,
   isUntuckedTop,
   SHEER_KEY,
   TIGHTS_BLOCKED_BY,
   TUCKS_INTO,
+  UNDER_OPTION,
+  UNDER_SLOT,
   ensureItem,
+  layeredOk,
+  necklinesUnder,
+  overMeshName,
   hasNecklines,
   hasSheer,
   keepLayers,
@@ -56,6 +62,8 @@ const SLOTS: Slot[] = [
   { name: 'Bottom', options: ['Trousers', 'Shorts', 'Skirt', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts', Skirt: 'skirt' } },
   // Tights (V2-04) are a layer under the shorts, so they have their own slot. Nothing by default; never with trousers.
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
+  // V3-05: a tee under the sweatshirt or a shirt. Shown only when this person's pack lists a combination that passed on their body.
+  { name: UNDER_SLOT, options: ['None', UNDER_OPTION], garments: { [UNDER_OPTION]: 'tee' } },
 ];
 
 /** The pack mesh behind each shirt option (V3-03), to offer a shirt only when this person's pack has it. */
@@ -210,6 +218,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let editing: Slot | null = null; // the slot whose controls are open
   let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
+  let packReady = false; // the pack and its list of passing layer combinations have loaded
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
   const offered = (opt: string) =>
@@ -222,6 +231,8 @@ export function renderTryOn(el: HTMLElement): () => void {
       return 'Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.';
     if (slot === 'Top' && isUntuckedTop(opt) && outfit.Bottom === TUCKS_INTO)
       return `A ${opt === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} isn't tucked in, so it can't go with a skirt. Change your bottom to trousers, shorts or nothing to wear it.`;
+    if (slot === UNDER_SLOT && opt === UNDER_OPTION && necklinesUnder(viewer.layers(), outfit.Top).length === 0)
+      return 'A T-shirt goes under a sweatshirt or a shirt that has been built over it for you. Choose one of those for your top first.';
     if (slot === 'Bottom' && opt === TUCKS_INTO && isUntuckedTop(outfit.Top))
       return `A skirt goes with a T-shirt or nothing on top. Change your top from the ${outfit.Top === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} to wear a skirt.`;
     return null;
@@ -248,6 +259,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.style.background = g ? colourOf(s) : '';
     }
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
     outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
@@ -302,6 +314,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       const on = b.dataset.neckline === neckline;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
+      b.disabled = s.name === UNDER_SLOT && !necklinesUnder(viewer.layers(), outfit.Top).includes(b.dataset.neckline as Neckline); // only the necklines that passed over this top on this body
     }
     curSwatch.classList.toggle('o-empty', !g);
     curSwatch.style.background = g ? current : '';
@@ -320,12 +333,23 @@ export function renderTryOn(el: HTMLElement): () => void {
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
     const tucked = isTucked(outfit);
+    const layered = layeredOk(viewer.layers(), outfit, neckline); // V3-05: the tee under a sweatshirt or shirt, which is then the version built over the tee
+    if (slot.name === UNDER_SLOT) {
+      if (layered) for (const mesh of meshesOf('tee')) viewer.setGarment(mesh, mesh === meshName('tee', neckline)); // after the Top slot, so it shows the tee
+      return;
+    }
     for (const [opt, id] of Object.entries(slot.garments)) {
       const shown = meshName(id as GarmentId, neckline, tucked);
-      for (const mesh of new Set([...meshesOf(id as GarmentId), ...meshesOf(id as GarmentId, true)])) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
+      for (const mesh of new Set([...meshesOf(id as GarmentId), ...meshesOf(id as GarmentId, true)])) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown && !(layered && opt in MID_TOPS));
+      if (opt in MID_TOPS) viewer.setGarment(overMeshName(id), layered && outfit[slot.name] === opt);
     }
   };
   const refresh = () => {
+    if (packReady && outfit[UNDER_SLOT] === UNDER_OPTION && !layeredOk(viewer.layers(), outfit, neckline)) {
+      const fits = necklinesUnder(viewer.layers(), outfit.Top);
+      if (fits.length) neckline = fits[0]; // the tee under keeps to a neckline that passed on this body
+      else outfit[UNDER_SLOT] = 'None';
+    }
     SLOTS.forEach(apply);
     const dressOn = outfit[DRESS_SLOT] === DRESS_OPTION && viewer.has('dress') && viewer.has('body_dress');
     viewer.setGarment('body', !dressOn); // while the dress is worn, the body with the parts under it removed is drawn instead
@@ -525,7 +549,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
     if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
   };
-  let packReady = false;
   void viewer.ready.then(() => {
     packReady = true;
     if (gone) return;
@@ -539,7 +562,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     const look: OutfitLook = {};
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
-      if (!g) continue;
+      if (!g || s.name === UNDER_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
       const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;

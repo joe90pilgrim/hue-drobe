@@ -77,7 +77,9 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V2-08 | [Bug: the tops show a point at each breast](v2-beth-joins/V2-08-bust-shape-bug.md) | V2-03, V2-07; run last in version 2 | Fable, high |
 | V2-09 | [Archive the free asset packs](v2-beth-joins/V2-09-archive-packs.md) | V2-07; do soon | Haiku, high |
 
-### Version 3: Loose clothes and layers
+### Version 3: Loose clothes and layers (closed 18 Nov 2026)
+
+Closed by Joe. Done tickets stay as history; open ones are closed, retired or parked (kept, not deleted). Template work carries on in version 3.1.
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
@@ -86,13 +88,32 @@ Build from the brief and designs in `docs/designs/2026-11-15-v1.2-redesign/` (V1
 | V3-01b | [Skirt in the app](v3-loose-clothes/V3-01b-skirt-in-app.md) | V3-01a | Sonnet, high |
 | V3-02 | [Dresses from the free packs](v3-loose-clothes/V3-02-dresses.md) | V3-06 | Sonnet, medium |
 | V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) | V1.1-04; V3-05 for wearing under other tops | Sonnet, high |
-| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) | V3-05 | Opus, high |
-| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) | V3-01b | Sonnet, high |
-| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
-| V3-03 | [Shirts (long, mid and short sleeves)](v3-loose-clothes/V3-03-shirts.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (outline) | V3-00 (go decision) | Set after V3-00 (likely Sonnet, high, for garments that reuse the proven method) |
-| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) | V2-07, V2-09 | Sonnet, high |
+| V3-04 | [Jackets and coats](v3-loose-clothes/V3-04-jackets-coats.md) (superseded by V3-09) | - | - |
+| V3-05 | [Multiple top layers](v3-loose-clothes/V3-05-layers.md) (decided: ship passing combinations only; app side remaining) | V3-01b | Sonnet, medium |
+| V3-06 | [Pack asset pipeline and body-hiding check](v3-loose-clothes/V3-06-pack-asset-pipeline.md) (done; folded into V3-07) | V2-07, V2-09 | Sonnet, high |
+| V3-07 | [Generic template fitting: `pack/fit_template.py`](v3-loose-clothes/V3-07-fit-template.md) | V3-06, V3-07a | Opus, high |
+| V3-07a | [Archive Suits 01 and Shirts 02/03, allow CC-BY with credits](v3-loose-clothes/V3-07a-archive-template-packs.md) | V2-09 | Sonnet, low |
+| V3-07b | [Loose-fit volume for templates](v3-loose-clothes/V3-07b-loose-fit-volume.md) (removed by V3.1-01) | V3-07, V3-08 | Opus, high |
+| V3-08 | [First template: a shirt from Shirts 02/03](v3-loose-clothes/V3-08-shirt-template.md) (closed) | V3-07, V3-07a | Sonnet, medium |
+| V3-07c | [`keep_islands`: use one garment from a whole-suit pack item](v3-loose-clothes/V3-07c-keep-islands.md) | V3-07 | Opus, medium |
+| V3-09 | [Second template: a blazer from Suits 01](v3-loose-clothes/V3-09-blazer-template.md) (retired) | V3-08, V3-07c | Sonnet, high |
+| V3-10 | [Credits screen for CC-BY assets](v3-loose-clothes/V3-10-credits-screen.md) (parked) | V3-07a | Sonnet, low |
+| V3-11 | [Garment chips and variant row in the slot sheet](v3-loose-clothes/V3-11-top-sheet-garment-chips.md) (parked) | - | Sonnet, medium |
+| V3-12 | [Colour row and colour page, collapsed Fine-tune](v3-loose-clothes/V3-12-top-sheet-colour-page.md) (parked) | V3-11 | Sonnet, medium |
+| V3-13 | [All garments list with search](v3-loose-clothes/V3-13-all-garments-list.md) (parked) | V3-11 | Sonnet, medium |
+| V3-14 | [Experiment: cloth, garment-side pins and inner-layer hiding](v3-loose-clothes/V3-14-cloth-layering-experiment.md) (closed: folded into V3.1-01) | V3-07, V3-07c | Opus, high |
+
+### Version 3.1: Template garments
+
+Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garment-side pins and the template's own rest shape for loose ones, and inner layers hidden where they're covered. No scripted reshaping.
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V3.1-01 | [Close out V3-14; fold rest-shape cloth and inner-layer hiding into `fit_template.py`](v3.1-templates/V3.1-01-fold-experiment-into-fit-template.md) | V3-14 | Opus, high |
+| V3.1-02 | [App: draw the inner garment with covered parts hidden](v3.1-templates/V3.1-02-app-draws-hidden-inner-layer.md) | V3.1-01 | Sonnet, medium |
+| V3.1-03 | [T-shirt template](v3.1-templates/V3.1-03-tee-template.md) | V3.1-01 | Sonnet, medium |
+| V3.1-04 | [Straight-leg trousers template](v3.1-templates/V3.1-04-straight-leg-trousers-template.md) | V3.1-01 | Sonnet, high |
+| V3.1-05 | [Open-front coat template](v3.1-templates/V3.1-05-open-front-coat-template.md) | V3.1-01, V3.1-02, coat source decision | Sonnet, high |
 
 ### Version 4: Your real wardrobe
 

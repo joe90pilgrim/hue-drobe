@@ -56,10 +56,24 @@ No open decisions for 1.2.
 - ~~**V3-03** Shirts: collar style?~~ **Decided 17 Nov 2026:** classic point collar.
 - ~~**V3-03** Shirts: tucked in, out or both?~~ **Decided 17 Nov 2026:** untucked first.
 - **V3-03** Shirts: agree the limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm; second pass: drawn collar shading at most 0.6) and `shading` (every garment's cloth shading turns at most 22 degrees in 1.5 cm); and look at the second-pass renders: does it read as a shirt, and do the tee, sweatshirt and trousers now read as cloth? (Joe asked on 17 Nov 2026 for the smoother shading on those too; done.)
-- **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
-- **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
-- **V3-05** Multiple top layers: how many layers at most? Recommendation: three (base, mid, outer).
-- **V3-05** Multiple top layers: which combinations? Recommendation: tee under shirt, tee under sweatshirt, shirt under sweatshirt; jackets added in V3-04.
+- ~~**V3-05** Multiple top layers: how many layers at most?~~ **Decided 17 Nov 2026:** three (base, mid, outer).
+- ~~**V3-05** Multiple top layers: which combinations?~~ **Decided 17 Nov 2026:** tee under shirt and tee under sweatshirt; not shirt under sweatshirt; jackets added in V3-04. See `docs/decisions/2026-11-17-v3-05-layers.md`.
+- ~~**V3-04** Jackets and coats: open or closed front; which jacket first?~~ **Superseded 17 Nov 2026:** the first jacket is the Suits 01 blazer template (V3-09).
+- ~~**Template pipeline** (proposal of 17 Nov 2026): approve the design, the three-round limit, the test pair and folding V3-06.~~ **Decided 17 Nov 2026:** approved across the board.
+- ~~**V3-05** Legacy layered tops: ship only the combinations that pass on each body, or drop legacy layering?~~ **Decided 17 Nov 2026:** ship only the passing combinations; no further procedural geometry work.
+- **V3-07** If MakeClothes can't run headlessly, how are templates from outside the packs authored? Decide only if V3-07 reports it.
+- **V3-08** Shirt: keep the procedural shirt, switch to the template, or offer both? Decide from the side-by-side renders.
+- **V3-09** Blazer: over the sweatshirt too, or only the tee and shirt? Recommendation: tee and shirt first.
+- **V3-10** Credits screen: where should it live? Recommendation: settings, as "About and credits".
+- ~~**V3-14** From the experiment's write-up: go, partial or no-go? If go: remove V3-07b's options or keep them off?~~ **Decided 18 Nov 2026:** carry on with rest-shape cloth and inner-layer hiding; remove V3-07b's options (V3.1-01).
+
+## v3.1-templates
+
+- ~~**V3.1-01** Merge the whole branch chain into `master` in one go, then remove the V3-07b code? Recommendation: yes.~~ **Decided 18 Nov 2026:** yes, one merge, then remove.
+- ~~**V3.1-01** Accept the shirt's remaining bust crease and cuff body pairs on the large female body as a known limit? Recommendation: accept; judge each template from its renders.~~ **Decided 18 Nov 2026:** accept as a known limit; judge each template from its renders.
+- **V3.1-03** Tee: ship the template alongside the legacy tee, and retire the legacy one later once necklines and tucking are covered? Recommendation: yes.
+- **V3.1-04** Trousers: add alongside first, retire legacy trousers (and the shorts and tights built from them) once approved? Recommendation: yes. If Pants 01 has no straight leg: archive Pants 02 (CC-BY) or model one?
+- **V3.1-05** Coat source: a long cardigan from Shirts 02 (CC-BY, archived), a coat modelled in Blender, or another site? Recommendation: the cardigan first.
 
 ## v4-real-wardrobe
 

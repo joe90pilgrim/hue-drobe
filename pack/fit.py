@@ -104,6 +104,8 @@ def default_garments(m, cfg):
         out["tights"] = {"gap_cm": t_["gap_cm"], "hem_above_floor_cm": t_["hem_above_floor_cm"],
                          "waist_below_trousers_cm": t_["waist_below_trousers_cm"],
                          "smooth_iterations": t_["smooth_iterations"], "colour_srgb": colour}
+    if "layers" in cfg:  # V3-05: tops worn over the tee are kept this far off it
+        out["layers"] = {"gap_cm": cfg["layers"]["gap_cm"]}
     if "shading" in cfg:  # V3-03 follow-up: shading normals averaged over this radius for every offset-shell garment but the tights
         out["shading_radius_cm"] = cfg["shading"]["radius_cm"]
     if "bust" in cfg:  # V2-08: how the tops sit over the bust; the generator applies it on female bodies only

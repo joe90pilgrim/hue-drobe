@@ -1,0 +1,44 @@
+{
+  "_note": "V3-14 copy of blazer_suit_f2 (women): over the tee.",
+  "id": "blazer_f_over_tee",
+  "category": "outer",
+  "pack_file": "blazer_f_over_tee",
+  "layer": "outer",
+  "allowed_bodies": "female",
+  "source": {
+    "pack": "suits01",
+    "asset": "toigo_female_suit_2"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "3156c2113c18028dd8d12f3d4ad77b29008cd982a444f86f5d18be003240929c",
+  "keep_islands": [
+    0,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14
+  ],
+  "keep_islands_vertices": 5015,
+  "delete_group": true,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.3,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain",
+  "v3_14": {
+    "inner": "tee",
+    "cloth": "blazer"
+  }
+}

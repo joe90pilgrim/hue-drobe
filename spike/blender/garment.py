@@ -164,10 +164,104 @@ def _arm_segs(joints):
 ARM = ("lup", "rup", "lfo", "rfo")
 
 
+def _fill_armpit_holes(g, pits, reach):
+    """V3-05 armpit_open: fill each boundary loop of g lying wholly within reach of an armpit apex with a patch: one n-gon, poked to a fan
+    round its centre, subdivided twice, then relaxed (each inner vertex to the mean of its neighbours, the rim held), so it spans the hole as
+    a smooth membrane. New vertices get bodyidx 0 (no body vertex). Returns the number of holes filled.
+    bmesh ops can reallocate the mesh's elements, after which Python sets of elements no longer match, so everything is tracked by index;
+    new vertices are appended, so they are numbered from the old count on."""
+    layer = g.verts.layers.int.get("bodyidx")
+    g.verts.index_update()
+    nbr = {}
+    for e in g.edges:
+        if e.is_boundary:
+            a, b = e.verts[0].index, e.verts[1].index
+            nbr.setdefault(a, set()).add(b); nbr.setdefault(b, set()).add(a)
+    holes, seen = [], set()
+    for v0 in nbr:
+        if v0 in seen:
+            continue
+        comp, stack = set(), [v0]
+        while stack:
+            x = stack.pop()
+            if x in comp:
+                continue
+            comp.add(x); stack.extend(nbr[x] - comp)
+        seen |= comp
+        g.verts.ensure_lookup_table()
+        if all(min((g.verts[k].co - a).length for a in pits) < reach for k in comp):
+            holes.append(comp)
+    filled = 0
+    for rim in holes:
+        g.verts.ensure_lookup_table(); g.verts.index_update()
+        # order the rim: walk the boundary, starting so the first edge runs against its cloth face's own winding (the patch then winds
+        # like the cloth beside it)
+        start = min(rim)
+        order, prev = [start], None
+        while True:
+            nxt = [k for k in nbr[order[-1]] if k != prev and k in rim]
+            if not nxt or nxt[0] == start or len(order) > len(rim):
+                break
+            prev = order[-1]; order.append(nxt[0])
+        if len(order) != len(rim):
+            continue  # not a simple loop: leave it
+        v0, v1 = g.verts[order[0]], g.verts[order[1]]
+        ed = next(e for e in v0.link_edges if e.other_vert(v0) == v1)
+        lp = next(l for l in ed.link_loops)
+        if lp.vert == v0:  # the cloth face runs v0 -> v1, so the patch must run v1 -> v0
+            order.reverse()
+        P = [g.verts[k] for k in order]
+        n, K = len(P), 4
+        c = sum((v.co for v in P), Vector()) / n
+        rings = [P]
+        for r in range(1, K):
+            t = 1.0 - r / K
+            ring = [g.verts.new(c.lerp(v.co, t)) for v in P]
+            rings.append(ring)
+        cv = g.verts.new(c)
+        for r in range(K - 1):
+            a, b = rings[r], rings[r + 1]
+            for i in range(n):
+                i2 = (i + 1) % n
+                g.faces.new((a[i], a[i2], b[i2]))
+                g.faces.new((a[i], b[i2], b[i]))
+        last = rings[-1]
+        for i in range(n):
+            g.faces.new((last[i], last[(i + 1) % n], cv))
+        free = [v for ring in rings[1:] for v in ring] + [cv]
+        for v in free:
+            v[layer] = 0
+        for _ in range(200):
+            new = [(v, sum((e.other_vert(v).co for e in v.link_edges), Vector()) / len(v.link_edges)) for v in free]
+            for v, co in new:
+                v.co = co
+        filled += 1
+    return filled
+
+
+def armpit_apexes(bm, joints):
+    """V3-05: the top of the slot between each arm and the torso in the A-pose: the highest body vertex facing mostly down (normal z below
+    -0.5) that lies under the shoulder joint (from 7 cm inward to 1 cm outward of it, within 4 cm front to back, 2 to 18 cm below it).
+    Returns a list of Vectors (one per side found)."""
+    out = []
+    for key in ("joint-l-shoulder", "joint-r-shoulder"):
+        s = joints[key]
+        sg = 1.0 if s.x > 0 else -1.0
+        best = None
+        for v in bm.verts:
+            p = v.co
+            if (v.normal.z < -0.5 and sg * s.x - 0.07 <= sg * p.x <= sg * s.x + 0.01 and abs(p.y - s.y) < 0.04
+                    and s.z - 0.18 <= p.z <= s.z - 0.02 and (best is None or p.z > best.z)):
+                best = p.copy()
+        if best is not None:
+            out.append(best)
+    return out
+
+
 def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem_z=None, sleeve_t=0.55, top_z=None,
               extra_mesh=None, extra_gap=0.008, extend_hem_to=None, neck=None, settle_shoulders=False,
               fork_z=None, fork_gap=0.0015, long_sleeves=False, forearm_ease_frac=1.0, hem_band=None, cuff_band=None, final_push=False,
-              extra_trigger=-0.0015, extra_push=0.003, bust=None):
+              extra_trigger=-0.0015, extra_push=0.003, bust=None, inner_mesh=None, inner_gap=0.004, armpit_open=None):
     """Loose tee: offset shell, Laplacian-smoothed so it drapes instead of tracing anatomy, never closer than min_gap
     to the body, then cut straight at the hem (horizontal plane) and sleeves (plane across each arm).
     settle_shoulders (needs neck): in the shoulder region (within 10 cm below the shoulder line and no wider than the
@@ -195,10 +289,29 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
     it; and (2) pad: within pad_radius of each apex the clearance to the body rises from min_gap to min_gap plus pad (smoothly), which
     rounds the apex the way a bra cup does. Both only move cloth away from the body, so neither can cause a clip. Applied inside
     every push_out, so the smoothing blends the result rather than leaving a step.
+    inner_mesh, inner_gap (V3-05, a top worn over another top): the garment this one is worn over (a mesh, or a list of meshes when the top
+    must clear several, such as the tee in each of its necklines). The new top is kept inner_gap off it in two ways, both applied inside
+    every push_out: (1) vertex for vertex, since both shells are built from the same body vertices: wherever the inner garment has a vertex
+    from the same body vertex, the new top's is kept inner_gap further out along that body vertex's normal (the nearest-surface test alone
+    could not order the layers at the shoulder cap and the armpit, where the shells are close to each other and to the arm); and (2) by
+    nearest point, as extra_mesh, for cloth the inner garment has no matching vertex for. Unlike extra_mesh the inner garment's top rim is
+    not faded into the body (the tee lies on the shoulders, so the new top must clear it there), the hem and cuff bands follow whichever
+    of the two is nearer, and the final pass is not used for it. Known limit (17 Nov 2026): at one spot on the side of each shoulder (x about 19 cm
+    from the centre, 130 cm up on the 175 cm synthetic man) a tee vertex still ends up within about 1 mm of the new top's surface, never through it.
+    armpit_open (V3-05 fifth pass, (margin m, radius m)): the A-pose armpit is a narrow slot between the arm and the torso. Offset by the
+    ease, the cloth from its two walls crosses below the body's armpit, and the cloth from above the crossing is left as a folded pocket that
+    smoothing and push_out cannot undo (a top over the tee then folds round the tee's pocket). Within radius of each armpit apex, a body
+    vertex whose offset point (ease, plus inner_gap over an inner garment, plus margin) would lie nearer than that to the body is in the slot:
+    its faces are left out, and each hole this leaves is filled with a new patch (rings to a centre, relaxed with its rim held), so the
+    underarm is a gusset spanning the slot lower down instead of a pocket. A top with more ease, or kept off the tee, cuts further and
+    spans lower, so the layers nest. The openings and pieces are unchanged. Patch vertices have no body vertex (bodyidx 0).
+    Not used by default (Joe, 17 Nov 2026): it helps only synthetic female large (tee uncovered by up to 0.8 cm instead of 1.2) and is worse on
+    the other five synthetic bodies (106 failures against 56; the medium and small men, which pass without it, fail the layer check with it).
     Returns (mesh, list of body vertex ids still covered)."""
     segs, radius = _arm_segs(joints)
     bm.normal_update()
     body_bvh = BVHTree.FromBMesh(bm)
+    pits = armpit_apexes(bm, joints) if armpit_open else []
     if settle_shoulders and neck is not None:
         _sx = max(abs(joints["joint-l-shoulder"].x), abs(joints["joint-r-shoulder"].x)) + 0.03
         in_shoulders = lambda p: p.z > neck["z"] - 0.10 and abs(p.x) < _sx
@@ -222,11 +335,41 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         eb.normal_update()
         extra_bvh = BVHTree.FromBMesh(eb)
         extra_verts = [v.co.copy() for v in eb.verts]
+    inner_bvh = None
+    inner_at = {}  # body vertex number -> where the inner garment has its vertex from it
+    if inner_mesh is not None:  # V3-05: the garment this one is worn over, taken as it is
+        ib = bmesh.new()
+        for _m in (inner_mesh if isinstance(inner_mesh, (list, tuple)) else [inner_mesh]):
+            _one = bmesh.new()
+            _one.from_mesh(_m)
+            _lay = _one.verts.layers.int.get("bodyidx")
+            for _v in _one.verts:
+                _bi = _v[_lay] - 1 if _lay is not None else -1
+                if 0 <= _bi < len(bm.verts):
+                    _n = bm.verts[_bi].normal
+                    if _bi not in inner_at or (_v.co - inner_at[_bi]).dot(_n) > 0.0:
+                        inner_at[_bi] = _v.co.copy()  # the highest of the meshes along the body normal
+            ib.from_mesh(_m)  # several meshes in one tree: the nearest of them is the one the top is kept off
+            _one.free()
+        ib.normal_update()
+        inner_bvh = BVHTree.FromBMesh(ib)
     g = bmesh.new()
     layer = g.verts.layers.int.new("bodyidx")
     vmap = {}
+    slot = set()  # armpit_open: body vertices in the armpit slot, whose faces are left out
+    if pits:
+        _extra = inner_gap if inner_mesh is not None else 0.0
+        for v in {v for fi in faces for v in bm.faces[fi].verts}:
+            if min((v.co - a).length for a in pits) > armpit_open[1]:
+                continue
+            r_ = (ease(v.co.z) if callable(ease) else ease) + _extra + armpit_open[0]
+            hit = nearest(body_bvh, v.co + v.normal * r_)
+            if hit[0] is not None and hit[3] < 0.9 * r_:
+                slot.add(v.index)
     for fi in faces:
         f = bm.faces[fi]
+        if slot and any(v.index in slot for v in f.verts):
+            continue
         loop = []
         for v in f.verts:
             if v.index not in vmap:
@@ -247,6 +390,9 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
         except ValueError:
             pass
     g.verts.ensure_lookup_table()
+    if slot:
+        _fill_armpit_holes(g, pits, armpit_open[1] + 0.05)
+        g.verts.ensure_lookup_table()
 
     def _gap(p):
         """Clearance wanted at p: min_gap, raised by the bust pad near each apex (V2-08)."""
@@ -283,6 +429,15 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                 loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                 if loc2 is not None and (v.co - loc2).dot(nor2) < extra_gap and (v.co - loc2).length < 0.05:
                     v.co += nor2 * (extra_gap - (v.co - loc2).dot(nor2))
+            if si in inner_at:
+                n_ = bm.verts[si].normal
+                d5 = (v.co - inner_at[si]).dot(n_)
+                if d5 < inner_gap:
+                    v.co += n_ * (inner_gap - d5)
+            if inner_bvh is not None:
+                loc4, nor4, fi4, dist4 = nearest(inner_bvh, v.co)
+                if loc4 is not None and (v.co - loc4).dot(nor4) < inner_gap and (v.co - loc4).length < 0.05:
+                    v.co += nor4 * (inner_gap - (v.co - loc4).dot(nor4))
         if bust is not None and bust["reach"] > 0.0:
             hang()
 
@@ -429,6 +584,10 @@ def build_tee(bm, faces, joints, ease=0.022, min_gap=0.006, smooth_iters=25, hem
                     loc2, nor2, fi2, dist2 = nearest(extra_bvh, v.co)
                     if loc2 is not None and dist2 < 0.06:
                         loc, nor = loc2, nor2
+                if inner_bvh is not None and _classify(v.co, segs, radius) not in ARM:
+                    loc4, nor4, fi4, dist4 = nearest(inner_bvh, v.co)  # V3-05: over a tee, the band follows the tee where that is nearer
+                    if loc4 is not None and dist4 < 0.06 and (loc is None or dist4 < (v.co - loc).length):
+                        loc, nor = loc4, nor4
                 if loc is not None:
                     v.co = v.co.lerp(loc + nor * gap, w)
             push_out()
