@@ -40,7 +40,9 @@ GROW_FRAMES = 25   # round 2: the inner garment's collider starts on the skin an
 FOLLOW_FALLOFF = 16.0  # round 2: Surface Deform falloff (higher keeps each small piece bound to the cloth right under it)
 SEW_KINDS = ("blazer",)  # round 3: sew the centre front of a closed jacket
 SEW_DIST = 0.15  # MakeHuman units (1.5 cm) on the template
-BIG_ISLAND = 0.10  # an island with at least this share of the kept vertices is cloth; smaller ones follow it (Surface Deform)
+MORPH_FRAMES = 20  # V3-15 (--rest template): frames over which the cloth's rest shape goes from the fit to the template as made
+BIG_ISLAND = 0.10 # an island with at least this share of the kept vertices is cloth; smaller ones follow it (Surface Deform)
+CUFF_BAND = 0.4   # V3-16 (--pin-cuffs): cloth within this of a sleeve opening (MakeHuman units, 4 cm) is pinned, under the cuff piece
 
 
 # ---------------------------------------------------------------- inside Blender
@@ -110,7 +112,8 @@ def blender_main():
         """Blender cloth on the attached garment, in place (ob.data), before fit_template goes on. Returns the numbers."""
         cfg = meta["v3_14"]
         kind = cfg["cloth"]
-        C = CLOTH[kind]
+        C = dict(CLOTH[kind])
+        C.update({k: job[k] for k in ("frames", "bending") if job.get(k) is not None})  # V3-16 overrides
         t0 = time.time()
         me = ob.data
         M = ob.matrix_world.copy()
@@ -127,7 +130,43 @@ def blender_main():
         V0, F0 = ft.read_obj(open(os.path.join(os.path.dirname(mhclo), obj_file), encoding="utf8", errors="replace").read())
         assert len(V0) == n, f"obj has {len(V0)} vertices, attached mesh {n}"
         assert [len(g) for g in ft.islands(len(V0), F0)] == [len(g) for g in isl], "obj and attached mesh islands differ"
-        pins, x_l, x_r = pin_vertices(V0, cloth_v, PIN_BAND[kind])
+        band = dict(PIN_BAND[kind])
+        if job.get("back_band") is not None:  # V3-16: a narrow line along the back's top (collar and shoulder seam) instead of the yoke
+            band["back"] = job["back_band"]
+        pins, x_l, x_r = pin_vertices(V0, cloth_v, band)
+        shoulder_pins = set(pins)
+        cuff_pins = set()
+        if job.get("pin_cuffs"):
+            # V3-16: the sleeve openings are the two open-edge loops furthest out in x on the template; pin the cloth within CUFF_BAND of
+            # them (the sleeve end under the cuff piece) so it keeps its made shape. Chosen on the template, the same indices on every body.
+            cset = set(cloth_v)
+            ec = {}
+            for f in F0:
+                if f[0] in cset:
+                    for a_, b_ in zip(f, f[1:] + f[:1]):
+                        k_ = (min(a_, b_), max(a_, b_))
+                        ec[k_] = ec.get(k_, 0) + 1
+            adj = {}
+            for (a_, b_), c_ in ec.items():
+                if c_ == 1:
+                    adj.setdefault(a_, set()).add(b_)
+                    adj.setdefault(b_, set()).add(a_)
+            loops, seen = [], set()
+            for s0 in adj:
+                if s0 not in seen:
+                    st, comp = [s0], []
+                    seen.add(s0)
+                    while st:
+                        x_ = st.pop()
+                        comp.append(x_)
+                        for y_ in adj[x_] - seen:
+                            seen.add(y_)
+                            st.append(y_)
+                    loops.append(comp)
+            loops.sort(key=lambda L: -abs(sum(V0[i][0] for i in L) / len(L)))
+            ring = [i for L in loops[:2] for i in L]
+            cuff_pins = {i for i in cloth_v if min(sum((V0[i][t] - V0[j][t]) ** 2 for t in range(3)) for j in ring) <= CUFF_BAND ** 2}
+            pins |= cuff_pins
         W = {i: M @ me.vertices[i].co for i in kept}
         # round 3: a closed jacket's fronts meet edge to edge with only separate button pieces between them, so under cloth they swing
         # apart. Sew them (Blender's sewing springs on loose edges in the cloth object only; the garment's own mesh is unchanged):
@@ -153,15 +192,17 @@ def blender_main():
         colliders = [("body", os.path.join(out_dir, name + ".glb")), ("trousers", os.path.join(out_dir, f"{name}_trousers.glb"))]
         if cfg["inner"]:
             colliders.append((cfg["inner"], os.path.join(out_dir, f"{name}_{cfg['inner']}.glb")))
-        temp, trees = [], {}
+        grow = {cfg["inner"]} | ({"trousers"} if job.get("grow_trousers") else set())  # V3-16: the trousers grow out from the skin too
+        temp, trees, top_z = [], {}, {}
         for cn, path in colliders:
             bm = to_bm(path)
+            top_z[cn] = max(v.co.z for v in bm.verts)
             bmesh.ops.triangulate(bm, faces=bm.faces[:])
             bm.normal_update()
             trees[cn] = BVHTree.FromBMesh(bm)
             co = bm_object(f"v314_col_{cn}", bm)
             bm.free()
-            if cn == cfg["inner"] and GROW_FRAMES:
+            if cn in grow and GROW_FRAMES:
                 # the garment starts inside the inner one (the MHCLO fit lies on the skin): animate the inner collider out from the
                 # skin (its basis shape: each vertex on the nearest body point) to where it really is, so the cloth is carried out
                 # with it instead of being thrown out of it on the first frame. A collider animation; the garment is not touched.
@@ -188,6 +229,15 @@ def blender_main():
         def inside_counts():
             out = {}
             for cn, tr in trees.items():
+                if cn == "trousers":  # V3-16: above the trousers' open top the nearest point is the rim, whose sign means nothing
+                    out["trousers_cloth_above_top"] = sum(W[i].z > top_z["trousers"] for i in cloth_v)
+                    ds = [signed(tr, W[i]) if W[i].z <= top_z["trousers"] else None for i in cloth_v]
+                    ds = [d for d in ds if d is not None and d > -0.05]
+                    ins = [i for i in cloth_v if W[i].z <= top_z["trousers"] and (lambda d: d is not None and -0.05 < d < 0)(signed(tr, W[i]))]
+                    out[cn] = {"inside": sum(d < 0 for d in ds), "deepest_cm": round(-min(ds, default=0) * 100, 2),
+                               "inside_pinned": sum(i in pins for i in ins), "top_z_cm": round(top_z["trousers"] * 100, 1),
+                               "inside_z_cm_min_max": [round(min(W[i].z for i in ins) * 100, 1), round(max(W[i].z for i in ins) * 100, 1)] if ins else None}
+                    continue
                 ds = [signed(tr, W[i]) for i in cloth_v]
                 ds = [d for d in ds if d is not None and d > -0.05]  # within 5 cm: the cloth near this collider
                 ins = [i for i in cloth_v if (lambda d: d is not None and -0.05 < d < 0)(signed(tr, W[i]))]
@@ -204,6 +254,37 @@ def blender_main():
         sc.collection.objects.link(cloth_ob)
         temp.append(cloth_ob)
         cloth_ob.vertex_groups.new(name="pin").add([ci[i] for i in pins], 1.0, "REPLACE")
+        # V3-15 (--rest template): the cloth starts at the MHCLO fit but its rest lengths and bend angles are the template as made (its own
+        # .obj, base space to Blender: (x, -z, y) / 10), scaled once, uniformly, so its pinned shoulder span matches the fit's. Only the
+        # rest shape key is set; the garment's starting positions are the fit as before.
+        rest_key, rest_info = None, None
+        if job.get("rest") == "template":
+            from mathutils import Vector
+            R = [Vector((V0[v][0], -V0[v][2], V0[v][1])) * 0.1 for v in cloth_v]
+            pk = [ci[i] for i in shoulder_pins]  # scale and centre from the shoulder pins only (not the cuffs)
+            pin_all = {ci[i] for i in pins}
+            span_fit = max(W[cloth_v[k]].x for k in pk) - min(W[cloth_v[k]].x for k in pk)
+            span_t = max(R[k].x for k in pk) - min(R[k].x for k in pk)
+            s = span_fit / span_t
+            # rest_shape_key is ignored headless (rest_key_check.py in pack/experiments/v3-15), so use Blender's dynamic base mesh:
+            # the cloth's rest lengths follow its input mesh each frame. The input mesh is keyed from the fit (frame 1) to the scaled
+            # template (by frame 1 + MORPH_FRAMES), moved so its pins' centre is the fit's; pinned vertices stay at the fit (their goal).
+            pin_k = pin_all
+            c_fit = sum((W[cloth_v[k]] for k in pk), Vector()) / len(pk)
+            c_t = sum((R[k] * s for k in pk), Vector()) / len(pk)
+            T = [W[cloth_v[k]] if k in pin_k else R[k] * s + (c_fit - c_t) for k in range(len(R))]
+            cloth_ob.shape_key_add(name="Basis")
+            rest_key = cloth_ob.shape_key_add(name="rest", from_mix=False)
+            for k, p in enumerate(T):
+                rest_key.data[k].co = p
+            rest_key.value = 0.0
+            rest_key.keyframe_insert("value", frame=1)
+            rest_key.value = 1.0
+            rest_key.keyframe_insert("value", frame=1 + MORPH_FRAMES)
+            R = [p / s for p in T]  # report lengths against the rest shape actually used
+            ratios = sorted((W[cloth_v[a]] - W[cloth_v[b]]).length / max((R[a] - R[b]).length * s, 1e-9) for a, b in (e.vertices for e in cm.edges))
+            rest_info = {"rest": "template", "scale": round(s, 4), "pin_span_fit_cm": round(span_fit * 100, 1),
+                         "fit_over_rest_edge_ratio_p10_median_p90": [round(ratios[int(len(ratios) * q)], 3) for q in (0.1, 0.5, 0.9)]}
         follow_ob, bound = None, None
         if follow_v:
             fi = {v: k for k, v in enumerate(follow_v)}
@@ -221,6 +302,9 @@ def blender_main():
         cs.air_damping, cs.vertex_group_mass, cs.pin_stiffness = C["air"], "pin", 1.0
         if sew:
             cs.use_sewing_springs = True
+        if rest_key is not None:
+            cs.use_dynamic_mesh = True
+            rest_info["morph_frames"] = MORPH_FRAMES
         cc = mod.collision_settings
         cc.use_collision, cc.distance_min, cc.collision_quality = True, COLLIDE["cloth_distance"], 5
         cc.use_self_collision, cc.self_distance_min = True, COLLIDE["self_distance"]
@@ -250,6 +334,9 @@ def blender_main():
             fe = follow_ob.evaluated_get(dg).data
             for v, k in fi.items():
                 W[v] = fe.vertices[k].co.copy()
+        if rest_info is not None:
+            ra = sorted((ev.vertices[a].co - ev.vertices[b].co).length / max((R[a] - R[b]).length * s, 1e-9) for a, b in (e.vertices for e in cm.edges))
+            rest_info["after_over_rest_edge_ratio_p10_median_p90"] = [round(ra[int(len(ra) * q)], 3) for q in (0.1, 0.5, 0.9)]
         for v in kept:
             me.vertices[v].co = Mi @ W[v]
         me.update()
@@ -259,9 +346,9 @@ def blender_main():
         sc.frame_start, sc.frame_end = was[:2]
         sc.frame_set(was[2])
         moved.sort()
-        return {"cloth": kind, "settings": C, "collide": COLLIDE, "grow_frames": GROW_FRAMES, "follow_falloff": FOLLOW_FALLOFF, "sewn_pairs": len(sew),"pin_band_units": PIN_BAND[kind], "pinned_vertices": len(pins),
+        return {"cloth": kind, "settings": C, "collide": COLLIDE, "grow_frames": GROW_FRAMES, "follow_falloff": FOLLOW_FALLOFF, "sewn_pairs": len(sew),"pin_band_units": PIN_BAND[kind], "pinned_vertices": len(pins), "cuff_pinned_vertices": len(cuff_pins), "pin_band_used": band, "grown_colliders": sorted(g for g in grow if g),
                 "pin_shoulder_x_units": [x_l, x_r], "cloth_vertices": len(cloth_v), "follower_vertices": len(follow_v),
-                "followers_bound": bound, "colliders": [c for c, _ in colliders],
+                "followers_bound": bound, "colliders": [c for c, _ in colliders], "rest_shape": rest_info,
                 "moved_cm_median_p99_max": [round(moved[len(moved) // 2] * 100, 2), round(moved[int(len(moved) * 0.99)] * 100, 2), round(moved[-1] * 100, 2)],
                 "cloth_inside_colliders_before": before, "cloth_inside_colliders_after": after, "cloth_seconds": round(time.time() - t0, 1)}
 
@@ -384,7 +471,12 @@ def driver():
     gar = os.path.join(out, f"{body}_garments.json")
     json.dump(fit.default_garments(json.load(open(meas)), bp.person_cfg(body)), open(gar, "w"), indent=2)
     job = os.path.join(out, f"{body}_job.json")
-    json.dump({"templates": [m["dir"] for m in metas], "packs_dir": str(bp.PACKS_EXTRACTED), "colour_srgb": bp.person_cfg(body)["colour_srgb"]},
+    json.dump({"templates": [m["dir"] for m in metas], "packs_dir": str(bp.PACKS_EXTRACTED), "colour_srgb": bp.person_cfg(body)["colour_srgb"],
+               "rest": opt("--rest", "fitted"),
+               # V3-16 tuning (all off by default, so earlier rounds repeat): back pin band, cuff pins, frames, bending, trousers grown out
+               "back_band": float(opt("--back-band")) if opt("--back-band") else None, "pin_cuffs": "--pin-cuffs" in a,
+               "frames": int(opt("--frames")) if opt("--frames") else None,
+               "bending": float(opt("--bending")) if opt("--bending") else None, "grow_trousers": "--grow-trousers" in a},
               open(job, "w"), indent=2)
     res_path = os.path.join(out, f"{body}_v3-14.json")
     if os.path.exists(res_path):

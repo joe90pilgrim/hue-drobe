@@ -65,6 +65,15 @@ No open decisions for 1.2.
 - **V3-08** Shirt: keep the procedural shirt, switch to the template, or offer both? Decide from the side-by-side renders.
 - **V3-09** Blazer: over the sweatshirt too, or only the tee and shirt? Recommendation: tee and shirt first.
 - **V3-10** Credits screen: where should it live? Recommendation: settings, as "About and credits".
+- ~~**V3-14** From the experiment's write-up: go, partial or no-go? If go: remove V3-07b's options or keep them off?~~ **Decided 18 Nov 2026:** carry on with rest-shape cloth and inner-layer hiding; remove V3-07b's options (V3.1-01).
+
+## v3.1-templates
+
+- ~~**V3.1-01** Merge the whole branch chain into `master` in one go, then remove the V3-07b code? Recommendation: yes.~~ **Decided 18 Nov 2026:** yes, one merge, then remove.
+- ~~**V3.1-01** Accept the shirt's remaining bust crease and cuff body pairs on the large female body as a known limit? Recommendation: accept; judge each template from its renders.~~ **Decided 18 Nov 2026:** accept as a known limit; judge each template from its renders.
+- **V3.1-03** Tee: ship the template alongside the legacy tee, and retire the legacy one later once necklines and tucking are covered? Recommendation: yes.
+- **V3.1-04** Trousers: add alongside first, retire legacy trousers (and the shorts and tights built from them) once approved? Recommendation: yes. If Pants 01 has no straight leg: archive Pants 02 (CC-BY) or model one?
+- **V3.1-05** Coat source: a long cardigan from Shirts 02 (CC-BY, archived), a coat modelled in Blender, or another site? Recommendation: the cardigan first.
 
 ## v4-real-wardrobe
 

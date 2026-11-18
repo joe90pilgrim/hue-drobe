@@ -39,3 +39,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - **Visual first, gates second:** while tuning a template, render with `spike/blender/render_closeup.py` and report the check numbers without trying to force them to pass. At most three render rounds, then stop and ask Joe.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket.
+
+## Parked (18 Nov 2026, Joe)
+Version 3 is closed. Re-open when the first CC-BY item is approved to ship (likely from V3.1-05).

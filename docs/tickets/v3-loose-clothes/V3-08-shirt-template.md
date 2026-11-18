@@ -50,3 +50,9 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Note (18 Nov 2026)
 Built `shirt_untucked_bd` (elvs_male_shirt_untucked_bd1, CC-BY) on all eight bodies in two render rounds; side-by-side renders are in `private/renders/v3-08/` and `pack/out/renders/v3-08/`, numbers in `pack/templates/mid/shirt_untucked_bd/notes.md`. Left at `approved: false` awaiting Joe's choice; the push-off against the tee tears the sleeves (V3-07 follow-up), so `inner_layers` is empty.
+
+## Paused (18 Nov 2026, Joe)
+Paused until V3-14 reports. Don't re-run it, and don't turn on V3-07b's options for it.
+
+## Closed (18 Nov 2026, Joe)
+Version 3 is closed. The shirt template stays unapproved in `pack/templates/mid/shirt_untucked_bd/`; V3.1-01 rebuilds it through the new fitter as its regression case. No further work under this ticket.

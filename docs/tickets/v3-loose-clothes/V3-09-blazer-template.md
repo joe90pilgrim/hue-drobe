@@ -49,3 +49,9 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 
 ## Note (18 Nov 2026)
 Stopped after three render rounds: `blazer_suit3` (men) and `blazer_suit_f2` (women) are built from the Suits 01 jackets with `keep_islands`, body as drawn 0 pairs and 0 gap rays everywhere, and the male jacket over the tee on synthetic medium looks right. On every female body, with either jacket, the bust and front are shredded by the push-off against the tee or shirt (layer pairs 102 to 1061, limit 0); `loose` did not help. Needs a `fit_template.py` follow-up (Opus), and nothing has gone to Joe or B for sign-off: see `pack/templates/outer/blazer_suit3/notes.md`.
+
+## Paused (18 Nov 2026, Joe)
+Paused until V3-14 reports. Don't run another round, and don't turn on V3-07b's options for it.
+
+## Retired (18 Nov 2026, Joe)
+The Suits 01 blazer is retired: the fronts swing open in every round (V3-14). V3.1-01 deletes its two unapproved templates. The open-front coat (V3.1-05) takes its place as the first outer layer.

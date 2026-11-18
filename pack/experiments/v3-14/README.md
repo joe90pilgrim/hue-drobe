@@ -31,3 +31,7 @@ renders. In the renders the tee as drawn is light grey (it is staged as `trouser
 files named `trousers*` grey), so the tee shows against the navy outer garment.
 
 Blender 5.3.0, MPFB 2.0.18, as the pack build.
+
+`--rest template` (V3-15 follow-up): the cloth's rest shape goes from the fit to the template's own .obj over 20 frames (Blender's dynamic
+base mesh; `rest_shape_key` is ignored headless, see `pack/experiments/v3-15/rest_key_check.py`). Default `--rest fitted` is V3-14 as it was.
+Tuning options (V3-16 rounds, all off by default): `--back-band <units>`, `--pin-cuffs`, `--frames <n>`, `--bending <x>`, `--grow-trousers`.

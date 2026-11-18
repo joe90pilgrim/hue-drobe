@@ -38,6 +38,7 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - **Done means stop.** When the acceptance criteria are met, commit, add a two-line note to the ticket, and stop. Don't polish, refactor or add extras; put ideas in `docs/tickets/backlog.md`.
 - **Three strikes.** If a fix fails three times, stop and ask Joe, even with time left.
 - **Open decisions stop the work.** If a ticket has an open decision for Joe, stop and ask rather than guess.
+- **Only Joe creates or starts tickets.** Don't write new tickets, split a ticket, or start another one. If more work is needed, propose it in the ticket's note or the decision record, and stop.
 - **Test on one body first.** Don't run a full multi-body build to try a parameter. Run Blender builds, checks and tests in a subagent, and bring back only the results and render paths.
 - **Measure, never assert.** Every accuracy claim needs a number, the script that produced it and a render. Never call a result good without the comparison.
 - **Scripts over manual steps.** Blender work runs headlessly from Python so it can be re-run from the repo. Record the Blender and library versions used.
@@ -53,6 +54,9 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - **New garment types are templates:** an openly licensed MHCLO garment in `pack/templates/<category>/<template_id>/` with a `meta.json` (licence, source, layer, fitting rules), fitted per person by `pack/fit_template.py` (V3-07). The design is in `docs/decisions/2026-11-17-v3-garment-pipeline-proposal.md`.
 - **Sources, in order:** the archived MakeHuman packs (`assets/packs/`), simple templates modelled in Blender against the MPFB base body and converted with MakeClothes, then other sites only if the licence allows it (CC0, CC-BY or similar; check every item).
 - **Visual first, gates second.** While tuning a new template, render with `spike/blender/render_closeup.py` (front, three-quarter, back) and report the check numbers without forcing them to pass. At most three render rounds, then stop and ask Joe. Only after Joe approves the look (`approved: true` in `meta.json`) are the template's checks enforced.
+- **Fitted items use the MHCLO fit as it is.** Loose items (shirts worn loose, jumpers, jackets, coats) get their volume from Blender's own cloth with collision against the body and inner garments, pinned by a vertex group on the garment itself (collar, shoulder seams, waistband), never on the body.
+- **No scripted reshaping of garments:** no inflating vertices, hull or band maths, or per-body warping to force looseness or clearance. If a template doesn't look right with MHCLO plus cloth, report it and stop.
+- **Layers:** where an outer garment covers an inner one, hide the covered inner faces, as the body is hidden under a dress, rather than pushing the outer garment off the inner one.
 - No custom physics or material code: Blender's own cloth and modifiers only.
 - Plain colour for every garment except hair and shoes, which keep textures shrunk to 1024 px.
 

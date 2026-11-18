@@ -87,3 +87,73 @@ so the fourth case was not run.
   choose an open-front jacket. Pins and sewing on the pack mesh did not hold it closed.
 - **Pins that start inside the inner layer:** the 92 pinned blazer vertices inside the tee show that the inner garment has to be fitted
   first, or that pins should go only on cloth that already clears it.
+
+## Follow-up: the template's rest shape (18 November 2026, one round)
+
+Blender 5.3.0, `synthetic_female_large`, `shirt_alone` only. Started 14:17, stopped 14:28 (ceiling 30 minutes).
+
+- **`rest_shape_key` is ignored headless (confirmed).** `pack/experiments/v3-15/rest_key_check.py`: a 1 m grid, no gravity or pins, rest key 1.2
+  times larger. Edge length after 40 frames: control 1.00; key set before the modifier 1.00; key set after 1.00. Blender's own
+  `shrink_min = -0.2` gives 1.20, so the solver does respond. **Dynamic base mesh** (`use_dynamic_mesh`, with the input mesh keyed to the
+  larger shape) gives **1.20**: the rest lengths follow the input mesh. That is the route used below.
+- **The run** (`run.py ... --cases shirt_alone --round v3-15-r1 --rest template`): the cloth starts at the MHCLO fit as before. Over 20
+  frames its rest shape moves to the template's own .obj, scaled once and uniformly (0.990) so the pinned shoulder span matches the fit
+  (52.4 cm), and moved so the pins' centres line up. Pinned vertices keep the fit. Same cloth settings, pins and colliders as V3-14 r2.
+
+| | V3-14 r2 (rest = fit) | V3-15 r1 (rest = template) |
+| --- | --- | --- |
+| Body as drawn: pairs / gap rays | 0 / 0 | **0 / 0** |
+| Min clearance (cm) | 0.26 | 0.26 (median 1.12, max 5.52) |
+| Moved by cloth, cm (median / p99 / max) | 0.27 / - / - | **1.62 / 6.29 / 8.61** |
+| Hem z (cm) | 83.0 | 87.8 (4.8 cm shorter) |
+| Cloth inside trousers after (vertices, deepest) | - | 7, 4.09 cm, at 108.5-109 cm (not visible) |
+| Self pairs (info) | 2,021 | 2,198 |
+| Cloth time | 56 s | 70 s |
+
+Edge length against the template's rest length: the fit is p10 0.83, median 1.00, p90 1.27 (the fit stretches the shirt by up to a
+quarter, over the bust, and squeezes it elsewhere). After the cloth: p10 0.97, median 1.00, p90 1.10. So the shirt does go back to its
+own lengths.
+
+Renders: `pack/out/renders/v3-14/synthetic_female_large_shirt_alone_v3-15-r1_{front,q34,back}.png` (r2 and V3-08 beside them).
+
+- Front: the two cups are softer and the cloth now bridges between them (the centre front no longer dips in under the bust), but the
+  bust shape still shows, with a horizontal crease running across it. It does not yet hang straight down from the bust points.
+- Three-quarter: rumpled across the bust and the side seam; crumpled cuffs.
+- Back: a horizontal step across the shoulder blades where the 8 cm yoke pin band ends. The pins hold the fitted shape while the cloth
+  below them goes back to the template's lengths, and the step is the join.
+
+**Result: partial.** The mechanism works (Blender's own dynamic base mesh, no vertex maths on the garment's positions), and it is the first
+cloth change that alters the shape: it moves six times as much as r2, and the bust bridges. But it is not a natural hang yet: the cups
+are reduced, not gone, and it adds a crease at the pin edge and a shorter hem. Likely next levers, untried: a narrower back pin band (the
+yoke seam only), more frames or lower bending so the folds settle, and starting the morph before the pins take hold. Nothing in
+`pack/fit_template.py` or `app/` was changed.
+
+## Follow-up: tuning the template rest shape (18 November 2026, two rounds)
+
+Blender 5.3.0, `synthetic_female_large`, `shirt_alone`, `--rest template`. Started 14:34, stopped 14:53 (ceiling 20 minutes, 2 rounds).
+New `run.py` options, all off by default: `--back-band` (back pin band, MakeHuman units), `--pin-cuffs` (pin the cloth within 4 cm of the
+two sleeve openings, chosen on the template), `--frames`, `--bending`, `--grow-trousers` (the trousers collider grows out from the skin,
+as the tee's does). The trousers inside count now ignores cloth above the trousers' top (105.4 cm): there the nearest point is the open
+rim, so the sign means nothing. **The V3-15 "7 vertices inside the trousers" at 108.5-109 cm were that error, not clipping.**
+
+| | V3-15 r1 | V3-16 r1 | V3-16 r2 |
+| --- | --- | --- | --- |
+| Back band / cuff pins / frames / bending | 8 cm / no / 60 / 0.3 | 1.5 cm / 96 vertices / 90 / 0.2 | 1.5 cm / 96 / 90 / 0.1 |
+| Body as drawn: pairs / gap rays | 0 / 0 | **5 / 0** (all at z 100 cm) | **5 / 0** (z 100 cm) |
+| Min clearance (cm) | 0.26 | 0.20 | 0.20 |
+| Inside trousers after (below their top) | (7, all above the top) | (6, all above the top) | **0** (deepest -0.64 cm) |
+| Moved, cm (median / p99 / max) | 1.62 / 6.29 / 8.61 | 1.63 / 5.88 / 7.91 | 1.61 / 5.87 / 8.16 |
+| Edge / rest after (p10 / median / p90) | 0.97 / 1.00 / 1.10 | 0.97 / 1.00 / 1.10 | 0.98 / 1.00 / 1.09 |
+| Hem z (cm) / self pairs / cloth s | 87.8 / 2,198 / 70 | 87.5 / 2,338 / 103 | 87.6 / 2,306 / 102 |
+
+Renders: `pack/out/renders/v3-14/synthetic_female_large_shirt_alone_v3-16-r{1,2}_{front,q34,back}.png`.
+
+- Back: the step across the shoulder blades is gone in both rounds. A faint soft line remains at the sides, at bust height.
+- Cuffs: round and neat in both rounds.
+- Bust: the horizontal crease across the centre front is still there in both rounds. Bending 0.2 to 0.1 made no visible change.
+- New: 5 shirt-body intersecting pairs at z 100 cm (V3-15 r1 had 0). The closest point to the body is at the wrist (x -47, z 106 cm), so
+  the cuff pins, which hold the sleeve end at the fit, are the likely cause. Not confirmed: the check gives only the height.
+
+**Result: partial.** Two of the three defects are fixed (back step, cuffs); the trousers clipping was a measuring error. The bust crease is
+unchanged by bending or frames, and the cuff pins add 5 body pairs. Untried: pinning only the outer cuff ring instead of 4 cm, and
+starting the rest morph before the pins take hold (for the crease). Nothing in `pack/fit_template.py` or `app/` was changed.

@@ -69,3 +69,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 ## Note (18 Nov 2026)
 Partial, after three render rounds on synthetic_female_large only (it failed there, so no other bodies): hiding the covered tee takes the shirt-over-tee layer pairs from 376 to 0. Cloth with garment-side pins is clean on the body (0 pairs, 0 gap rays) and repeats exactly, but it keeps the MHCLO cling (cups), and the closed blazer's fronts swing open.
 Write-up, numbers and the fit_template.py change list: `docs/decisions/2026-11-18-v3-14-cloth-layering-experiment.md`. Renders: `pack/out/renders/v3-14/`. Go, partial or no-go is Joe's decision.
+
+## Closed (18 Nov 2026, Joe)
+Result accepted as the way forward: rest-shape cloth (`--rest template`) and inner-layer hiding are folded into `pack/fit_template.py` by V3.1-01.

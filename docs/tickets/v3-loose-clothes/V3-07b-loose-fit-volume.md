@@ -50,3 +50,9 @@ Ideas, not a prescription (Opus to choose, after measuring on `synthetic_female_
 
 ## Note (18 Nov 2026)
 Stopped: `loose`, `inner_push` and a height-pinned `settle` were added to `fit_template.py` (off by default, tested), but on synthetic_female_large the shirt still showed cups after three rounds and the cloth settle blew up. Joe's call: shirt stays as it is for both; follow-up in `docs/tickets/backlog.md`.
+
+## Frozen (18 Nov 2026, Joe)
+The `loose` inflate, the torso-band and hull maths, `inner_push` and the height-pinned settle are scripted reshaping of garments, which CLAUDE.MD now rules out. Keep them off in every template, and don't extend them. V3-14 tests the standard alternative (cloth with garment-side pins, collision, and hiding the covered inner layer). Joe decides from its write-up whether these options are removed.
+
+## Removed (18 Nov 2026, Joe)
+Joe decided to remove these options. V3.1-01 deletes them from `pack/fit_template.py`.
