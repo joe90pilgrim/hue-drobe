@@ -1,0 +1,20 @@
+{
+  "_note": "V3-08: long-sleeved buttoned collared shirt, untucked, used straight from the archived shirts02 pack (CC-BY). Tuning: approved is false until Joe signs off the renders.",
+  "id": "shirt_untucked_bd",
+  "category": "mid",
+  "pack_file": "shirt_untucked_bd",
+  "layer": "mid",
+  "allowed_bodies": "both",
+  "source": {"pack": "shirts02", "asset": "elvs_male_shirt_untucked_bd1"},
+  "licence": "CC-BY",
+  "credit": "Elvaerwyn, \"Men's shirt, untucked, buttoned (elvs_male_shirt_untucked_bd1)\", http://www.makehumancommunity.org/node/1800, CC-BY",
+  "sha256": "51cfb1288868958b34fbce824a06fab83d6c8191467c1c483bba36fb3e54e470",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": ["all"],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain"
+}
