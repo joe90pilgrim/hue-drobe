@@ -291,6 +291,20 @@ button { font-family: inherit; }
 .w-tabs button[aria-selected="true"] { background: var(--surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); color: var(--ink); font-weight: 600; }
 .w-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .w-chips[hidden] { display: none; }
+/* V4-01: add from a photo. */
+.w-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.w-photo-row { display: flex; gap: 8px; }
+.w-photo-row[hidden] { display: none; }
+.w-photo-row .secondary { flex: 0 0 auto; min-height: 44px; height: 44px; padding: 0 12px; border-radius: 12px; font-size: 14px; }
+.w-addsheet { display: flex; flex-direction: column; gap: 14px; max-height: 92vh; overflow-y: auto; }
+.w-addsheet:not([open]), .w-add-form[hidden] { display: none; }
+.w-addsheet h2 { margin: 0; }
+.w-addsheet .help { margin: 0; min-height: 20px; }
+.w-add-form { display: flex; flex-direction: column; gap: 14px; }
+.w-add-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.w-add-chips .chip-btn[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 600; }
+.w-addsheet button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.w-photo-row .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .chip-btn { min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); color: var(--ink); font-size: 14px; }
 .chip-btn[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 600; }
 .w-layout { display: flex; gap: 24px; align-items: flex-start; }

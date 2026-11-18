@@ -11,6 +11,8 @@
 //   LOCAL_PERSON   local trial only: act as this person without IAP. Refused on Cloud Run (K_SERVICE set).
 //                  Synced data then goes to data.json next to this file.
 //   FIRESTORE_PROJECT  project whose Firestore holds synced data (V2-06b; deploy.mjs sets it). Without it, no sync.
+//   GEMINI_API_KEY  key for the photo-to-garment call (V4-01; deploy.mjs sets it from private/gemini-key.txt). Without it, /api/identify is 404.
+//   GEMINI_MODEL    Gemini model to use (default in identify.mjs)
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
@@ -18,6 +20,7 @@ import { createPublicKey, verify } from 'node:crypto';
 import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAX_VALUE_BYTES, SYNC_KEYS, createFileStore, createFirestoreStore } from './datastore.mjs';
+import { MAX_BODY_BYTES, cleanRequest, createIdentifier } from './identify.mjs';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -167,8 +170,11 @@ function readBody(req, limit) {
   });
 }
 
-/** `store` (deploy/datastore.mjs) holds synced data; without one, /api/data is 404 and the app keeps data on the device only. */
-export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson, store }) {
+/**
+ * `store` (deploy/datastore.mjs) holds synced data; without one, /api/data is 404 and the app keeps data on the device only.
+ * `identify` (deploy/identify.mjs) reads a garment photo; without one, /api/identify is 404.
+ */
+export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson, store, identify }) {
   if (!localPerson && !audience) throw new Error('IAP_AUDIENCE is not set');
   if (!(allowed instanceof Map) || allowed.size === 0) throw new Error('ALLOWED_USERS is not set');
   if (localPerson && ![...allowed.values()].includes(localPerson)) throw new Error(`LOCAL_PERSON "${localPerson}" is not in ALLOWED_USERS`);
@@ -223,6 +229,29 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     }
   }
 
+  /** POST /api/identify (V4-01): a photo of one garment in, { templateId, variant, hexColor, confidence } out. The photo is not kept. */
+  async function handleIdentify(req, send) {
+    if (!identify) return send(404, {}, 'Not found');
+    const site = req.headers['sec-fetch-site'];
+    if (site !== undefined && site !== 'same-origin') return send(403, {}, 'Not allowed');
+    if (req.method !== 'POST') return send(405, { Allow: 'POST' });
+    if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) return send(415, {}, 'JSON only');
+    const text = await readBody(req, MAX_BODY_BYTES);
+    if (text === null) return send(413, {}, 'Too large');
+    let clean = null;
+    try {
+      clean = cleanRequest(JSON.parse(text));
+    } catch {}
+    if (!clean) return send(400, {}, 'Send one garment photo (JPEG, PNG or WebP) and the template list');
+    try {
+      return json(send, 200, await identify(clean));
+    } catch (e) {
+      // Log what went wrong, never the photo or the answer.
+      console.error(JSON.stringify({ severity: 'ERROR', message: 'identify failed', error: e.message, cause: e.cause }));
+      return send(e.status ?? 502, {}, e.status ? e.message : 'Try again later');
+    }
+  }
+
   return async function handle(req, res) {
     const send = (code, headers, body) => {
       res.writeHead(code, { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', ...headers });
@@ -244,6 +273,8 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     if (urlPath === '/api/data' || urlPath.startsWith('/api/data/')) {
       return handleData(req, urlPath, person, send);
     }
+
+    if (urlPath === '/api/identify') return handleIdentify(req, send);
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { Allow: 'GET, HEAD' });
 
@@ -302,6 +333,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       : process.env.FIRESTORE_PROJECT
         ? createFirestoreStore({ project: process.env.FIRESTORE_PROJECT })
         : undefined,
+    identify: process.env.GEMINI_API_KEY ? createIdentifier({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || undefined }) : undefined,
   });
   const port = Number(process.env.PORT ?? 8080);
   createServer(app).listen(port, () => console.log(`Serving ${root} on port ${port}${localPerson ? ` as ${localPerson} (local trial, no sign-in)` : ''}`));

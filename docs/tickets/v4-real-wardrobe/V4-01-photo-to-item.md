@@ -1,25 +1,35 @@
 # V4-01 Photo to nearest item
 
-**Status:** outline. Refine with Joe before starting.
+**Status:** ready. Refined with Joe.
 
-**Ceiling:** Set when refined.
-**Worker:** Sonnet, high (tentative). Combines image handling with matching to the template library.
-**Depends on:** V4-00, V3 garments
+**Ceiling:** 3 hours
+**Worker:** Sonnet, high
+**Depends on:** V4-00 (done), V3 garments
 
 ## Goal
-Upload a photo of a garment; the app suggests the nearest template and extracts its colour, and you confirm or correct both before saving.
+Upload or snap a photo of a garment on mobile or desktop; the app identifies the nearest shipped garment template and extracts its dominant colour via the Gemini API in a single structured call, letting you confirm or adjust both before saving to your wardrobe.
 
 ## Scope
-- Background removal and colour extraction (can run on the device).
-- Template suggestion (on the device or via Gemini, per V4-00).
-- Always shows the suggestion for you to confirm or correct.
+- **Input:** Camera capture (`accept="image/*" capture="environment"`) or file upload from the Wardrobe "Add item" flow. Client-side downscaling/compression before transmission so latency stays low.
+- **Matching & Colour Extraction (Gemini API):** Send the compressed standalone garment image to a backend endpoint calling a fast multimodal Gemini model with **structured JSON output** alongside the list of shipped garment templates/variants.
+  - Gemini returns: `templateId`, `variant` (if applicable), `hexColor` (dominant garment colour), and confidence.
+- **Privacy & Storage Guardrail:** The uploaded photo is **discarded immediately** once Gemini returns the structured response. No photo files are stored locally or synced to git/cloud storage.
+- **Confirmation UI:** Pre-fill the garment selector and colour picker with Gemini's suggestion so Joe or Beth can review, tweak, and confirm before saving.
 
-## Decisions needed from Joe
-- On the device only, or via Gemini? Depends on V4-00.
-- Is the photo kept with the saved item (the blueprint said yes, so colour can be re-extracted later)?
-
-If a decision isn't made when this ticket starts, stop and ask rather than guess.
+## Guardrails (from V4-00)
+- Standalone garment photos only; never transmit personal/avatar data or user identities.
+- API key must live securely on the server/cloud function environment, never exposed in the client PWA bundle.
 
 ## Acceptance criteria
-- Matches the right template for most items in a test set of your own clothes (target to agree).
-- Extracted colour within an agreed colour-difference limit (the blueprint's delta E target).
+- [x] User can snap a photo on the Pixel 8 or upload an image file from the wardrobe screen. (Two buttons, "Take photo" with `capture="environment"` and "Upload photo"; tested with a file input in Playwright. Not yet tried on the Pixel 8.)
+- [x] Gemini API returns a structured template match and dominant hex colour in a single call. (`deploy/identify.mjs`; tested against a stand-in for Gemini. Not yet tried against the real API: needs the key.)
+- [x] Uploaded photo is discarded immediately after extraction. (Held in memory for the request only; the tests check nothing is written to disk and the stored record has no photo field.)
+- [x] Confirmation step displays the suggested template and colour in the standard picker UI before saving.
+- [ ] `npm run check` passes and changes are committed cleanly. (See notes: one Python test fails from before this ticket.)
+
+## Notes (18 Nov 2026)
+- Needs from Joe before it works live: put the Gemini key in `private/gemini-key.txt`, then `node deploy/deploy.mjs` (see `deploy/README.md`). Without the key the button opens the sheet with "not switched on yet" and the garment is chosen by hand. The model defaults to `gemini-2.5-flash` (set `GEMINI_MODEL` to change it); it has not been called for real, so check it is still offered.
+- The key is a Cloud Run environment variable, not a Secret Manager secret (simpler, nothing else to set up). Say if you want Secret Manager instead.
+- "Clothes only, never people" shows as a tooltip on the buttons and in the sheet while it reads. A permanent line on the page pushed the 4th row of cards off a phone screen (the 20-pieces test), so I left it out.
+- Skirt and dress are offered to everyone, including Joe, whose pack has neither.
+- `npm run check` stops at `check:assets`: `pack/test_fit_template.py::test_committed_templates_are_valid` expects only `shift_dress` and `shirt_untucked_bd`, but the V3.1-03 commit added `tee_male` and `tee_female`. Not touched here. The other steps (typecheck, Vitest, deploy tests, Playwright) were run on their own.
