@@ -78,6 +78,7 @@ export function silhouetteKey(garment: string, neckline?: string): string {
       return neckline === 'v' ? 'tee_v' : neckline === 'scoop' ? 'tee_scoop' : 'tee';
     case 'sweatshirt':
       return 'sweat';
+    case 'beanie': case 'cap': case 'sneaker': case 'boot': // V5 shelf shapes
     case 'shirt_short': case 'shirt_mid': case 'shirt_long': case 'trousers': case 'shorts': case 'skirt': case 'tights': case 'dress':
       return garment;
     default:
@@ -106,24 +107,113 @@ export interface SilhouetteOptions {
   mode?: SilhouetteMode;
 }
 
-/** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
-export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
-  const key = silhouetteKey(garment, neckline);
+/** The paths of one shape, without the svg wrapper. */
+function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean): string[] {
   const sh = SHAPES[key];
   const fill = HEX.test(colour) ? colour : '#9a9a9a';
   const edge = edgeOf(fill);
   const cfill = lumOf(fill) < 0.12 ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.35)';
-  const hang = mode === 'hang';
-  const viewBox = hang ? '0 0 100 100' : sh.box.join(' ');
   const op = sheer ? ' fill-opacity="0.55"' : '';
   const stroke = `stroke="${edge}" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"`;
   const parts: string[] = [];
-  if (hang && sh.hook) parts.push(`<path d="${sh.hook}" fill="none" stroke="#8a8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`);
+  if (hook && sh.hook) parts.push(`<path d="${sh.hook}" fill="none" stroke="#8a8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`);
   parts.push(`<path d="${sh.body}" fill="${fill}"${op} ${stroke}/>`);
   if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${sh.xfill ?? edge}" ${stroke}/>`);
   if (sh.collar) parts.push(`<path d="${sh.collar}" fill="${cfill}" ${stroke}/>`);
   if (sh.detail) parts.push(`<path d="${sh.detail}" fill="none" stroke="${edge}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>`);
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${parts.join('')}</svg>`;
+  return parts;
+}
+
+/** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
+export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
+  const key = silhouetteKey(garment, neckline);
+  const hang = mode === 'hang';
+  const viewBox = hang ? '0 0 100 100' : SHAPES[key].box.join(' ');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${shapeParts(key, colour, sheer, hang).join('')}</svg>`;
+}
+
+// --- V3-17: the flat-lay of an outfit ------------------------------------------------------------------------------
+
+export type FlatSlot = 'hat' | 'top' | 'dress' | 'bottom' | 'legs' | 'shoes';
+
+/** One piece of an outfit. No `item` means the piece was deleted: it is drawn as a dashed outline. */
+export interface FlatPiece {
+  slot: FlatSlot;
+  item?: { garment: string; neckline?: string; sheer?: boolean; colour: string };
+}
+
+export interface FlatPlacement {
+  slot: FlatSlot;
+  key: string;
+  missing: boolean;
+  /** Top-left of the piece's content box in the flat-lay, and its size (the drawing's own units). */
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export interface FlatLayout {
+  width: number;
+  height: number;
+  placements: FlatPlacement[];
+}
+
+const SLOT_ORDER: FlatSlot[] = ['hat', 'top', 'dress', 'bottom', 'legs', 'shoes'];
+/** The outline drawn for a deleted piece. */
+const EMPTY_KEY: Record<FlatSlot, string> = { hat: 'beanie', top: 'tee', dress: 'dress', bottom: 'trousers', legs: 'tights', shoes: 'sneaker' };
+const PAD = 4;
+export const FLAT_GAP = 5;
+
+/**
+ * Stack the pieces head to toe and centre each one. Tights are drawn behind a bottom, from its waist, so they show as legs
+ * under shorts or a skirt; with no bottom (or with a dress) they sit under it.
+ */
+export function flatLayLayout(pieces: FlatPiece[]): FlatLayout {
+  const sized = SLOT_ORDER.flatMap((slot) => {
+    const p = pieces.find((q) => q.slot === slot);
+    if (!p) return [];
+    const key = p.item ? silhouetteKey(p.item.garment, p.item.neckline) : EMPTY_KEY[slot];
+    const [, , w, h] = SHAPES[key].box;
+    return [{ slot, key, missing: !p.item, w, h }];
+  });
+  const hasBottom = sized.some((s) => s.slot === 'bottom');
+  const placements: FlatPlacement[] = [];
+  let y = PAD;
+  let bottomY = 0;
+  let rowEnd = y;
+  for (const s of sized) {
+    const overlap = s.slot === 'legs' && hasBottom;
+    const top = overlap ? bottomY : y;
+    placements.push({ slot: s.slot, key: s.key, missing: s.missing, x: 0, y: top, w: s.w, h: s.h });
+    if (s.slot === 'bottom') bottomY = top;
+    rowEnd = Math.max(rowEnd, top + s.h);
+    if (!overlap) y = rowEnd + FLAT_GAP;
+    else y = Math.max(y, rowEnd + FLAT_GAP);
+  }
+  const widest = Math.max(0, ...placements.map((p) => p.w));
+  const width = widest + PAD * 2;
+  for (const p of placements) p.x = (width - p.w) / 2;
+  const height = placements.length ? rowEnd + PAD : PAD * 2;
+  return { width, height, placements };
+}
+
+/** One SVG: the outfit's silhouettes stacked head to toe and centred, in the order of `flatLayLayout`. Deleted pieces get a dashed outline (`.o-gap`). */
+export function flatLaySvg(pieces: FlatPiece[]): string {
+  const { width, height, placements } = flatLayLayout(pieces);
+  const byDrawOrder = [...placements].sort((a, b) => (a.slot === 'legs' ? -1 : 0) - (b.slot === 'legs' ? -1 : 0)); // tights behind the bottom
+  const groups = byDrawOrder.map((pl) => {
+    const piece = pieces.find((q) => q.slot === pl.slot)!;
+    const [bx, by] = SHAPES[pl.key].box;
+    const tf = `translate(${pl.x - bx} ${pl.y - by})`;
+    if (pl.missing) {
+      const sh = SHAPES[pl.key];
+      return `<g class="o-gap" data-slot="${pl.slot}" transform="${tf}"><path d="${sh.body}"/></g>`;
+    }
+    const it = piece.item!;
+    return `<g data-slot="${pl.slot}" data-shape="${pl.key}" transform="${tf}">${shapeParts(pl.key, it.colour, !!it.sheer, false).join('')}</g>`;
+  });
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">${groups.join('')}</svg>`;
 }
 
 // Shared by callers and the test, so adding a garment or neckline fails the test until it gets a shape.

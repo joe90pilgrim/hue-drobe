@@ -80,7 +80,7 @@ test('an outfit remembers the tee neckline it was saved with', async ({ page }) 
   await neckline(page, 'Crew').click();
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await wardrobeTab(page, 'Outfits').click();
-  await tryItOn(page, 'Light grey scoop-neck tee, Light grey trousers');
+  await tryItOn(page, 'Light grey scoop-neck tee, Light grey tr');
   await openSlot(page, 'Top');
   await expect(neckline(page, 'Scoop')).toHaveAttribute('aria-checked', 'true');
 });
