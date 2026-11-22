@@ -1,7 +1,7 @@
 # Ticket: Garment silhouettes module (V3-15)
 
 ## Summary
-- **Status:** ready. Numbered in V3 because that is where the Wardrobe work began, although the README marks Version 3 closed: rename the ticket and folder if Joe wants it under a new version.
+- **Status:** done. Numbered in V3 because that is where the Wardrobe work began, although the README marks Version 3 closed: rename the ticket and folder if Joe wants it under a new version.
 - **Ceiling:** 90 minutes. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. Drawing code plus a visual check, with up to three render rounds.
 - **Depends on:** none. V3-16 and V3-17 depend on it.
@@ -49,4 +49,4 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
 
 ## Note
-Round 1 done: `app/src/silhouettes.ts` and its Vitest file added; `npm run check` passes. Contact sheet at `private/silhouette-sheet.png` awaits Joe's visual sign-off (render rounds used: 1 of 3).
+Done: `app/src/silhouettes.ts` and its Vitest file added; `npm run check` passes. Joe signed off the contact sheet after round 1 of 3.
