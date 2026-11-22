@@ -392,6 +392,9 @@ button { font-family: inherit; }
 .p-check { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; min-height: 44px; cursor: pointer; }
 .p-check input { width: 22px; height: 22px; margin: 0; flex: 0 0 auto; accent-color: var(--ink); }
 .p-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.p-pick .p-text { flex: 1; }
+.p-swatches { display: inline-flex; align-items: center; flex: 0 0 auto; gap: 4px; }
+.p-swatch { display: block; width: 16px; height: 16px; border-radius: 4px; box-shadow: var(--swatch-edge); }
 .p-row.packed .w-name { text-decoration: line-through; color: var(--muted); }
 .p-row .secondary { height: 40px; padding: 0 12px; font-size: 14px; }
 .p-trips .w-card-text { gap: 2px; }

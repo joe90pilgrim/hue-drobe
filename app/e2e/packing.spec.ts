@@ -28,6 +28,11 @@ test('makes a trip, adds clothes and an outfit, ticks them off, and keeps the li
   await expect(page.getByRole('dialog')).toBeHidden();
 
   await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
+  // One square for the clothes item, in its colour; one per piece for the outfit (navy tee and light grey trousers).
+  const rowOf = (ref: string) => page.locator('.p-row').filter({ has: page.locator(`input[data-ref="${ref}"]`) });
+  await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCount(1);
+  await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCSS('background-color', 'rgb(31, 42, 90)');
+  await expect(rowOf('o-1').locator('.p-swatch')).toHaveCount(2);
   await page.locator('input[data-kind="item"][data-ref="tee-1"]').check();
   await page.locator('input[data-kind="outfit"][data-ref="o-1"]').check();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');

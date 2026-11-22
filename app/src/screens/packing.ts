@@ -19,6 +19,10 @@ import {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
+/** One small square per colour, beside the name. Decorative: the name and pieces say what it is. */
+const swatches = (colours: string[]) =>
+  `<span class="p-swatches" aria-hidden="true">${colours.map((c) => `<span class="p-swatch" style="background:${c}"></span>`).join('')}</span>`;
+
 /** Packing lists (V4-03). A trip has a name and dates; its list holds saved clothes and saved outfits to tick off. */
 export function renderPacking(el: HTMLElement): () => void {
   el.innerHTML = `
@@ -47,14 +51,14 @@ export function renderPacking(el: HTMLElement): () => void {
   const selectedTrip = () => trips.find((t) => t.id === selected);
   const save = () => void saveTrips(trips);
 
-  /** What an outfit is made of, as words: "Navy tee, Brown trousers". */
-  const piecesOf = (o: Outfit) => {
+  /** The pieces an outfit is made of, as the saved items that are still in the wardrobe. */
+  const piecesOf = (o: Outfit): SavedItem[] => {
     const look = resolveOutfit(o, items);
-    return [look.dress, look.top, look.bottom, look.legs]
-      .filter((i): i is SavedItem => !!i)
-      .map((i) => esc(i.name))
-      .join(', ');
+    return [look.dress, look.top, look.bottom, look.legs].filter((i): i is SavedItem => !!i);
   };
+
+  /** What an outfit is made of, as words: "Navy tee, Brown trousers". */
+  const piecesText = (o: Outfit) => piecesOf(o).map((i) => esc(i.name)).join(', ');
 
   // --- The list of trips and the chosen trip's checklist -------------------------------------------------------------
 
@@ -62,17 +66,18 @@ export function renderPacking(el: HTMLElement): () => void {
     if (e.kind === 'item') {
       const item = items.find((i) => i.id === e.ref);
       if (!item) return goneRow(e, 'Clothes item');
-      return checkRow(e, esc(item.name), esc(itemKind(item)));
+      return checkRow(e, esc(item.name), esc(itemKind(item)), [item.colour]);
     }
     const outfit = outfits.find((o) => o.id === e.ref);
     if (!outfit) return goneRow(e, 'Outfit');
-    return checkRow(e, esc(outfit.name), piecesOf(outfit));
+    return checkRow(e, esc(outfit.name), piecesText(outfit), piecesOf(outfit).map((i) => i.colour));
   };
 
-  const checkRow = (e: PackEntry, name: string, sub: string) => `
+  const checkRow = (e: PackEntry, name: string, sub: string, colours: string[]) => `
     <li class="p-row${e.packed ? ' packed' : ''}">
       <label class="p-check">
         <input type="checkbox" data-kind="${e.kind}" data-ref="${e.ref}"${e.packed ? ' checked' : ''}>
+        ${swatches(colours)}
         <span class="p-text"><span class="w-name">${name}</span><span class="w-sub">${sub}</span></span>
       </label>
     </li>`;
@@ -123,8 +128,9 @@ export function renderPacking(el: HTMLElement): () => void {
 
   // --- Dialogs: the trip form, the add-to-list picker and the delete question ----------------------------------------
 
-  const pick = (kind: PackEntry['kind'], id: string, name: string, sub: string, on: boolean) => `
+  const pick = (kind: PackEntry['kind'], id: string, name: string, sub: string, on: boolean, colours: string[]) => `
     <button type="button" class="p-pick${on ? ' on' : ''}" data-kind="${kind}" data-id="${id}" aria-pressed="${on}">
+      ${swatches(colours)}
       <span class="p-text"><span class="w-name">${esc(name)}</span><span class="w-sub">${sub}</span></span>
       <span class="p-pick-mark">${on ? 'On the list' : 'Add'}</span>
     </button>`;
@@ -132,8 +138,10 @@ export function renderPacking(el: HTMLElement): () => void {
   const openPicker = () => {
     const t = selectedTrip();
     if (!t) return;
-    const clothes = items.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), hasEntry(t, 'item', i.id))).join('');
-    const looks = outfits.map((o) => pick('outfit', o.id, o.name, piecesOf(o), hasEntry(t, 'outfit', o.id))).join('');
+    const clothes = items.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), hasEntry(t, 'item', i.id), [i.colour])).join('');
+    const looks = outfits
+      .map((o) => pick('outfit', o.id, o.name, piecesText(o), hasEntry(t, 'outfit', o.id), piecesOf(o).map((i) => i.colour)))
+      .join('');
     sheet.innerHTML = `
       <div class="grab" aria-hidden="true"></div>
       <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
