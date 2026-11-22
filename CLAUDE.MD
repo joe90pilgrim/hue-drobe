@@ -48,6 +48,18 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - **Ask before choosing for us** on anything that changes the data model, the licence position or the garment library scope.
 - **Small commits and short READMEs.** Each script gets a README that says what it does and how to run it.
 
+## Git
+
+Added 22 Nov 2026, after the V5-00 pull request carried 33 commits instead of 2: local `master` was 18 commits ahead of `origin/master`, and the branch was cut from another ticket's branch. `origin/master` is the truth; keep local `master` equal to it.
+
+- **Start from an up-to-date `master`, never from another feature branch.** Before a ticket: `git fetch origin`, then `git rev-list --left-right --count master...origin/master`. If either number is not 0, stop and tell Joe. Never commit on `master`. Branch with `git switch -c <type>/<TICKET-KEY>-<summary> origin/master`.
+- **If the current branch is a feature branch, say so before starting.** If Joe wants the new ticket stacked on an unmerged branch, he says so; otherwise ask whether the earlier branch should be merged first. Uncommitted ticket edits can come across with `git switch -c ... origin/master` only if they do not conflict; if they do, stop and ask.
+- **Check the size before any pull request.** Run `git rev-list --count origin/master..HEAD` and `git diff --stat origin/master...HEAD | tail -1`. Compare them with what the ticket should have produced. If the count is higher than the branch's own commits, say so to Joe before opening the pull request, and say so again before merging.
+- **Never push, open a pull request or merge unless Joe asks.** When he does, do only what he asked. Use the base `master` and a merge commit.
+- **After a merge, bring local `master` up to date at once:** `git switch master`, `git fetch origin`, `git merge --ff-only origin/master`. If it will not fast-forward, stop and ask; never reset or force-push.
+- **One ticket, one branch, one pull request**, merged before the next ticket that depends on it starts. Unrelated untracked files (specs, tickets Joe is writing, `Claude outputs/`) are not part of any commit.
+- **Windows:** the Git Bash tool has no `gh`; a pull request is opened from the browser pane once Joe is signed in. Run Blender and the full `npm run check` while nothing else is loading the machine, because the Playwright sync test times out under load.
+
 ## Garments: how new types are added (version 3 onwards)
 
 - **Don't write new procedural garment geometry** (mesh slicing, vertex offsets, carved collars or plackets) in `spike/blender/garment.py`, `body_from_measurements.py` or `pack/` for new garment types.
