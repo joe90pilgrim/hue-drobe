@@ -80,7 +80,9 @@ No open decisions for 1.2.
 - **V4-00** Decision: sending data off the device: Yes or no, and with what limits? For example, photos of clothes only, never photos of people.
 - **V4-01** Photo to nearest item: On the device only, or via Gemini? Depends on V4-00.
 - **V4-01** Photo to nearest item: Is the photo kept with the saved item (the blueprint said yes, so colour can be re-extracted later)?
-- **V4-02** URL to nearest item (recommend dropping): Keep or drop? Recommendation: drop in favour of uploading a screenshot through V4-01.
+- ~~**V4-02** URL to nearest item: Keep or drop?~~ **Decided 22 Nov 2026:** drop the URL idea; V4-02 is now "Screenshot to nearest item", a clear option beside Take photo and Upload photo.
+- ~~**V4-02** Screenshot to nearest item: product images showing a model.~~ **Decided 22 Nov 2026:** (b). A cropped product image of a model is allowed; never Joe, Beth or anyone they know. V4-00 amended.
+- ~~**V4-02** Screenshot to nearest item: ceiling and worker.~~ **Decided 22 Nov 2026:** 2 hours, Sonnet, high.
 - **V4-03** Create a packing list: What is a trip: just a name and dates, or a destination too (needed for weather suggestions in V6-02)? Recommendation: include the destination now.
 
 ## v5-finishing-the-look

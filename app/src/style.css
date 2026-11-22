@@ -296,10 +296,31 @@ button { font-family: inherit; }
 .w-photo-row { display: flex; gap: 8px; }
 .w-photo-row[hidden] { display: none; }
 .w-photo-row .secondary { flex: 0 0 auto; min-height: 44px; height: 44px; padding: 0 12px; border-radius: 12px; font-size: 14px; }
+/* Three buttons must sit beside the title on a phone, or the 4th row of cards is pushed off the screen (V4-01, V4-02): shorter words, tighter padding. */
+.w-photo-row .w-wide { display: none; }
+@media (max-width: 559px) {
+  .w-head .page-title { font-size: 24px; }
+  .w-photo-row { gap: 6px; }
+  .w-photo-row .secondary { padding: 0 8px; font-size: 13px; }
+}
+@media (min-width: 560px) { .w-photo-row .w-wide { display: inline; } .w-photo-row .w-narrow { display: none; } }
 .w-addsheet { display: flex; flex-direction: column; gap: 14px; max-height: 92vh; overflow-y: auto; }
-.w-addsheet:not([open]), .w-add-form[hidden] { display: none; }
+.w-addsheet:not([open]), .w-add-form[hidden], .w-crop[hidden] { display: none; }
+.w-addsheet [data-actions][hidden] { display: none; }
 .w-addsheet h2 { margin: 0; }
 .w-addsheet .help { margin: 0; min-height: 20px; }
+/* V4-02: the crop step. The canvas is the screenshot, shrunk to fit the sheet; the box dims everything outside it. */
+.w-crop { display: flex; flex-direction: column; gap: 14px; }
+.w-crop .help { margin: 0; }
+.w-crop-stage { position: relative; align-self: center; line-height: 0; overflow: hidden; touch-action: none; user-select: none; cursor: crosshair; border: 1px solid var(--line-strong); border-radius: 8px; }
+.w-crop-stage canvas { display: block; max-width: 100%; max-height: 48vh; background: #fff; }
+.w-crop-box { position: absolute; box-sizing: border-box; border: 2px solid #fff; outline: 1px solid rgba(0, 0, 0, .6); box-shadow: 0 0 0 9999px rgba(0, 0, 0, .5); cursor: move; }
+.w-crop-box[hidden] { display: none; }
+.w-crop-box i { position: absolute; width: 18px; height: 18px; background: #fff; border: 1px solid rgba(0, 0, 0, .6); border-radius: 50%; }
+.w-crop-box i[data-corner="nw"] { left: -9px; top: -9px; }
+.w-crop-box i[data-corner="ne"] { right: -9px; top: -9px; }
+.w-crop-box i[data-corner="sw"] { left: -9px; bottom: -9px; }
+.w-crop-box i[data-corner="se"] { right: -9px; bottom: -9px; }
 .w-add-form { display: flex; flex-direction: column; gap: 14px; }
 .w-add-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .w-add-chips .chip-btn[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: #fff; font-weight: 600; }

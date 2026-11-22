@@ -11,7 +11,7 @@ Puts the app on **Cloud Run** behind **Identity-Aware Proxy (IAP)**. Google does
 
 The server makes two kinds of outgoing call: it fetches Google's IAP public keys from `https://www.gstatic.com/iap/verify/public_key-jwk` about once an hour, and it reads and writes Firestore (`firestore.googleapis.com`) with a token from Cloud Run's metadata server.
 
-- `identify.mjs` (V4-01) is `POST /api/identify`: the app sends one shrunk garment photo and the list of garments it ships, the server makes one Gemini call (structured JSON) and returns `{ templateId, variant, hexColor, confidence }`, checked against the list. The photo is held in memory for the request only: never written, logged or sent back. Only the signed-in people can call it, from the app's own pages.
+- `identify.mjs` (V4-01) is `POST /api/identify`: the app sends one shrunk garment photo and the list of garments it ships, the server makes one Gemini call (structured JSON) and returns `{ templateId, variant, hexColor, confidence }`, checked against the list. The photo is held in memory for the request only: never written, logged or sent back. Only the signed-in people can call it, from the app's own pages. From V4-02 the image may also be a crop of a retailer's product page (made on the phone, so only the chosen part is sent); the prompt tells Gemini to ignore page text, prices and other products, and to describe the garment, not a model wearing it (V4-00, amended 22 Nov 2026).
 
 ## Gemini key (V4-01)
 

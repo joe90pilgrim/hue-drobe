@@ -43,7 +43,12 @@ test('the request asks for the shipped templates only, as structured JSON, and s
   assert.deepEqual(schema.properties.variant.enum, ['crew', 'v', 'scoop', 'opaque', 'sheer']);
   assert.equal(body.generationConfig.responseMimeType, 'application/json');
   assert.equal(body.contents[0].parts[1].inline_data.data, PHOTO);
-  assert.match(buildPrompt(cleanTemplates(TEMPLATES)), /person or face/);
+  // V4-02 and the amended V4-00: a cropped web page may show a retailer's model, and only the garment is described.
+  const prompt = buildPrompt(cleanTemplates(TEMPLATES));
+  assert.match(prompt, /crop of a shopping web page/);
+  assert.match(prompt, /ignore any text, prices, buttons, colour swatches/);
+  assert.match(prompt, /model may be wearing the garment/);
+  assert.match(prompt, /Describe the garment only/);
 });
 
 test('parseAnswer checks the answer against the templates that were sent', () => {

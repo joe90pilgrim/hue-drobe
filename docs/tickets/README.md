@@ -121,7 +121,7 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 | --- | --- | --- | --- |
 | V4-00 | [Decision: sending data off the device](v4-real-wardrobe/V4-00-data-off-device.md) (outline) | None | No agent. Joe and Beth. |
 | V4-01 | [Photo to nearest item](v4-real-wardrobe/V4-01-photo-to-item.md) (outline) | V4-00, V3 garments | Sonnet, high (tentative) |
-| V4-02 | [URL to nearest item (recommend dropping)](v4-real-wardrobe/V4-02-url-to-item.md) (outline) | V4-00, V4-01 | Sonnet, high (tentative) |
+| V4-02 | [Screenshot to nearest item](v4-real-wardrobe/V4-02-url-to-item.md) (built; waits on Joe's live check and Pixel 8; replaces the URL idea) | V4-00, V4-01 | Sonnet, high |
 | V4-03 | [Create a packing list](v4-real-wardrobe/V4-03-packing-list.md) (outline) | V1.1-02, V1.1-03 | Haiku, high |
 
 ### Version 5: Finishing the look
