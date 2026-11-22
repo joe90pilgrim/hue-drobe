@@ -6,6 +6,7 @@ describe('routeFromHash', () => {
     expect(routeFromHash('#/try-on')).toBe('try-on');
     expect(routeFromHash('#/wardrobe')).toBe('wardrobe');
     expect(routeFromHash('#/colours')).toBe('colours');
+    expect(routeFromHash('#/packing')).toBe('packing');
   });
   it('still opens the right screen from the old links', () => {
     expect(routeFromHash('#/dress')).toBe('try-on');

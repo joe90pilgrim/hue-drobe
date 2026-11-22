@@ -2,6 +2,7 @@ import './style.css';
 import { renderTryOn } from './screens/try-on';
 import { renderWardrobe } from './screens/wardrobe';
 import { renderQuiz } from './screens/quiz';
+import { renderPacking } from './screens/packing';
 import { routeFromHash, type Route } from './route';
 import { createBackupDialog } from './backup-ui';
 import { findPerson, setPerson } from './person';
@@ -24,6 +25,11 @@ const screens: Record<Route, { label: string; icon: string; render: (el: HTMLEle
     label: 'My colours',
     icon: '<circle cx="12" cy="12" r="9"/><circle cx="8.5" cy="10" r="1.3"/><circle cx="12" cy="7.5" r="1.3"/><circle cx="15.5" cy="10" r="1.3"/>',
     render: renderQuiz,
+  },
+  packing: {
+    label: 'Packing',
+    icon: '<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/><path d="M3 12h18"/>',
+    render: renderPacking,
   },
 };
 

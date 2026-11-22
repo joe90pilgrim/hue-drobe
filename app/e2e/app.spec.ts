@@ -20,13 +20,13 @@ test('opens on Try on and moves between the three screens', async ({ page }) => 
   await expect(page.locator('#stage')).toBeVisible();
 });
 
-test('the name and logo show on every screen, and the tabs are Try on, Wardrobe and My colours', async ({ page }) => {
-  for (const hash of ['try-on', 'wardrobe', 'colours']) {
+test('the name and logo show on every screen, and the tabs are Try on, Wardrobe, My colours and Packing', async ({ page }) => {
+  for (const hash of ['try-on', 'wardrobe', 'colours', 'packing']) {
     await page.goto(`/#/${hash}`);
     await expect(page.locator('.topbar .wordmark')).toHaveText('Hue-drobe');
     await expect(page.locator('.topbar .logo')).toBeVisible();
   }
-  await expect(page.locator('.nav-item .nav-label')).toHaveText(['Try on', 'Wardrobe', 'My colours']);
+  await expect(page.locator('.nav-item .nav-label')).toHaveText(['Try on', 'Wardrobe', 'My colours', 'Packing']);
 });
 
 test('old links #/dress and #/colour still open the right screen', async ({ page }) => {

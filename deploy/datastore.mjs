@@ -10,7 +10,7 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 
 /** The keys the app syncs. Keep in step with KEYS in app/src/backup.ts. Anything else is refused. */
-export const SYNC_KEYS = ['wardrobe', 'outfits', 'favourites', 'colourQuiz', 'outfit', 'colours', 'neckline', 'sheer'];
+export const SYNC_KEYS = ['wardrobe', 'outfits', 'favourites', 'colourQuiz', 'outfit', 'colours', 'neckline', 'sheer', 'trips'];
 
 /** The largest value accepted, as JSON. Two people's wardrobes without photos are a few kilobytes. */
 export const MAX_VALUE_BYTES = 256 * 1024;
