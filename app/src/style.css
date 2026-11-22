@@ -380,6 +380,35 @@ button { font-family: inherit; }
 .w-tip { display: none; margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .w-tip[hidden] { display: none; }
 
+/* V3-16: the Clothes tab as a closet. All rules are scoped under .closet or .c-*, so packing and the Outfits tab keep their cards. */
+.w-grid.closet { display: flex; flex-direction: column; gap: 14px; }
+.closet .c-bay { padding: 10px 10px 8px; border-radius: 16px; background: #ebebeb; min-width: 0; }
+.closet .c-bay-h { margin: 0 0 4px 4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.closet .c-bay-h span { font-weight: 600; }
+/* A row of three on a phone (a chosen chip); each card draws its own piece of rail, so every row has one. */
+.closet .c-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
+.closet .c-row.slide { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.closet .c-row.slide::-webkit-scrollbar { display: none; }
+.closet .w-card { position: relative; gap: 4px; padding: 0 2px 6px; border: 2px solid transparent; border-radius: 14px; background: transparent; }
+.closet .c-row.slide .w-card { flex: 0 0 104px; scroll-snap-align: start; }
+.closet .w-card.on { padding: 0 2px 6px; border: 2px solid var(--ink); background: rgba(255, 255, 255, .65); }
+.closet .c-art { display: block; width: 100%; max-width: 96px; aspect-ratio: 1; margin: 0 auto; }
+.closet .c-art svg { display: block; width: 100%; height: 100%; }
+.closet .c-rail .w-card::before { content: ''; position: absolute; z-index: -1; top: 3px; left: -2px; right: -2px; height: 4px; background: #9a9a9a; }
+.closet .c-rail .c-row { isolation: isolate; }
+.closet .c-shelf .w-card::after { content: ''; position: absolute; left: -2px; right: -2px; bottom: 36px; height: 8px; background: #cdcdcd; z-index: -1; }
+.closet .c-shelf .c-row { isolation: isolate; }
+.closet .w-card-text { padding: 0 2px; align-items: center; text-align: center; }
+.closet .w-name { font-size: 13px; font-weight: 700; }
+.closet .w-sub { font-size: 12px; }
+.d-swatch.d-sil { background: #ebebeb; box-shadow: none; padding: 4px; box-sizing: border-box; }
+.d-swatch.d-sil svg { display: block; width: 100%; height: 100%; }
+@media (min-width: 900px) {
+  /* Side panel open: rails wrap rather than slide. */
+  .closet .c-row, .closet .c-row.slide { display: flex; flex-wrap: wrap; overflow: visible; row-gap: 10px; }
+  .closet .c-row .w-card, .closet .c-row.slide .w-card { flex: 0 0 104px; }
+}
+
 /* Packing lists (V4-03) */
 .p-detail { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
 .p-detail[hidden] { display: none; }

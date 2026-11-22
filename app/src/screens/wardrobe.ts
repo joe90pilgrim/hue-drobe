@@ -10,17 +10,24 @@ import {
   type Outfit,
 } from '../outfits';
 import { createPhotoAdd } from './wardrobe-photo';
+import { silhouetteSvg } from '../silhouettes';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-/** The filter chips. A garment's group is its slot, so a new garment type sorts itself into Tops or Bottoms. */
-const GROUPS = [
-  { slot: 'Top', label: 'Tops' },
-  { slot: 'Bottom', label: 'Bottoms' },
-  { slot: 'Dress', label: 'Dresses' },
-  { slot: 'Legs', label: 'Tights' },
-] as const;
+/**
+ * The filter chips and the closet's bays, in closet order (V3-16). A garment's group is its slot, so a new garment type sorts itself
+ * into Tops or Bottoms. `storage` is how the group is kept: things that hang go on a `rail`; hats and shoes (V5) will sit on a `shelf`.
+ */
+const GROUPS: readonly { slot: 'Top' | 'Dress' | 'Bottom' | 'Legs'; label: string; storage: 'rail' | 'shelf' }[] = [
+  { slot: 'Top', label: 'Tops', storage: 'rail' },
+  { slot: 'Dress', label: 'Dresses', storage: 'rail' },
+  { slot: 'Bottom', label: 'Bottoms', storage: 'rail' },
+  { slot: 'Legs', label: 'Tights', storage: 'rail' },
+];
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
+
+const silhouetteOf = (i: SavedItem, mode: 'hang' | 'shelf' | 'flat') =>
+  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
 
 type Selection = { kind: 'item' | 'outfit'; id: string } | null;
 
@@ -130,15 +137,23 @@ export function renderWardrobe(el: HTMLElement): () => void {
       empty.hidden = list.length > 0;
       empty.textContent =
         items.length === 0 ? 'Nothing here yet. On Try on, change a piece and tap Add to wardrobe.' : `No ${GROUPS.find((g) => g.slot === filter)?.label.toLowerCase() ?? 'clothes'} yet.`;
-      grid.innerHTML = list
-        .map(
-          (i) => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
-            <span class="w-tile" style="background:${i.colour}"></span>
+      grid.classList.add('closet');
+      const card = (i: SavedItem, mode: 'hang' | 'shelf') => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
+            <span class="c-art">${silhouetteOf(i, mode)}</span>
             <span class="w-card-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${esc(itemKind(i))}</span></span>
-          </button>`,
-        )
-        .join('');
+          </button>`;
+      // One bay per group that has items. "All" is one rail per group; a chosen chip shows only that group, wrapped into rows.
+      grid.innerHTML = GROUPS.map((g) => {
+        const mine = list.filter((i) => slotOf(i) === g.slot);
+        if (!mine.length) return '';
+        const mode = g.storage === 'shelf' ? 'shelf' : 'hang';
+        return `<section class="c-bay c-${g.storage}" aria-label="${g.label}">
+          <h2 class="c-bay-h">${g.label}<span> · ${mine.length}</span></h2>
+          <div class="c-row${filter === 'all' ? ' slide' : ''}">${mine.map((i) => card(i, mode)).join('')}</div>
+        </section>`;
+      }).join('');
     } else {
+      grid.classList.remove('closet');
       empty.hidden = outfits.length > 0;
       empty.textContent = 'No outfits yet. On Try on, put a look together and tap Save outfit.';
       grid.innerHTML = outfits
@@ -161,7 +176,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     if (!item && !outfit) return '';
     const look = outfit ? resolveOutfit(outfit, items) : undefined;
     const art = item
-      ? `<span class="d-swatch" style="background:${item.colour}"></span>`
+      ? `<span class="d-swatch d-sil">${silhouetteOf(item, 'hang')}</span>`
       : `<span class="d-swatch o-tile">${stacked(...pair(outfit!, look!), true, legsOf(outfit!, look!))}</span>`;
     const sub = item ? esc(itemKind(item)) : piecesOf(outfit!);
     const head = renaming
