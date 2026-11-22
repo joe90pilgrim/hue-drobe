@@ -132,6 +132,12 @@ export function setPacked(list: Trip[], id: string, kind: PackEntry['kind'], ref
   return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.map((e) => (e.kind === kind && e.ref === ref ? { ...e, packed } : e)) }));
 }
 
+/** Basic search: the query, ignoring case and spaces at the ends, appears in one of the texts. A blank query matches everything. */
+export function matchesSearch(query: string, texts: string[]): boolean {
+  const q = query.trim().toLowerCase();
+  return !q || texts.some((t) => t.toLowerCase().includes(q));
+}
+
 export function packedCount(trip: Trip): { packed: number; total: number } {
   return { packed: trip.entries.filter((e) => e.packed).length, total: trip.entries.length };
 }

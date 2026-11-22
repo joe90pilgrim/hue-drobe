@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { cleanTrips, datesError, deleteTrip, formatDates, hasEntry, isDay, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip } from '../src/trips';
+import { cleanTrips, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip } from '../src/trips';
+
+describe('picker search', () => {
+  it('matches any part of a name, ignoring case and spaces at the ends', () => {
+    expect(matchesSearch('  NAVY ', ['Navy tee', 'T-shirt, crew neck'])).toBe(true);
+    expect(matchesSearch('crew', ['Navy tee', 'T-shirt, crew neck'])).toBe(true);
+    expect(matchesSearch('denim', ['Navy tee', 'T-shirt, crew neck'])).toBe(false);
+  });
+
+  it('matches everything when the search is blank', () => {
+    expect(matchesSearch('', ['Navy tee'])).toBe(true);
+    expect(matchesSearch('   ', [])).toBe(true);
+  });
+});
 
 describe('trip dates', () => {
   it('accepts only real calendar days written as YYYY-MM-DD', () => {

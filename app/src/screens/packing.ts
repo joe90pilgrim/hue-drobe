@@ -6,6 +6,7 @@ import {
   formatDates,
   hasEntry,
   loadTrips,
+  matchesSearch,
   newTrip,
   packedCount,
   saveTrips,
@@ -135,23 +136,42 @@ export function renderPacking(el: HTMLElement): () => void {
       <span class="p-pick-mark">${on ? 'On the list' : 'Add'}</span>
     </button>`;
 
+  /** The picker's search text. Cleared each time the picker opens. */
+  let pickQuery = '';
+
+  /** Redraws the two lists in the picker. The search box is not rebuilt, so its text and focus stay put. */
+  const drawPicks = () => {
+    const t = selectedTrip();
+    const clothesEl = sheet.querySelector<HTMLElement>('#p-pick-clothes');
+    const looksEl = sheet.querySelector<HTMLElement>('#p-pick-looks');
+    if (!t || !clothesEl || !looksEl) return;
+    const shownItems = items.filter((i) => matchesSearch(pickQuery, [i.name, itemKind(i)]));
+    const shownOutfits = outfits.filter((o) => matchesSearch(pickQuery, [o.name, ...piecesOf(o).map((i) => i.name)]));
+    clothesEl.innerHTML = shownItems.length
+      ? `<div class="p-picks">${shownItems.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), hasEntry(t, 'item', i.id), [i.colour])).join('')}</div>`
+      : `<p class="help">${items.length === 0 ? 'No saved clothes yet.' : 'No clothes match your search.'}</p>`;
+    looksEl.innerHTML = shownOutfits.length
+      ? `<div class="p-picks">${shownOutfits.map((o) => pick('outfit', o.id, o.name, piecesText(o), hasEntry(t, 'outfit', o.id), piecesOf(o).map((i) => i.colour))).join('')}</div>`
+      : `<p class="help">${outfits.length === 0 ? 'No saved outfits yet.' : 'No outfits match your search.'}</p>`;
+  };
+
   const openPicker = () => {
     const t = selectedTrip();
     if (!t) return;
-    const clothes = items.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), hasEntry(t, 'item', i.id), [i.colour])).join('');
-    const looks = outfits
-      .map((o) => pick('outfit', o.id, o.name, piecesText(o), hasEntry(t, 'outfit', o.id), piecesOf(o).map((i) => i.colour)))
-      .join('');
+    pickQuery = '';
     sheet.innerHTML = `
       <div class="grab" aria-hidden="true"></div>
       <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
       <p class="help">Tap to add a piece or an outfit, or to take it off. Packing ticks happen on the list.</p>
+      <label class="field-label" for="p-pick-search">Search</label>
+      <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
       <h3 class="p-group">Clothes</h3>
-      ${clothes ? `<div class="p-picks">${clothes}</div>` : '<p class="help">No saved clothes yet.</p>'}
+      <div id="p-pick-clothes"></div>
       <h3 class="p-group">Outfits</h3>
-      ${looks ? `<div class="p-picks">${looks}</div>` : '<p class="help">No saved outfits yet.</p>'}
+      <div id="p-pick-looks"></div>
       <div class="sheet-actions"><button type="button" class="primary" data-act="done">Done</button></div>`;
     if (!sheet.open) sheet.showModal();
+    drawPicks();
   };
 
   const openForm = (t: Trip | null) => {
@@ -244,13 +264,20 @@ export function renderPacking(el: HTMLElement): () => void {
       trips = toggleEntry(trips, t.id, kind, id);
       save();
       draw();
-      openPicker();
+      drawPicks();
       sheet.querySelector<HTMLElement>(`.p-pick[data-kind="${kind}"][data-id="${id}"]`)?.focus();
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'done') sheet.close();
     if (act === 'cancel-form') sheet.close();
+  });
+
+  sheet.addEventListener('input', (e) => {
+    const input = e.target as HTMLInputElement;
+    if (input.id !== 'p-pick-search') return;
+    pickQuery = input.value;
+    drawPicks();
   });
 
   sheet.addEventListener('submit', (e) => {

@@ -44,6 +44,34 @@ test('makes a trip, adds clothes and an outfit, ticks them off, and keeps the li
   await expect(page.locator('input[data-kind="outfit"][data-ref="o-1"]')).toBeChecked();
 });
 
+test('the add picker filters clothes and outfits by a search, and keeps the search while ticking', async ({ page }) => {
+  await page.goto('/#/packing');
+  await seedStore(page, {
+    wardrobe: [tee, trousers],
+    outfits: [outfit],
+    trips: [{ v: 1, id: 't-1', name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16', entries: [], savedAt: 1 }],
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await page.getByRole('button', { name: 'Add items and outfits' }).click();
+
+  const search = page.getByLabel('Search');
+  await search.fill('trou');
+  await expect(page.locator('.p-pick[data-kind="item"][data-id="trousers-1"]')).toBeVisible();
+  await expect(page.locator('.p-pick[data-kind="item"][data-id="tee-1"]')).toHaveCount(0);
+  await expect(page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]')).toHaveCount(1); // its piece is trousers
+
+  await search.fill('zzz');
+  await expect(page.getByText('No clothes match your search.')).toBeVisible();
+  await expect(page.getByText('No outfits match your search.')).toBeVisible();
+
+  await search.fill('navy');
+  await page.locator('.p-pick[data-kind="item"][data-id="tee-1"]').click();
+  await expect(search).toHaveValue('navy'); // ticking does not clear the search
+  await expect(page.locator('.p-pick[data-kind="item"][data-id="trousers-1"]')).toHaveCount(0);
+  await expect(page.locator('.p-pick[data-kind="item"][data-id="tee-1"]')).toContainText('On the list');
+});
+
 test('an entry whose clothes were deleted shows as removed, can be taken off, and a trip can be deleted', async ({ page }) => {
   await page.goto('/#/packing');
   await seedStore(page, {
