@@ -47,6 +47,7 @@ test('on a laptop the stage and the panel fill the screen at 1280 x 800', async 
 
 test('on a phone a row opens a sheet under a smaller stage, in order garment, neckline, colour, add; Done returns the focus', async ({ page }) => {
   await page.goto('/#/try-on');
+  await expect(page.locator('.stage-status')).toBeHidden(); // layout settles once the pack has loaded
   const before = (await page.locator('#stage').boundingBox())!;
   await page.locator('.wear-row[data-row="Top"]').click();
   const dialog = page.getByRole('dialog', { name: 'Top' });

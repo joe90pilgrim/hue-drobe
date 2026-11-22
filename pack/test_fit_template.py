@@ -136,7 +136,7 @@ class LoadTemplates(unittest.TestCase):
         self.assertTrue(ft.mhclo_path(dress, "X").replace("\\", "/").endswith("X/dress01/clothes/toigo_shift_dress/toigo_shift_dress.mhclo"))
         self.assertIsNone(ft.settle_settings(dress))  # the approved dress is fitted exactly as before
         self.assertFalse(ft.hides_inner(dress))
-        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd"})  # V3.1-01: the V3-09 blazers are retired
+        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03
 
 
 class Settle(unittest.TestCase):

@@ -25,7 +25,7 @@ Upload or snap a photo of a garment on mobile or desktop; the app identifies the
 - [x] Gemini API returns a structured template match and dominant hex colour in a single call. (`deploy/identify.mjs`; tested against a stand-in for Gemini. Not yet tried against the real API: needs the key.)
 - [x] Uploaded photo is discarded immediately after extraction. (Held in memory for the request only; the tests check nothing is written to disk and the stored record has no photo field.)
 - [x] Confirmation step displays the suggested template and colour in the standard picker UI before saving.
-- [ ] `npm run check` passes and changes are committed cleanly. (See notes: one Python test fails from before this ticket.)
+- [x] `npm run check` passes and changes are committed cleanly. (Three clean runs, 68 e2e tests.)
 
 ## Notes (18 Nov 2026)
 - Needs from Joe before it works live: put the Gemini key in `private/gemini-key.txt`, then `node deploy/deploy.mjs` (see `deploy/README.md`). Without the key the button opens the sheet with "not switched on yet" and the garment is chosen by hand. The model is `gemini-flash-latest` (set `GEMINI_MODEL` to change it). `gemini-2.5-flash` is listed but answered 404 on the first live try, so the default was changed. Checked live with a plain test image: structured answer and colour came back correctly. Gemini needed prepaid credit on the account first (it answered 402 until then).
@@ -33,3 +33,7 @@ Upload or snap a photo of a garment on mobile or desktop; the app identifies the
 - "Clothes only, never people" shows as a tooltip on the buttons and in the sheet while it reads. A permanent line on the page pushed the 4th row of cards off a phone screen (the 20-pieces test), so I left it out.
 - Skirt and dress are offered to everyone, including Joe, whose pack has neither.
 - `npm run check` stops at `check:assets`: `pack/test_fit_template.py::test_committed_templates_are_valid` expects only `shift_dress` and `shirt_untucked_bd`, but the V3.1-03 commit added `tee_male` and `tee_female`. Not touched here. The other steps (typecheck, Vitest, deploy tests, Playwright) were run on their own.
+
+## Notes (22 Nov 2026)
+- Tested successfully on the Pixel 8 (Joe).
+- `npm run check` fixed: the template test now expects `tee_male` and `tee_female`; Playwright is capped at 2 workers with a 60 s test and 15 s assertion timeout, because the avatar pack load timed out under 3 parallel workers (a different test each run); `try-on.spec.ts` waits for the pack before measuring the stage height.
