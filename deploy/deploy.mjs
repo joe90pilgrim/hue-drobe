@@ -50,6 +50,7 @@ rmSync(out, { recursive: true, force: true });
 mkdirSync(out + '/public', { recursive: true });
 cpSync(here('./server.mjs'), out + '/server.mjs');
 cpSync(here('./datastore.mjs'), out + '/datastore.mjs');
+cpSync(here('./identify.mjs'), out + '/identify.mjs');
 cpSync(here('./Dockerfile'), out + '/Dockerfile');
 cpSync(here('../app/dist'), out + '/public', { recursive: true });
 for (const person of people) {
@@ -72,7 +73,15 @@ if (!projectNumber) {
 }
 const audience = `/projects/${projectNumber}/locations/${region}/services/${service}`;
 // YAML accepts JSON strings, which keeps the quoting safe. A file avoids passing commas and emails through the Windows shell.
-writeFileSync(out + '/env.yaml', `IAP_AUDIENCE: ${JSON.stringify(audience)}\nALLOWED_USERS: ${JSON.stringify(usersJson.trim().replace(/\s+/g, ' '))}\nFIRESTORE_PROJECT: ${JSON.stringify(project)}\n`);
+// V4-01: the Gemini key for the photo-to-garment call. It stays in the server's environment; without the file the feature is off.
+const geminiFile = here('../private/gemini-key.txt');
+const geminiKey = existsSync(geminiFile) ? readFileSync(geminiFile, 'utf8').trim() : '';
+if (!geminiKey) console.warn('No private/gemini-key.txt: "Add from photo" will be off in the deployed app.');
+writeFileSync(
+  out + '/env.yaml',
+  `IAP_AUDIENCE: ${JSON.stringify(audience)}\nALLOWED_USERS: ${JSON.stringify(usersJson.trim().replace(/\s+/g, ' '))}\nFIRESTORE_PROJECT: ${JSON.stringify(project)}\n` +
+    (geminiKey ? `GEMINI_API_KEY: ${JSON.stringify(geminiKey)}\n` : ''),
+);
 
 const g = (args) => run('gcloud', [...args, '--project', project, '--quiet']);
 const must = (r, what) => {

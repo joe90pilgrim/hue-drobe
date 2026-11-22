@@ -14,7 +14,7 @@ Joe's avatar on phone and desktop; tee, trousers and sweatshirt with a colour pi
 | 1.2 | Redesign | UI and navigation improvements from Joe's screenshots and issues list |
 | 2 | Beth joins | 7 woman's body, 16 individual logins, tights |
 | 3 | Loose clothes and layers | Dresses, skirts, shirts, jackets, coats, 2 multiple top layers |
-| 4 | Your real wardrobe | 15 photo to nearest item, 5 URL to nearest item, 12 create a packing list |
+| 4 | Your real wardrobe | 15 photo to nearest item, 5 screenshot to nearest item, 12 create a packing list |
 | 5 | Finishing the look | Shoes, hats, jewellery, 11 hair styles |
 | 6 | Style assistant | 14 Gemini advice, 13 suggested packing list |
 | Later | Needs an architecture change first | 6 other poses, 8 change body dimensions or presets |
@@ -49,7 +49,7 @@ The product was always meant for two people, so this comes early.
 ### 4 Your real wardrobe
 Comes after version 3 on purpose: matching real clothes to the library only works once the library has the kinds of things Joe and Beth actually own.
 - **Photo to nearest item (15):** upload a photo; the app suggests the nearest template and extracts the colour.
-- **URL to nearest item (5):** fragile, because retailer sites change and some forbid scraping. Uploading a photo or a screenshot covers the same need more reliably; consider dropping this in favour of 15.
+- **Screenshot to nearest item (5):** replaces the original "paste a URL" idea, which was dropped on 22 Nov 2026 because retailer sites change and some forbid scraping. A screenshot is cropped on the device to one garment, then goes through the same route as 15.
 - **Create a packing list (12):** a list built from saved items.
 
 ### 5 Finishing the look

@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 
 // The avatar pack files the viewer loads (keep in step with PACK_FILES in src/viewer.ts).
-const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'tights', 'sweatshirt', 'shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress'];
+const PACK_FILES = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'tights', 'sweatshirt', 'shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', 'sweatshirt_over_tee', 'shirt_short_over_tee', 'shirt_mid_over_tee', 'shirt_long_over_tee'];
 
 // Self-hosted heading font files in public/fonts/ (Bricolage Grotesque, SIL OFL 1.1). Public files are not in the bundle, so list them for the precache.
 const FONT_FILES = ['bricolage-grotesque-latin-600-normal.woff2', 'bricolage-grotesque-latin-700-normal.woff2'];
@@ -20,7 +20,12 @@ function servePrivatePack(): Plugin {
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       return res.end(JSON.stringify({ person: DEV_PERSON }));
     }
-    const m = new RegExp(`^/pack/([a-z][a-z0-9-]*)/(${PACK_FILES.join('|')})\\.glb$`).exec(url);
+    const mf = /^\/pack\/([a-z][a-z0-9-]*)\/manifest\.json$/.exec(url); // V3-05: lists the layered combinations that passed on this body
+    if (mf && existsSync(`${root}${mf[1]}/manifest.json`)) {
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return createReadStream(`${root}${mf[1]}/manifest.json`).pipe(res);
+    }
+    const m = new RegExp(`^/pack/([a-z][a-z0-9-]*)/(${PACK_FILES.join('|')}|[a-z0-9_]+_under_[a-z0-9_]+)\\.glb$`).exec(url);
     const file = m && `${root}${m[1]}/${m[2]}.glb`;
     if (!file || !existsSync(file)) return next();
     res.setHeader('Content-Type', 'model/gltf-binary');
@@ -51,6 +56,7 @@ function precacheServiceWorker(): Plugin {
 const PACK_CACHE = 'huedrobe-pack';
 const PACK_FILES = ${JSON.stringify(PACK_FILES)};
 const isGlb = (res) => res.ok && res.headers.get('Content-Type') === 'model/gltf-binary';
+const isManifest = (req, res) => res.ok && new URL(req.url).pathname.endsWith('/manifest.json') && (res.headers.get('Content-Type') || '').includes('json');
 const URLS = ${urls};
 // Best effort: fetch the signed-in person's pack now, so the first visit works offline too (the page's own first request can beat the service worker).
 // A missing pack (a build run without the private files) or no answer from /api/me is skipped, and must not stop the app installing.
@@ -61,7 +67,18 @@ async function cachePack() {
   } catch {}
   if (typeof person !== 'string' || !/^[a-z][a-z0-9-]*$/.test(person)) return;
   const cache = await caches.open(PACK_CACHE);
-  await Promise.all(PACK_FILES.map(async (n) => {
+  const extra = [];
+  try {
+    const mu = './pack/' + person + '/manifest.json';
+    const mres = await fetch(mu);
+    if (mres.ok && (mres.headers.get('Content-Type') || '').includes('json')) {
+      await cache.put(mu, mres.clone());
+      // V3.1-02: the inner garments drawn under something (the manifest names the files), so they work offline too
+      const drawn = ((await mres.json()).garments || {}).inner_layers_drawn || {};
+      for (const inners of Object.values(drawn)) for (const f of Object.values(inners || {})) if (/^[A-Za-z0-9_.-]+\.glb$/.test(f)) extra.push(f.slice(0, -4));
+    }
+  } catch {}
+  await Promise.all(PACK_FILES.concat(extra).map(async (n) => {
     const u = './pack/' + person + '/' + n + '.glb';
     try {
       const res = await fetch(u);
@@ -103,7 +120,7 @@ async function packCacheFirst(e) {
   const req = e.request;
   const cache = await caches.open(PACK_CACHE);
   const network = fetch(req).then(async (res) => {
-    if (isGlb(res)) await cache.put(req, res.clone());
+    if (isGlb(res) || isManifest(req, res)) await cache.put(req, res.clone());
     return res;
   });
   const cached = await cache.match(req, { ignoreSearch: true });

@@ -10,7 +10,7 @@ Usage: python pack/build_pack.py [--private] [--only NAME] [--jobs N] [--config 
   --only     build just one body (a fixture name such as synthetic_medium, or a person: 'joe' or 'b'); use this to try a change on one body first
   --jobs     bodies built at the same time (default 3). A woman's body also drapes the skirt (cloth, one thread) and takes about 2 minutes.
   --renders  also render the skirt views (front, side, back) for the synthetic women; the private bodies always render, into <out>/renders
-  --no-hide  V3-06: build the pack items (the dress) without hiding the body under them, to show the "body as drawn" check failing. Nothing is packed.
+  --no-hide  V3-06: build the templates (the dress) without hiding the body under them, to show the "body as drawn" check failing. Nothing is packed.
   --config   fit config to use instead of pack/fit_config.json, to try a fit without editing the committed file
   --reports-to  after every check passes, copy the synthetic bodies' reports to DIR (use pack/reports to refresh the ones `npm run check`
              validates). Each report is stamped with the SHA-256 of the fit config it was built from.
@@ -25,12 +25,13 @@ HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import fit  # noqa: E402
+import fit_template  # noqa: E402  (meta.json loading and validation only; the fitting itself runs inside Blender)
 
 BLENDER = os.environ.get("BLENDER", r"C:\Program Files\Blender Foundation\Blender 5.3\blender.exe")
 SCRIPT = ROOT / "spike" / "blender" / "body_from_measurements.py"
 SKIRT_SCRIPT = ROOT / "spike" / "cloth" / "skirt_cloth.py"  # V3-01b: runs SCRIPT itself, then drapes and checks the skirt and tucks the tops
-ITEMS_SCRIPT = HERE / "pack_items.py"  # V3-06: wraps the body (or skirt) script, then adds, hides the body under, and checks the pack items
-ITEMS_CONFIG = HERE / "pack_items.json"
+FIT_SCRIPT = HERE / "fit_template.py"  # V3-07: wraps the body (or skirt) script, then fits, hides the body under, and checks the templates
+RENDER_SCRIPT = ROOT / "spike" / "blender" / "render_closeup.py"  # close-ups of every template not yet approved
 PACKS_ZIPS = ROOT / "assets" / "packs" / "zips"  # V2-09 archive
 PACKS_EXTRACTED = ROOT / "assets" / "packs" / "extracted"  # git-ignored; only the items we use
 CHECKER = ROOT / "spike" / "check_reports.py"
@@ -48,6 +49,10 @@ PACK_FILES = {"body": "{n}.glb", "tee": "{n}_tee.glb", "trousers": "{n}_trousers
               "skirt": "{n}_skirt.glb", "tee_tucked": "{n}_tee_tucked.glb", "tee_v_tucked": "{n}_tee_v_tucked.glb",
               "tee_scoop_tucked": "{n}_tee_scoop_tucked.glb"}
 WOMENS_ONLY = ("skirt", "tee_tucked", "tee_v_tucked", "tee_scoop_tucked", "dress", "body_dress")
+# V3-05: the sweatshirt and the shirts built over the tee (a layer on top of a tee); not for the shirt under the sweatshirt, which Joe left out
+OVER_TEE = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee", "shirt_long_over_tee")
+LAYER_TEES = {"tee": "crew", "tee_v": "v", "tee_scoop": "scoop"}  # the report's tee names -> the app's neckline names
+PACK_FILES.update({k: "{n}_" + k + ".glb" for k in OVER_TEE})
 PACK_FILES.update({"dress": "{n}_dress.glb", "body_dress": "{n}_body_dress.glb"})  # V3-06: the pack dress, and the body with its hidden parts removed (worn instead of body.glb)
 
 
@@ -92,40 +97,73 @@ def has_skirt(meas):
     return m.get("sex_base") == "female" and not m.get("body_only", False)
 
 
-def items_for(meas):
-    """The pack items (pack/pack_items.json) that this body gets: by sex, and never for a body-only file (V3-06)."""
+def templates_for(meas):
+    """The templates (pack/templates/*/*/meta.json, V3-07) that this body gets: by sex, and never for a body-only file."""
     m = json.load(open(meas))
-    return [] if m.get("body_only") else [i for i in json.load(open(ITEMS_CONFIG))["items"] if m.get("sex_base") in i["sexes"]]
+    return [] if m.get("body_only") else fit_template.for_body(fit_template.find_templates(), m.get("sex_base"))
 
 
-def prepare_items():
-    """Unpack, from the archived zips (assets/packs/zips, V2-09), just the items pack_items.json names, into assets/packs/extracted/<pack>/.
-    Checks the zip against the sha256 in assets/packs/MANIFEST.md and refuses an item whose licence is not CC0 (the manifest's
-    shoes01 note). Returns an error text, or None."""
+def prepare_templates(metas):
+    """Unpack, from the archived zips (assets/packs/zips, V2-09), just the pack items the templates use, into assets/packs/extracted/<pack>/.
+    Checks the zip against the sha256 in assets/packs/MANIFEST.md, the item's .mhclo against the template's sha256, and that the pack's
+    own licence for the item is the template's, and CC0 or CC-BY with a credit.
+    Returns an error text, or None."""
     manifest = (ROOT / "assets" / "packs" / "MANIFEST.md").read_text(encoding="utf8")
-    for it in json.load(open(ITEMS_CONFIG))["items"]:
-        zpath = PACKS_ZIPS / f"{it['pack']}_cc0.zip"
+    for meta in metas:
+        if "pack" not in meta["source"]:
+            continue
+        it = {"pack": meta["source"]["pack"], "asset": meta["source"]["asset"], "kind": "hair" if meta["category"] == "hair" else "clothes"}
+        zpath = next(iter(sorted(PACKS_ZIPS.glob(f"{it['pack']}_*.zip"))), PACKS_ZIPS / f"{it['pack']}_cc0.zip")
         want = re.search(rf"\|\s*{it['pack']}\s*\|[^|]*\|\s*`([0-9a-f]{{64}})`", manifest)
         if not zpath.exists() or not want:
             return f"{zpath} is missing or not in assets/packs/MANIFEST.md; fetch it with python -I assets/packs/fetch_packs.py"
         dest = PACKS_EXTRACTED / it["pack"]
         marker = dest / ".sha256"
-        if marker.exists() and marker.read_text() == want.group(1) and (dest / "clothes" / it["asset"]).exists():
-            continue
-        if hashlib.sha256(zpath.read_bytes()).hexdigest() != want.group(1):
-            return f"{zpath} does not match the sha256 in assets/packs/MANIFEST.md"
-        with zipfile.ZipFile(zpath) as z:
-            lic = json.loads(z.read(f"packs/{it['pack']}.json")).get(it["asset"], {}).get("license")
-            if lic != "CC0":
-                return f"{it['asset']} is licensed {lic!r}, not CC0; not used"
-            if dest.exists():
-                shutil.rmtree(dest)
-            folder = "hair" if it["kind"] == "hair" else "clothes"
-            for n in z.namelist():
-                if n.startswith(f"{folder}/{it['asset']}/") and not n.endswith("/"):
-                    z.extract(n, dest)
-        marker.write_text(want.group(1))
+        mhclo = pathlib.Path(fit_template.mhclo_path(meta, PACKS_EXTRACTED))
+        if not (marker.exists() and marker.read_text() == want.group(1) and mhclo.exists()):
+            if hashlib.sha256(zpath.read_bytes()).hexdigest() != want.group(1):
+                return f"{zpath} does not match the sha256 in assets/packs/MANIFEST.md"
+            with zipfile.ZipFile(zpath) as z:
+                lic = json.loads(z.read(f"packs/{it['pack']}.json")).get(it["asset"], {}).get("license")
+                err = fit_template.pack_licence_error(lic, meta)
+                if err:
+                    return f"{it['asset']} {err}"
+                folder = "hair" if it["kind"] == "hair" else "clothes"
+                for n in z.namelist():  # the pack folder may already hold other templates' items: add this one, keep the rest
+                    if n.startswith(f"{folder}/{it['asset']}/") and not n.endswith("/"):
+                        z.extract(n, dest)
+            marker.write_text(want.group(1))
+        if hashlib.sha256(mhclo.read_bytes()).hexdigest() != meta["sha256"]:
+            return f"{mhclo} does not match the sha256 in template {meta['id']}'s meta.json"
     return None
+
+
+def render_templates(name, out, metas):
+    """Front, three-quarter and back close-ups (spike/blender/render_closeup.py) of every template not yet approved, on the body as
+    drawn while it is worn, into <out>/renders/templates/. For Joe's sign-off; never a pass or fail. Returns the render prefixes."""
+    report = json.load(open(out / f"{name}_report.json")).get("pack_items", {})
+    done = []
+    for meta in metas:
+        r = report.get(meta["pack_file"], {})
+        if fit_template.enforced(meta) or r.get("status") != "ok":
+            continue
+        folder = out / "renders" / "templates" / f"{name}_{meta['pack_file']}"
+        folder.mkdir(parents=True, exist_ok=True)
+        body = out / (f"{name}_body_{meta['pack_file']}.glb" if meta["delete_group"] else f"{name}.glb")
+        shutil.copyfile(body, folder / "body.glb")
+        shutil.copyfile(out / f"{name}_{meta['pack_file']}.glb", folder / f"{meta['pack_file']}.glb")
+        shown = [meta["pack_file"]]
+        for inner, hi in (r.get("inner_hidden") or {}).items():  # V3.1-01: the inner layer as drawn under it, staged as trousers_* so
+            shutil.copyfile(out / hi["glb"], folder / f"trousers_{inner}_as_drawn.glb")  # render_closeup.py draws it light grey
+            shown.append(f"trousers_{inner}_as_drawn")
+        top, bottom = r["top_z_m"], r["bottom_z_m"]
+        prefix = folder / meta["pack_file"]
+        cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), ",".join(shown), "", "",
+               f"{(top + bottom) / 2:.3f}", f"{top - bottom + 0.15:.3f}"]
+        with open(out / f"{name}_render_{meta['pack_file']}.log", "w") as log:
+            subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
+        done.append(f"{prefix}_front.png, _q34.png, _back.png")
+    return done
 
 
 def build(job):
@@ -146,13 +184,15 @@ def build(job):
         json.dump(person_cfg(name)["skirt"], open(skirt_cfg, "w"), indent=2)
         cmd = [BLENDER, "--threads", "1", "--background", "--python", str(SKIRT_SCRIPT), "--", str(meas), str(gar), str(out), name,
                "--cfg", str(skirt_cfg)] + ([] if name in PEOPLE or "--renders" in sys.argv else ["--no-render"])
-    items = items_for(meas) if gar else []
-    if items:  # V3-06: the same Blender session goes on to add the pack items, hide the body under them and check them
-        items_cfg = out / f"{name}_pack_items.json"
-        json.dump({"items": [{**i, "licence": "CC0", "asset": i["asset"]} for i in items], "packs_dir": str(PACKS_EXTRACTED),
+    items = templates_for(meas) if gar else []
+    if items:  # V3-07: the same Blender session goes on to fit the templates, hide the body under them and check them
+        items_cfg = out / f"{name}_templates.json"
+        json.dump({"templates": [m["dir"] for m in items], "packs_dir": str(PACKS_EXTRACTED),
                    "colour_srgb": person_cfg(name)["colour_srgb"]}, open(items_cfg, "w"), indent=2)
         at = cmd.index("--python")
-        cmd = cmd[:at] + ["--python", str(ITEMS_SCRIPT), "--", cmd[at + 1], str(items_cfg)] + (["--no-hide"] if "--no-hide" in sys.argv else []) + ["::"] + cmd[cmd.index("--") + 1:]
+        cmd = cmd[:at] + ["--python", str(FIT_SCRIPT), "--", cmd[at + 1], str(items_cfg)] + (["--no-hide"] if "--no-hide" in sys.argv else []) + ["::"] + cmd[cmd.index("--") + 1:]
+        if any(m["settle"] != "none" for m in items) and "--threads" not in cmd:  # a cloth settle is identical build to build only on one thread
+            cmd[1:1] = ["--threads", "1"]
     with open(out / f"{name}_build.log", "w") as log:
         rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT).returncode
     if rc == 0 and not report.exists():
@@ -160,7 +200,10 @@ def build(job):
     if rc == 0 and gar and has_skirt(meas) and "skirt" not in json.load(open(report)):
         rc = 1  # the body script wrote its report but the skirt script stopped before adding its own: the checks must not pass without it
     if rc == 0 and items and "pack_items" not in json.load(open(report)):
-        rc = 1  # likewise for the pack items script
+        rc = 1  # likewise for the template fitting script
+    if rc == 0 and items:
+        for p_ in render_templates(name, out, items):
+            print(f"{name}: template not yet approved, renders for sign-off: {p_}", flush=True)
     if rc == 0:
         data = json.load(open(report))
         data["fit_config_sha256"] = config_hash(person_cfg(name))
@@ -172,7 +215,7 @@ def build(job):
 def check(folder):
     """Run the spike's checks on every report in the folder. 0 means every tolerance was met."""
     print(f"\nChecks on {folder}", flush=True)
-    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shirts", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
+    return subprocess.run([sys.executable, str(CHECKER), str(folder), "--sweatshirt", "--necklines", "--shirts", "--layers", "--shorts", "--tights", "--skirt", "--pack-items"]).returncode
 
 
 def config_hash(cfg):
@@ -191,8 +234,14 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         shutil.rmtree(pack_dir)
     pack_dir.mkdir(parents=True)
     files = {}
+    # V3-05 (Joe, 17 Nov 2026): the layered tops that passed on this body, and the tee necklines each passes over; the rest are left out of the pack
+    pass_file = build_dir / f"{name}_layers_pass.json"
+    passing = json.load(open(pass_file))["passing"] if pass_file.exists() and not body_only else {}
+    combos = {k[: -len("_over_tee")]: [LAYER_TEES[t] for t in passing[k]] for k in OVER_TEE if passing.get(k)}
     for key, pattern in PACK_FILES.items():
         if body_only and key != "body":
+            continue
+        if key in OVER_TEE and not passing.get(key):
             continue
         src = build_dir / pattern.format(n=name)
         if key in WOMENS_ONLY and not src.exists():  # a man's pack has no skirt; for a woman the checks have already failed without it
@@ -200,6 +249,17 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         dst = pack_dir / f"{key}.glb"
         shutil.copyfile(src, dst)
         files[dst.name] = {"bytes": dst.stat().st_size, "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()}
+    # V3.1-01: each inner layer as drawn under a template that hides it (<inner>_under_<pack_file>.glb), drawn by the app in place of
+    # the inner layer while that template is worn
+    under = {}
+    report = build_dir / f"{name}_report.json"
+    items = json.load(open(report)).get("pack_items", {}) if report.exists() and not body_only else {}
+    for pf, r in sorted(items.items()):
+        for inner, hi in sorted((r.get("inner_hidden") or {}).items()) if r.get("status") == "ok" else []:
+            dst = pack_dir / f"{inner}_under_{pf}.glb"
+            shutil.copyfile(build_dir / hi["glb"], dst)
+            files[dst.name] = {"bytes": dst.stat().st_size, "sha256": hashlib.sha256(dst.read_bytes()).hexdigest()}
+            under.setdefault(pf, {})[inner] = dst.name
     total = sum(f["bytes"] for f in files.values())
     manifest = {
         "pack_version": 1,
@@ -211,13 +271,17 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         "garments": {} if body_only else {"tee": {"fit": "regular", "necklines": {"crew": "tee.glb", "v": "tee_v.glb", "scoop": "tee_scoop.glb"}},
                      "trousers": {"fit": "regular"}, "shorts": {"fit": "regular", "inseam_cm": person_cfg(name)["shorts"]["inseam_cm"]},
                      "sweatshirt": {"fit": "regular"},
+                     "layers": {"max": 3, "base": "tee", "gap_cm": person_cfg(name)["layers"]["gap_cm"],
+                                "over_tee": {k[: -len("_over_tee")]: k + ".glb" for k in OVER_TEE if k[: -len("_over_tee")] in combos},
+                                "combinations": combos},
                      "shirt": {"fit": "regular, untucked, point collar and placket drawn as shape", "sleeves": {"short": "shirt_short.glb", "mid": "shirt_mid.glb", "long": "shirt_long.glb"}},
                      "tights": {"fit": "skin-close", "gap_cm": person_cfg(name)["tights"]["gap_cm"], "worn_with": ["shorts", "skirt"]},
                      **({"dress": {"fit": "pack item (MakeHuman toigo_shift_dress, CC0), plain colour", "body_while_worn": "body_dress.glb",
                                    "replaces": ["Top", "Bottom"]}} if "dress.glb" in files else {}),
                      **({"skirt": {"fit": "A-line midi, cloth-draped on this body", "tops": "tucked",
                                    "tucked_tops": {"crew": "tee_tucked.glb", "v": "tee_v_tucked.glb", "scoop": "tee_scoop_tucked.glb"}}}
-                        if "skirt.glb" in files else {})},
+                        if "skirt.glb" in files else {}),
+                     "inner_layers_drawn": under},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),
         "fit_overrides": {k: v for k, v in PEOPLE_FIT.get(name, {}).items() if not k.startswith("_")},
@@ -255,10 +319,15 @@ def main():
     stop = ensure_mpfb()
     if stop is not None:
         return stop
-    if any(items_for(j[0]) for j in jobs_all if not is_body_only(j[0])):
-        problem = prepare_items()
+    try:
+        wanted = {m["id"]: m for j in jobs_all if not is_body_only(j[0]) for m in templates_for(j[0])}
+    except fit_template.MetaError as e:
+        print(f"templates: {e}")
+        return 1
+    if wanted:
+        problem = prepare_templates(list(wanted.values()))
         if problem:
-            print(f"pack items: {problem}")
+            print(f"templates: {problem}")
             return 1
     # a stale body from an earlier run would be checked as if it were part of this one
     for folder in {j[1] for j in jobs_all}:

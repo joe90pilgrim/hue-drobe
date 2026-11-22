@@ -1,7 +1,7 @@
 import { expect, type Page } from '@playwright/test';
 
 /** Opens the change-a-piece panel for a slot (V1.2-04) and waits for it. */
-export async function openSlot(page: Page, slot: 'Top' | 'Bottom' | 'Legs') {
+export async function openSlot(page: Page, slot: 'Top' | 'Bottom' | 'Legs' | 'Under') {
   await page.locator(`.wear-row[data-row="${slot}"]`).click();
   await expect(page.getByRole('dialog', { name: slot })).toBeVisible();
 }
@@ -12,15 +12,31 @@ export async function closeSlot(page: Page) {
   await expect(page.getByRole('dialog')).toBeHidden();
 }
 
-/** A garment choice in the open panel, such as "Sweatshirt" or "Nothing". */
-export const garment = (page: Page, name: string) => page.getByRole('radiogroup', { name: 'Garment' }).getByRole('radio', { name, exact: true });
+/** A garment choice in the open panel, such as "Sweatshirt" or "Nothing". "Shirt, long sleeves" taps the Shirt chip, then Long (V3-11). */
+export const garment = (page: Page, name: string) => {
+  const m = /^Shirt, (short|mid|long) sleeves$/.exec(name);
+  const chip = (n: string) => page.getByRole('radiogroup', { name: 'Garment' }).getByRole('radio', { name: n, exact: true });
+  if (!m) return chip(name);
+  const long = m[1][0].toUpperCase() + m[1].slice(1);
+  const variant = page.getByRole('radiogroup', { name: 'Sleeves' }).getByRole('radio', { name: long, exact: true });
+  const loc = chip('Shirt');
+  // Tapping this selects the Shirt chip and then the sleeve length.
+  const click = loc.click.bind(loc);
+  const clickVariant = variant.click.bind(variant);
+  return Object.assign(variant, {
+    click: async (...args: Parameters<typeof loc.click>) => {
+      await click(...args);
+      await clickVariant(...args);
+    },
+  });
+};
 
 /** The neckline group and one of its choices in the open panel. */
 export const necklines = (page: Page) => page.getByRole('radiogroup', { name: 'Neckline' });
 export const neckline = (page: Page, name: string) => necklines(page).getByRole('radio', { name, exact: true });
 
 /** "Choose a colour" in the open panel, which opens the built-in chooser (V1.2-05). */
-export const chooseButton = (page: Page) => page.getByRole('button', { name: 'Choose a colour', exact: true });
+export const chooseButton = (page: Page) => page.getByRole('button', { name: /^Colour(, |$)/ });
 
 /** The chooser's Back button ("‹ Top colour"). */
 export const chooserBack = (page: Page) => page.getByRole('button', { name: /^Back to the/ });
@@ -28,16 +44,23 @@ export const chooserBack = (page: Page) => page.getByRole('button', { name: /^Ba
 /** Sets the open slot's colour by typing its code into the chooser, then goes back to the slot's controls. */
 export async function setColour(page: Page, hex: string) {
   await chooseButton(page).click();
+  await openFineTune(page);
   await page.getByLabel('Colour code').fill(hex);
   await chooserBack(page).click();
   await expectColour(page, hex);
 }
 
 /** The slot's controls show this colour on the swatch (the swatch reads "Current colour #xxxxxx"). */
-export const expectColour = (page: Page, hex: string) => expect(page.getByRole('img', { name: `Current colour ${hex.toLowerCase()}` })).toBeVisible();
+export const expectColour = (page: Page, hex: string) => expect(page.getByRole('button', { name: new RegExp(`^Colour, .*${hex.toLowerCase()}$`) })).toBeVisible();
 
-export const favourite = (page: Page) => page.getByRole('button', { name: 'Favourite', exact: true });
-export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Your favourite colours' });
+/** Opens the collapsed Fine-tune section of the colour page (code field and sliders). */
+export async function openFineTune(page: Page) {
+  const t = page.getByRole('button', { name: 'Fine-tune colour' });
+  if ((await t.getAttribute('aria-expanded')) !== 'true') await t.click();
+}
+
+export const favourite = (page: Page) => page.locator('button[aria-label="Save colour to favourites"]:visible');
+export const favouriteTiles = (page: Page) => page.getByRole('group', { name: 'Favourite colours' });
 export const addToWardrobe = (page: Page) => page.getByRole('button', { name: 'Add to wardrobe', exact: true });
 export const inWardrobe = (page: Page) => page.getByRole('button', { name: 'In your wardrobe', exact: true });
 

@@ -9,6 +9,7 @@ Headless Blender scripts. Tested with Blender 5.3.0 and MPFB 2.0.18.
 | `mesh_checks.py` | Garment pieces and openings, intersecting face pairs (body with garment, garment with itself, tee with trousers, and each top with the shorts when there are shorts; tights with the shorts and each top when there are tights), cloth-to-body clearance and shoulder gap. Run by the build into `<name>_report.json` under `mesh_checks`; `check_reports.py` fails the build on the limits in `tolerances.json` (`garment_mesh`). |
 | `analyse_meshes.py` | Read-only analysis of the exported GLBs: the same mesh checks plus centre-line profile, crotch ray test and circumference by height. Writes `<name>_analysis.json`. Analysis only; it does not fail the build. |
 | `drape.py` | Task 5: settles the tee with Blender cloth under gravity onto the body and trousers. The rest shape is the shell with each torso ring below the chest resized to the garment's own circumference (chest down to `hem_circ_cm`). Used when the build is given `--drape`. |
+| `armpit_probe.py` | V3-05 fifth pass, read-only: the tee vertices a layered top fails to cover (the layer check's rule), slices of body, tee and top through the worst one, and a ray from each nearby tee vertex along its normal. `blender --background --python spike/blender/armpit_probe.py -- pack/out synthetic_female_large sweatshirt_over_tee` |
 | `export_test.py`, `mpfb_probe*.py` | Block 0 and Block 1 probes. Safe to ignore. |
 
 ## Run (PowerShell)

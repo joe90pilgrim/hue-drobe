@@ -1,0 +1,20 @@
+{
+  "_note": "V3-07: the V3-06 shift dress moved to a template, as the regression test for pack/fit_template.py. Used straight from the archived dress01 pack (assets/packs/MANIFEST.md), so there is no source file, template.mhclo or template.obj here. sha256 is the pack's own .mhclo. Joe signed the dress off in V3-06 and V3-02, so its checks are enforced.",
+  "id": "shift_dress",
+  "category": "full",
+  "pack_file": "dress",
+  "layer": "full",
+  "allowed_bodies": "female",
+  "source": {"pack": "dress01", "asset": "toigo_shift_dress"},
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "fb6587b7775b6fc11251772117c6e16f4f78c43b5987d69d560df32d648d8bff",
+  "delete_group": true,
+  "settle": "none",
+  "contact_groups": ["all"],
+  "clearance_cm": 0.2,
+  "replaces": ["base", "mid", "bottom"],
+  "inner_layers": [],
+  "approved": true,
+  "colour": "plain"
+}

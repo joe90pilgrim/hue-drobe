@@ -22,6 +22,45 @@ export const GARMENTS = {
 export type GarmentId = keyof typeof GARMENTS;
 
 /**
+ * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between
+ * (type, variant) and the garment the app already stores, so nothing stored changes. Only the shirt has variants here (the tee's
+ * necklines are a separate setting). Any other option is its own type with no variant.
+ */
+export const VARIANT_TYPES = {
+  Shirt: {
+    label: 'Sleeves',
+    default: 'Mid',
+    variants: [
+      { name: 'Short', garment: 'shirt_short' },
+      { name: 'Mid', garment: 'shirt_mid' },
+      { name: 'Long', garment: 'shirt_long' },
+    ],
+  },
+} as const satisfies Record<string, { label: string; default: string; variants: readonly { name: string; garment: GarmentId }[] }>;
+export type VariantType = keyof typeof VARIANT_TYPES;
+export const hasVariants = (type: string): type is VariantType => type in VARIANT_TYPES;
+
+/** The chip and variant a stored option string belongs to. */
+export function typeVariantOf(option: string): { type: string; variant: string | null } {
+  for (const [type, t] of Object.entries(VARIANT_TYPES)) {
+    const v = t.variants.find((x) => GARMENTS[x.garment].option === option);
+    if (v) return { type, variant: v.name };
+  }
+  return { type: option, variant: null };
+}
+/** The stored option string for a chip and variant; null for a variant the type does not have. */
+export function optionFor(type: string, variant: string | null): string | null {
+  if (!hasVariants(type)) return variant === null ? type : null;
+  const v = VARIANT_TYPES[type].variants.find((x) => x.name === (variant ?? VARIANT_TYPES[type].default));
+  return v ? GARMENTS[v.garment].option : null;
+}
+/** The garment a chip and variant show, or undefined for 'None'. */
+export const garmentFor = (type: string, variant: string | null): GarmentId | undefined => {
+  const o = optionFor(type, variant);
+  return (Object.keys(GARMENTS) as GarmentId[]).find((g) => GARMENTS[g].option === o);
+};
+
+/**
  * Tee necklines (V1.1-04). `label` is the Dress button, `words` is how a neckline reads in a list, and `name` is the
  * word put in an automatic name (the crew neck is the plain 'tee', so it adds nothing).
  */
@@ -78,7 +117,61 @@ export function keepLayers(outfit: Record<string, string>, changed?: string): Re
   }
   if (o.Legs === GARMENTS.tights.option && o.Bottom === TIGHTS_BLOCKED_BY) o = changed === 'Legs' ? { ...o, Bottom: 'None' } : { ...o, Legs: 'None' };
   if (isUntuckedTop(o.Top) && o.Bottom === TUCKS_INTO) o = changed === 'Bottom' ? { ...o, Top: 'None' } : { ...o, Bottom: 'None' };
+  if (isOn(o[UNDER_SLOT]) && !isMidTop(o.Top)) o = { ...o, [UNDER_SLOT]: 'None' }; // V3-05: a tee under needs a sweatshirt or shirt over it
   return o;
+}
+
+/**
+ * V3-05 (Joe, 17 Nov 2026): a base top (the tee) under one mid top (the sweatshirt or a shirt), in that fixed order. Only the combinations
+ * that passed the build's checks on this person's body are offered: the pack's manifest lists them (`garments.layers.combinations`),
+ * as the mid top's garment name -> the tee necklines it can be worn over. A pack without the list offers none.
+ */
+export const UNDER_SLOT = 'Under';
+export const UNDER_OPTION = GARMENTS.tee.option;
+export type LayerCombos = Record<string, Neckline[]>;
+/** The mid tops that can go over a tee: Top option -> garment name. */
+export const MID_TOPS: Record<string, GarmentId> = {
+  [GARMENTS.sweatshirt.option]: 'sweatshirt',
+  [GARMENTS.shirt_short.option]: 'shirt_short',
+  [GARMENTS.shirt_mid.option]: 'shirt_mid',
+  [GARMENTS.shirt_long.option]: 'shirt_long',
+};
+export const isMidTop = (option: string | undefined) => !!option && option in MID_TOPS;
+/** The pack mesh for a mid top as worn over the tee. */
+export const overMeshName = (garment: string) => `${garment}_over_tee`;
+/** The tee necklines this person can wear under the top option; empty when the top is not a mid top or nothing passed. */
+export const necklinesUnder = (combos: LayerCombos, topOption: string | undefined): Neckline[] => (isMidTop(topOption) ? combos[MID_TOPS[topOption!]] ?? [] : []);
+/** True when the outfit's tee under the top is a combination that passed on this body, with this neckline. */
+export const layeredOk = (combos: LayerCombos, outfit: Record<string, string>, neckline: Neckline) =>
+  isOn(outfit[UNDER_SLOT]) && necklinesUnder(combos, outfit.Top).includes(neckline);
+/** Reads the combinations from a pack manifest, ignoring anything that is not a known mid top over a known neckline. */
+export function parseLayerCombos(manifest: unknown): LayerCombos {
+  const raw = (manifest as { garments?: { layers?: { combinations?: unknown } } } | null)?.garments?.layers?.combinations;
+  const out: LayerCombos = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const g of Object.values(MID_TOPS)) {
+    const list = (raw as Record<string, unknown>)[g];
+    const ok = Array.isArray(list) ? list.filter(isNeckline) : [];
+    if (ok.length) out[g] = ok;
+  }
+  return out;
+}
+
+/**
+ * V3.1-02: reads the manifest's `garments.inner_layers_drawn` (outer pack mesh -> inner mesh -> file): the inner garment with the faces an outer
+ * garment covers removed, drawn in place of the inner one while the outer is worn. Anything not a plain `.glb` name is ignored.
+ */
+export function parseUnderFiles(manifest: unknown): Record<string, Record<string, string>> {
+  const raw = (manifest as { garments?: { inner_layers_drawn?: unknown } } | null)?.garments?.inner_layers_drawn;
+  const out: Record<string, Record<string, string>> = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const [outer, inners] of Object.entries(raw as Record<string, unknown>)) {
+    if (!/^[a-z0-9_]+$/.test(outer) || !inners || typeof inners !== 'object') continue;
+    for (const [inner, file] of Object.entries(inners as Record<string, unknown>)) {
+      if (/^[a-z0-9_]+$/.test(inner) && typeof file === 'string' && /^[A-Za-z0-9_.-]+\.glb$/.test(file)) (out[outer] ??= {})[inner] = file;
+    }
+  }
+  return out;
 }
 
 /** The avatar pack mesh that shows a garment: the crew tee is `tee`, the others `tee_v` and `tee_scoop`; `tucked` (a tee over a skirt) adds `_tucked`. */

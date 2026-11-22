@@ -4650,6 +4650,132 @@
       }
     }
   },
+  "sweatshirt_over_tee": {
+    "over": "tee",
+    "ease_cm": 3.21,
+    "settle": {
+      "settle_frames": 30,
+      "tight_spots": 258,
+      "freed_verts": 94,
+      "moved_cm_median_p99_max": [
+        0.0,
+        0.26,
+        0.45
+      ]
+    },
+    "layer_gap_cm": 0.4,
+    "chest_circ_as_worn_cm": 110.1,
+    "chest_circ_alone_as_worn_cm": 110.0,
+    "chest_extra_from_tee_cm": 0.1
+  },
+  "shirt_short_over_tee": {
+    "over": "tee",
+    "ease_cm": 2.86,
+    "settle": {
+      "settle_frames": 30,
+      "tight_spots": 238,
+      "freed_verts": 102,
+      "moved_cm_median_p99_max": [
+        0.0,
+        0.25,
+        0.79
+      ]
+    },
+    "layer_gap_cm": 0.4,
+    "chest_circ_as_worn_cm": 110.4,
+    "chest_circ_alone_as_worn_cm": 108.4,
+    "chest_extra_from_tee_cm": 2.0,
+    "details": {
+      "placket": {
+        "vertices_raised": 111,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 54,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 7.3,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.32,
+        "lip_gap_to_cloth_cm": [
+          0.25,
+          0.55
+        ]
+      }
+    }
+  },
+  "shirt_mid_over_tee": {
+    "over": "tee",
+    "ease_cm": 2.87,
+    "settle": {
+      "settle_frames": 30,
+      "tight_spots": 154,
+      "freed_verts": 78,
+      "moved_cm_median_p99_max": [
+        0.0,
+        0.25,
+        0.8
+      ]
+    },
+    "layer_gap_cm": 0.4,
+    "chest_circ_as_worn_cm": 110.4,
+    "chest_circ_alone_as_worn_cm": 108.4,
+    "chest_extra_from_tee_cm": 2.0,
+    "details": {
+      "placket": {
+        "vertices_raised": 111,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 54,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 7.3,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.32,
+        "lip_gap_to_cloth_cm": [
+          0.25,
+          0.55
+        ]
+      }
+    }
+  },
+  "shirt_long_over_tee": {
+    "over": "tee",
+    "ease_cm": 2.87,
+    "settle": {
+      "settle_frames": 30,
+      "tight_spots": 148,
+      "freed_verts": 68,
+      "moved_cm_median_p99_max": [
+        0.0,
+        0.23,
+        0.78
+      ]
+    },
+    "layer_gap_cm": 0.4,
+    "chest_circ_as_worn_cm": 110.4,
+    "chest_circ_alone_as_worn_cm": 108.4,
+    "chest_extra_from_tee_cm": 2.0,
+    "details": {
+      "placket": {
+        "vertices_raised": 111,
+        "height_cm": 0.4,
+        "half_width_cm": 1.4
+      },
+      "collar": {
+        "ring_vertices": 54,
+        "stand_cm": 2.2,
+        "tip_drop_cm": 7.3,
+        "points": 2,
+        "min_clearance_stand_top_to_body_cm": 0.32,
+        "lip_gap_to_cloth_cm": [
+          0.25,
+          0.55
+        ]
+      }
+    }
+  },
   "garment_landmarks_vs_real": [
     {
       "garment": "tee",
@@ -5563,6 +5689,300 @@
         "max_cm": 0.44
       }
     },
+    "sweatshirt_over_tee": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 4848,
+          "area_cm2": 8947.1,
+          "z_cm": [
+            90.8,
+            150.1
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        110.1,
+        66.0,
+        18.9,
+        18.9
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.5,
+        "median": 1.53,
+        "max": 4.47,
+        "min_at_xyz_cm": [
+          -47.1,
+          -17.1,
+          107.1
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "6": {
+            "mean": 0.82,
+            "max": 0.82,
+            "verts": 4
+          },
+          "8": {
+            "mean": 0.57,
+            "max": 0.91,
+            "verts": 26
+          },
+          "10": {
+            "mean": 0.75,
+            "max": 1.01,
+            "verts": 24
+          },
+          "12": {
+            "mean": 0.81,
+            "max": 1.02,
+            "verts": 18
+          },
+          "14": {
+            "mean": 0.81,
+            "max": 0.99,
+            "verts": 16
+          },
+          "16": {
+            "mean": 0.8,
+            "max": 0.96,
+            "verts": 12
+          },
+          "18": {
+            "mean": 0.76,
+            "max": 0.88,
+            "verts": 10
+          },
+          "20": {
+            "mean": 0.76,
+            "max": 0.76,
+            "verts": 2
+          }
+        },
+        "worst_band_mean_cm": 0.82,
+        "max_cm": 1.02
+      }
+    },
+    "shirt_short_over_tee": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 4758,
+          "area_cm2": 8726.9,
+          "z_cm": [
+            83.7,
+            152.1
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        114.4,
+        73.3,
+        36.7,
+        36.7
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.32,
+        "p05": 0.72,
+        "median": 1.77,
+        "max": 8.1,
+        "min_at_xyz_cm": [
+          5.2,
+          3.5,
+          149.8
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.74,
+            "max": 0.81,
+            "verts": 22
+          },
+          "12": {
+            "mean": 0.81,
+            "max": 0.94,
+            "verts": 12
+          },
+          "14": {
+            "mean": 0.81,
+            "max": 0.97,
+            "verts": 16
+          },
+          "16": {
+            "mean": 0.8,
+            "max": 0.96,
+            "verts": 12
+          },
+          "18": {
+            "mean": 0.75,
+            "max": 0.85,
+            "verts": 10
+          },
+          "20": {
+            "mean": 0.76,
+            "max": 0.76,
+            "verts": 2
+          }
+        },
+        "worst_band_mean_cm": 0.81,
+        "max_cm": 0.97
+      }
+    },
+    "shirt_mid_over_tee": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 4914,
+          "area_cm2": 8897.1,
+          "z_cm": [
+            83.7,
+            152.1
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        114.4,
+        73.3,
+        33.9,
+        33.9
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.32,
+        "p05": 0.71,
+        "median": 1.68,
+        "max": 8.09,
+        "min_at_xyz_cm": [
+          5.2,
+          3.5,
+          149.8
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.74,
+            "max": 0.81,
+            "verts": 22
+          },
+          "12": {
+            "mean": 0.8,
+            "max": 0.93,
+            "verts": 12
+          },
+          "14": {
+            "mean": 0.81,
+            "max": 0.94,
+            "verts": 16
+          },
+          "16": {
+            "mean": 0.8,
+            "max": 0.96,
+            "verts": 12
+          },
+          "18": {
+            "mean": 0.75,
+            "max": 0.85,
+            "verts": 10
+          },
+          "20": {
+            "mean": 0.76,
+            "max": 0.76,
+            "verts": 2
+          }
+        },
+        "worst_band_mean_cm": 0.81,
+        "max_cm": 0.96
+      }
+    },
+    "shirt_long_over_tee": {
+      "pieces": 1,
+      "piece_faces_area": [
+        {
+          "faces": 5854,
+          "area_cm2": 10401.5,
+          "z_cm": [
+            83.7,
+            152.1
+          ]
+        }
+      ],
+      "openings": 4,
+      "opening_lengths_cm": [
+        114.4,
+        73.3,
+        19.2,
+        19.2
+      ],
+      "body_intersecting_pairs": 0,
+      "body_intersections_by_z_cm": [],
+      "self_intersecting_pairs": 0,
+      "self_intersections_by_z_cm": [],
+      "clearance_to_body_cm": {
+        "min": 0.3,
+        "p05": 0.49,
+        "median": 1.46,
+        "max": 8.1,
+        "min_at_xyz_cm": [
+          47.1,
+          -17.1,
+          107.1
+        ]
+      },
+      "shoulder_gap": {
+        "bands_by_cm_from_centre": {
+          "10": {
+            "mean": 0.74,
+            "max": 0.81,
+            "verts": 22
+          },
+          "12": {
+            "mean": 0.8,
+            "max": 0.93,
+            "verts": 12
+          },
+          "14": {
+            "mean": 0.81,
+            "max": 0.95,
+            "verts": 16
+          },
+          "16": {
+            "mean": 0.8,
+            "max": 0.96,
+            "verts": 12
+          },
+          "18": {
+            "mean": 0.75,
+            "max": 0.85,
+            "verts": 10
+          },
+          "20": {
+            "mean": 0.76,
+            "max": 0.76,
+            "verts": 2
+          }
+        },
+        "worst_band_mean_cm": 0.81,
+        "max_cm": 0.96
+      }
+    },
     "shorts": {
       "pieces": 1,
       "piece_faces_area": [
@@ -5639,6 +6059,10 @@
     "shirt_short_vs_shorts_intersecting_pairs": 0,
     "shirt_mid_vs_shorts_intersecting_pairs": 0,
     "shirt_long_vs_shorts_intersecting_pairs": 0,
+    "sweatshirt_over_tee_vs_shorts_intersecting_pairs": 0,
+    "shirt_short_over_tee_vs_shorts_intersecting_pairs": 0,
+    "shirt_mid_over_tee_vs_shorts_intersecting_pairs": 0,
+    "shirt_long_over_tee_vs_shorts_intersecting_pairs": 0,
     "tights_vs_shorts_intersecting_pairs": 0,
     "tights_vs_shorts_at_z_x_cm": [],
     "tee_vs_tights_intersecting_pairs": 0,
@@ -5648,12 +6072,20 @@
     "shirt_short_vs_tights_intersecting_pairs": 0,
     "shirt_mid_vs_tights_intersecting_pairs": 0,
     "shirt_long_vs_tights_intersecting_pairs": 0,
+    "sweatshirt_over_tee_vs_tights_intersecting_pairs": 0,
+    "shirt_short_over_tee_vs_tights_intersecting_pairs": 0,
+    "shirt_mid_over_tee_vs_tights_intersecting_pairs": 0,
+    "shirt_long_over_tee_vs_tights_intersecting_pairs": 0,
     "sweatshirt_vs_trousers_intersecting_pairs": 0,
     "tee_v_vs_trousers_intersecting_pairs": 0,
     "tee_scoop_vs_trousers_intersecting_pairs": 0,
     "shirt_short_vs_trousers_intersecting_pairs": 0,
     "shirt_mid_vs_trousers_intersecting_pairs": 0,
-    "shirt_long_vs_trousers_intersecting_pairs": 0
+    "shirt_long_vs_trousers_intersecting_pairs": 0,
+    "sweatshirt_over_tee_vs_trousers_intersecting_pairs": 0,
+    "shirt_short_over_tee_vs_trousers_intersecting_pairs": 0,
+    "shirt_mid_over_tee_vs_trousers_intersecting_pairs": 0,
+    "shirt_long_over_tee_vs_trousers_intersecting_pairs": 0
   },
   "shading": {
     "tee": {
@@ -6150,7 +6582,405 @@
         "min": 0.451,
         "share_below_0_8": 0.06
       }
+    },
+    "sweatshirt_over_tee": {
+      "corners": 1138,
+      "radius_cm": 1.5,
+      "kink_max_deg": 13.7,
+      "kink_p99_deg": 12.9,
+      "kinks_over_15deg": 0,
+      "kink_max_at_xyz_cm": [
+        11.6,
+        -16.6,
+        127.8
+      ],
+      "worst_at_xyz_cm_deg": [
+        [
+          11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          0.3,
+          7.1,
+          140.2,
+          13.6
+        ],
+        [
+          11.6,
+          -16.7,
+          128.2,
+          13.0
+        ]
+      ],
+      "colour": {
+        "present": false,
+        "min": null,
+        "share_below_0_8": null
+      }
+    },
+    "shirt_short_over_tee": {
+      "corners": 1151,
+      "radius_cm": 1.5,
+      "kink_max_deg": 13.7,
+      "kink_p99_deg": 12.8,
+      "kinks_over_15deg": 0,
+      "kink_max_at_xyz_cm": [
+        11.6,
+        -16.6,
+        127.8
+      ],
+      "worst_at_xyz_cm_deg": [
+        [
+          11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          11.6,
+          -16.7,
+          128.2,
+          13.0
+        ],
+        [
+          12.2,
+          -16.3,
+          129.3,
+          13.0
+        ]
+      ],
+      "colour": {
+        "present": true,
+        "min": 0.451,
+        "share_below_0_8": 0.082
+      }
+    },
+    "shirt_mid_over_tee": {
+      "corners": 1151,
+      "radius_cm": 1.5,
+      "kink_max_deg": 13.7,
+      "kink_p99_deg": 12.9,
+      "kinks_over_15deg": 0,
+      "kink_max_at_xyz_cm": [
+        11.6,
+        -16.6,
+        127.8
+      ],
+      "worst_at_xyz_cm_deg": [
+        [
+          11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          11.6,
+          -16.7,
+          128.2,
+          13.0
+        ],
+        [
+          12.2,
+          -16.3,
+          129.3,
+          13.0
+        ]
+      ],
+      "colour": {
+        "present": true,
+        "min": 0.451,
+        "share_below_0_8": 0.079
+      }
+    },
+    "shirt_long_over_tee": {
+      "corners": 1151,
+      "radius_cm": 1.5,
+      "kink_max_deg": 13.7,
+      "kink_p99_deg": 12.9,
+      "kinks_over_15deg": 0,
+      "kink_max_at_xyz_cm": [
+        11.6,
+        -16.6,
+        127.8
+      ],
+      "worst_at_xyz_cm_deg": [
+        [
+          11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -12.6,
+          -16.2,
+          128.8,
+          13.7
+        ],
+        [
+          -11.6,
+          -16.6,
+          127.8,
+          13.7
+        ],
+        [
+          11.6,
+          -16.7,
+          128.2,
+          13.0
+        ],
+        [
+          12.2,
+          -16.3,
+          129.3,
+          13.0
+        ]
+      ],
+      "colour": {
+        "present": true,
+        "min": 0.451,
+        "share_below_0_8": 0.066
+      }
     }
   },
-  "fit_config_sha256": "1f02622c88956549628c7416221f275994d1d8e13e77637a872a2c684741a7f0"
+  "layers": {
+    "sweatshirt_over_tee": {
+      "tee": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1784,
+          "min": 0.32,
+          "p05": 0.38,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -8.9,
+            7.1,
+            145.8
+          ]
+        }
+      },
+      "tee_v": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1772,
+          "min": 0.31,
+          "p05": 0.38,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -0.0,
+            -14.2,
+            137.0
+          ]
+        }
+      },
+      "tee_scoop": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1783,
+          "min": 0.32,
+          "p05": 0.38,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -8.9,
+            7.1,
+            145.8
+          ]
+        }
+      }
+    },
+    "shirt_short_over_tee": {
+      "tee": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1844,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      },
+      "tee_v": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1829,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      },
+      "tee_scoop": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1830,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      }
+    },
+    "shirt_mid_over_tee": {
+      "tee": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1896,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      },
+      "tee_v": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1881,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      },
+      "tee_scoop": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1882,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            16.8,
+            -9.8,
+            89.8
+          ]
+        }
+      }
+    },
+    "shirt_long_over_tee": {
+      "tee": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1896,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -27.0,
+            -2.4,
+            122.7
+          ]
+        }
+      },
+      "tee_v": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1881,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -27.0,
+            -2.4,
+            122.7
+          ]
+        }
+      },
+      "tee_scoop": {
+        "intersecting_pairs": 0,
+        "inner_inside_clearance_cm": {
+          "vertices": 1882,
+          "min": 0.31,
+          "p05": 0.37,
+          "median": 0.4,
+          "min_at_xyz_cm": [
+            -27.0,
+            -2.4,
+            122.7
+          ]
+        }
+      }
+    }
+  },
+  "fit_config_sha256": "4ba17b78bf8292f6c982081b3b3d73c6a4f28872dd68394611af300aa54610f5"
 }

@@ -8,8 +8,8 @@ test('on a phone the stage uses the full width and each row is at least 64 px hi
   expect(stage!.x).toBe(0);
   expect(stage!.width).toBe(412);
   const rows = page.locator('.wear-row');
-  await expect(rows).toHaveCount(3); // Top, Bottom and Legs (V2-04)
-  for (const row of await rows.all()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(64);
+  await expect(rows).toHaveCount(5); // Dress, Top, Bottom, Legs and Under (the dress and under rows are hidden unless the pack allows them)
+  for (const row of await rows.all()) if (await row.isVisible()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(64);
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
   expect((await page.getByRole('button', { name: 'Save outfit' }).boundingBox())!.height).toBe(50);
 });
@@ -47,6 +47,7 @@ test('on a laptop the stage and the panel fill the screen at 1280 x 800', async 
 
 test('on a phone a row opens a sheet under a smaller stage, in order garment, neckline, colour, add; Done returns the focus', async ({ page }) => {
   await page.goto('/#/try-on');
+  await expect(page.locator('.stage-status')).toBeHidden(); // layout settles once the pack has loaded
   const before = (await page.locator('#stage').boundingBox())!;
   await page.locator('.wear-row[data-row="Top"]').click();
   const dialog = page.getByRole('dialog', { name: 'Top' });
@@ -63,7 +64,7 @@ test('on a phone a row opens a sheet under a smaller stage, in order garment, ne
   const y = async (locator: ReturnType<typeof page.locator>) => (await locator.first().boundingBox())!.y;
   const garmentY = await y(dialog.getByRole('radiogroup', { name: 'Garment' }));
   const neckY = await y(dialog.getByRole('radiogroup', { name: 'Neckline' }));
-  const colourY = await y(dialog.getByRole('button', { name: 'Favourite', exact: true }));
+  const colourY = await y(dialog.getByRole('button', { name: 'Save colour to favourites', exact: true }));
   const addY = await y(dialog.getByRole('button', { name: 'Add to wardrobe' }));
   expect(garmentY).toBeLessThan(neckY);
   expect(neckY).toBeLessThan(colourY);

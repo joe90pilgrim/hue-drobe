@@ -1,7 +1,6 @@
 import { createViewer } from '../viewer';
 import { kvGet, kvPut } from '../store';
 import {
-  SHOWN_FIRST,
   addFavourite,
   hasFavourite,
   loadFavourites,
@@ -14,13 +13,23 @@ import {
   DRESS_OPTION,
   DRESS_SLOT,
   GARMENTS,
+  MID_TOPS,
   NECKLINES,
   NECKLINE_KEY,
   isUntuckedTop,
   SHEER_KEY,
   TIGHTS_BLOCKED_BY,
   TUCKS_INTO,
+  UNDER_OPTION,
+  UNDER_SLOT,
   ensureItem,
+  VARIANT_TYPES,
+  hasVariants,
+  optionFor,
+  typeVariantOf,
+  layeredOk,
+  necklinesUnder,
+  overMeshName,
   hasNecklines,
   hasSheer,
   keepLayers,
@@ -32,6 +41,7 @@ import {
   saveItems,
   type GarmentId,
   type Neckline,
+  colourName,
 } from '../wardrobe';
 import { createColourChooser } from '../colour-chooser';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
@@ -56,6 +66,8 @@ const SLOTS: Slot[] = [
   { name: 'Bottom', options: ['Trousers', 'Shorts', 'Skirt', 'None'], garments: { Trousers: 'trousers', Shorts: 'shorts', Skirt: 'skirt' } },
   // Tights (V2-04) are a layer under the shorts, so they have their own slot. Nothing by default; never with trousers.
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
+  // V3-05: a tee under the sweatshirt or a shirt. Shown only when this person's pack lists a combination that passed on their body.
+  { name: UNDER_SLOT, options: ['None', UNDER_OPTION], garments: { [UNDER_OPTION]: 'tee' } },
 ];
 
 /** The pack mesh behind each shirt option (V3-03), to offer a shirt only when this person's pack has it. */
@@ -124,7 +136,11 @@ export function renderTryOn(el: HTMLElement): () => void {
         <div class="ed-controls">
         <div class="field">
           <span class="field-label" id="lbl-garment">Garment</span>
-          <div class="seg" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div>
+          <div class="chip-fade"><div class="chips" role="radiogroup" aria-labelledby="lbl-garment" data-garment></div></div>
+        </div>
+        <div class="field" data-variant-field hidden>
+          <span class="field-label" id="lbl-variant">Sleeves</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-variant" data-variants></div>
         </div>
         <p class="help layer-note" data-layer-note hidden>Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.</p>
         <div class="field" data-sheer-field hidden>
@@ -140,15 +156,12 @@ export function renderTryOn(el: HTMLElement): () => void {
         <div class="field">
           <span class="field-label" id="lbl-colour">Colour</span>
           <div class="colour-row">
-            <span class="cur-swatch" role="img" aria-label="Current colour"></span>
-            <button type="button" class="secondary choose" aria-haspopup="true">Choose a colour</button>
-            <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
-          </div>
-          <span class="field-label fav-label" hidden>Favourites</span>
-          <div class="fav-row" role="group" aria-label="Your favourite colours"></div>
-          <div class="fav-foot">
-            <span class="legend" hidden><span class="legend-dot"></span>From your colour palette</span>
-            <button type="button" class="link-btn" data-more hidden></button>
+            <button type="button" class="colour-open choose" aria-haspopup="true">
+              <span class="cur-swatch" role="img" aria-hidden="true"></span>
+              <span class="cur-text"><span class="cur-name"></span><span class="cur-hex"></span></span>
+              <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+            </button>
+            <button type="button" class="heart-btn fav-btn" aria-pressed="false" aria-label="Save colour to favourites">${HEART}</button>
           </div>
         </div>
         <button type="button" class="secondary add-wardrobe"></button>
@@ -166,6 +179,10 @@ export function renderTryOn(el: HTMLElement): () => void {
   const garmentGroup = editor.querySelector<HTMLElement>('[data-garment]')!;
   const neckField = editor.querySelector<HTMLElement>('[data-neck-field]')!;
   const neckGroup = editor.querySelector<HTMLElement>('[data-necklines]')!;
+  const variantField = editor.querySelector<HTMLElement>('[data-variant-field]')!;
+  const variantGroup = editor.querySelector<HTMLElement>('[data-variants]')!;
+  const variantLabel = editor.querySelector<HTMLElement>('#lbl-variant')!;
+  const lastVariant: Record<string, string> = {}; // type -> the variant last used this session
   const sheerField = editor.querySelector<HTMLElement>('[data-sheer-field]')!;
   const sheerGroup = editor.querySelector<HTMLElement>('[data-sheers]')!;
   const layerNote = editor.querySelector<HTMLElement>('[data-layer-note]')!;
@@ -175,10 +192,8 @@ export function renderTryOn(el: HTMLElement): () => void {
   const backBtn = editor.querySelector<HTMLButtonElement>('.editor-back')!;
   const backText = backBtn.querySelector<HTMLElement>('.editor-back-text')!;
   const favBtn = editor.querySelector<HTMLButtonElement>('.fav-btn')!;
-  const favRow = editor.querySelector<HTMLElement>('.fav-row')!;
-  const favLabel = editor.querySelector<HTMLElement>('.fav-label')!;
-  const legend = editor.querySelector<HTMLElement>('.legend')!;
-  const moreBtn = editor.querySelector<HTMLButtonElement>('[data-more]')!;
+  const curName = editor.querySelector<HTMLElement>('.cur-name')!;
+  const curHex = editor.querySelector<HTMLElement>('.cur-hex')!;
   const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
   const laptop = matchMedia('(min-width: 900px)');
   // Moving a slider changes the avatar at once; the colour is saved when the slider is released or the chooser closes.
@@ -206,10 +221,10 @@ export function renderTryOn(el: HTMLElement): () => void {
   let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
   let sheer = false; // the tights' sheerness (V2-04); like the neckline, the colour belongs to the tights either way
   let favourites: Favourite[] = []; // shared by every slot
-  let showAll = false; // while false, only the first SHOWN_FIRST favourites are drawn
   let editing: Slot | null = null; // the slot whose controls are open
   let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
+  let packReady = false; // the pack and its list of passing layer combinations have loaded
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
   const offered = (opt: string) =>
@@ -222,6 +237,8 @@ export function renderTryOn(el: HTMLElement): () => void {
       return 'Tights go under shorts, not trousers. Change your bottom to shorts or nothing to wear them.';
     if (slot === 'Top' && isUntuckedTop(opt) && outfit.Bottom === TUCKS_INTO)
       return `A ${opt === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} isn't tucked in, so it can't go with a skirt. Change your bottom to trousers, shorts or nothing to wear it.`;
+    if (slot === UNDER_SLOT && opt === UNDER_OPTION && necklinesUnder(viewer.layers(), outfit.Top).length === 0)
+      return 'A T-shirt goes under a sweatshirt or a shirt that has been built over it for you. Choose one of those for your top first.';
     if (slot === 'Bottom' && opt === TUCKS_INTO && isUntuckedTop(outfit.Top))
       return `A skirt goes with a T-shirt or nothing on top. Change your top from the ${outfit.Top === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} to wear a skirt.`;
     return null;
@@ -248,29 +265,8 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.style.background = g ? colourOf(s) : '';
     }
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
     outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
-  };
-
-  /** Draws the favourite tiles and keeps the keyboard focus on the tile or link that was used. */
-  const renderFavs = (s: Slot) => {
-    const g = garmentOf(s);
-    const current = colourOf(s);
-    const active = document.activeElement as HTMLElement | null;
-    const keep = active && favRow.contains(active) ? active.dataset.hex : active === moreBtn ? 'more' : undefined;
-    const shown = showAll ? favourites : favourites.slice(0, SHOWN_FIRST);
-    favRow.innerHTML = shown
-      .map(
-        (f) =>
-          `<button type="button" class="fav-tile${f.hex === current ? ' on' : ''}" data-hex="${f.hex}" aria-pressed="${f.hex === current}" aria-label="${f.hex}${f.fromPalette ? ', from your palette' : ''}" style="background:${f.hex}" ${!g ? 'disabled' : ''}>${f.fromPalette ? '<span class="palette-dot"></span>' : ''}</button>`,
-      )
-      .join('');
-    favLabel.hidden = shown.length === 0;
-    legend.hidden = !shown.some((f) => f.fromPalette);
-    moreBtn.hidden = favourites.length <= SHOWN_FIRST;
-    moreBtn.textContent = showAll ? 'Show fewer' : 'Show all';
-    moreBtn.setAttribute('aria-expanded', String(showAll));
-    if (keep === 'more') moreBtn.focus();
-    else if (keep) favRow.querySelector<HTMLElement>(`[data-hex="${keep}"]`)?.focus();
   };
 
   /** Brings every control in the open panel up to date with the current outfit. */
@@ -281,13 +277,27 @@ export function renderTryOn(el: HTMLElement): () => void {
     const current = colourOf(s);
     // A layer that never goes with what is worn (tights under trousers, a sweatshirt with a skirt) is greyed out, with a note saying why.
     let note: string | null = null;
+    const cur = typeVariantOf(outfit[s.name]);
+    if (cur.variant) lastVariant[cur.type] = cur.variant;
     for (const b of garmentGroup.querySelectorAll<HTMLButtonElement>('[data-opt]')) {
-      const on = b.dataset.opt === outfit[s.name];
+      const on = b.dataset.opt === cur.type;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
-      const why = blockedNote(s.name, b.dataset.opt!);
+      const why = blockedNote(s.name, optionFor(b.dataset.opt!, lastVariant[b.dataset.opt!] ?? null) ?? b.dataset.opt!);
       b.disabled = why !== null;
       note ??= why;
+    }
+    variantField.hidden = !hasVariants(cur.type);
+    if (hasVariants(cur.type)) {
+      variantLabel.textContent = VARIANT_TYPES[cur.type].label;
+      variantGroup.innerHTML = VARIANT_TYPES[cur.type].variants
+        .map((v) => ({ v, opt: optionFor(cur.type, v.name)! }))
+        .filter(({ opt }) => offered(opt))
+        .map(({ v, opt }) => {
+          const on = v.name === cur.variant;
+          return `<button type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" data-variant="${v.name}"${blockedNote(s.name, opt) ? ' disabled' : ''}>${v.name}</button>`;
+        })
+        .join('');
     }
     layerNote.textContent = note ?? '';
     layerNote.hidden = note === null;
@@ -302,10 +312,13 @@ export function renderTryOn(el: HTMLElement): () => void {
       const on = b.dataset.neckline === neckline;
       b.setAttribute('aria-checked', String(on));
       b.tabIndex = on ? 0 : -1;
+      b.disabled = s.name === UNDER_SLOT && !necklinesUnder(viewer.layers(), outfit.Top).includes(b.dataset.neckline as Neckline); // only the necklines that passed over this top on this body
     }
     curSwatch.classList.toggle('o-empty', !g);
     curSwatch.style.background = g ? current : '';
-    curSwatch.setAttribute('aria-label', g ? `Current colour ${current}` : 'No colour, nothing is worn');
+    curName.textContent = g ? colourName(current) : 'Nothing worn';
+    curHex.textContent = g ? current.toUpperCase() : '';
+    chooseBtn.setAttribute('aria-label', g ? `Colour, ${colourName(current)}, ${current}` : 'Colour, nothing is worn');
     chooseBtn.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
     chooser.sync({ hex: current, favourites });
     favBtn.disabled = !g;
@@ -314,18 +327,28 @@ export function renderTryOn(el: HTMLElement): () => void {
     const saved = !!g && savedKey === itemKey(s);
     addBtn.innerHTML = saved ? `${TICK}In your wardrobe` : `${PLUS}Add to wardrobe`;
     addBtn.classList.toggle('done', saved);
-    renderFavs(s);
   };
 
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
     const tucked = isTucked(outfit);
+    const layered = layeredOk(viewer.layers(), outfit, neckline); // V3-05: the tee under a sweatshirt or shirt, which is then the version built over the tee
+    if (slot.name === UNDER_SLOT) {
+      if (layered) for (const mesh of meshesOf('tee')) viewer.setGarment(mesh, mesh === meshName('tee', neckline)); // after the Top slot, so it shows the tee
+      return;
+    }
     for (const [opt, id] of Object.entries(slot.garments)) {
       const shown = meshName(id as GarmentId, neckline, tucked);
-      for (const mesh of new Set([...meshesOf(id as GarmentId), ...meshesOf(id as GarmentId, true)])) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown);
+      for (const mesh of new Set([...meshesOf(id as GarmentId), ...meshesOf(id as GarmentId, true)])) viewer.setGarment(mesh, outfit[slot.name] === opt && mesh === shown && !(layered && opt in MID_TOPS));
+      if (opt in MID_TOPS) viewer.setGarment(overMeshName(id), layered && outfit[slot.name] === opt);
     }
   };
   const refresh = () => {
+    if (packReady && outfit[UNDER_SLOT] === UNDER_OPTION && !layeredOk(viewer.layers(), outfit, neckline)) {
+      const fits = necklinesUnder(viewer.layers(), outfit.Top);
+      if (fits.length) neckline = fits[0]; // the tee under keeps to a neckline that passed on this body
+      else outfit[UNDER_SLOT] = 'None';
+    }
     SLOTS.forEach(apply);
     const dressOn = outfit[DRESS_SLOT] === DRESS_OPTION && viewer.has('dress') && viewer.has('body_dress');
     viewer.setGarment('body', !dressOn); // while the dress is worn, the body with the parts under it removed is drawn instead
@@ -354,9 +377,10 @@ export function renderTryOn(el: HTMLElement): () => void {
     }
   };
   const buildGarments = (s: Slot) => {
-    garmentGroup.innerHTML = s.options
-      .filter(offered)
-      .map((o) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${o}">${optionLabel(o)}</button>`)
+    // One chip per garment type (the three shirts are one "Shirt" chip), "Nothing" first so it never scrolls out of reach.
+    const types = [...new Set(s.options.filter(offered).map((o) => typeVariantOf(o).type))].sort((a, b) => Number(b === 'None') - Number(a === 'None'));
+    garmentGroup.innerHTML = types
+      .map((t) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-opt="${t}">${optionLabel(t)}</button>`)
       .join('');
   };
   const openEditor = (s: Slot, row: HTMLButtonElement) => {
@@ -369,7 +393,9 @@ export function renderTryOn(el: HTMLElement): () => void {
     place();
     editor.hidden = false;
     syncEditor();
-    (editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]') ?? editor).focus();
+    const first = editor.querySelector<HTMLElement>('[data-opt][aria-checked="true"]');
+    first?.scrollIntoView({ block: 'nearest', inline: 'center' });
+    (first ?? editor).focus();
   };
   /** Swaps between the slot's controls and the colour chooser. */
   const showChooser = (open: boolean) => {
@@ -378,6 +404,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     chooserOpen = open;
     controls.hidden = open;
     chooser.el.hidden = !open;
+    if (open) chooser.reset();
     editorTitle.hidden = open;
     backBtn.hidden = !open;
     backText.textContent = `${editing.name} colour`;
@@ -430,12 +457,26 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   bindRadioKeys(garmentGroup);
   bindRadioKeys(neckGroup);
+  bindRadioKeys(variantGroup);
   bindRadioKeys(sheerGroup);
   garmentGroup.addEventListener('click', (e) => {
-    const opt = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
+    const type = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
     const s = editing;
-    if (!s || !opt || opt === outfit[s.name]) return;
+    if (!s || !type) return;
+    if (typeVariantOf(outfit[s.name]).type === type) return;
+    const opt = optionFor(type, lastVariant[type] ?? null);
+    if (!opt || opt === outfit[s.name]) return;
     // Putting trousers on takes the tights off (they are never worn together); the Legs panel greys tights out instead.
+    Object.assign(outfit, keepLayers({ ...outfit, [s.name]: opt }, s.name));
+    refresh();
+    void kvPut('outfit', { ...outfit });
+  });
+  variantGroup.addEventListener('click', (e) => {
+    const v = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-variant]')?.dataset.variant;
+    const s = editing;
+    if (!s || !v) return;
+    const opt = optionFor(typeVariantOf(outfit[s.name]).type, v);
+    if (!opt || opt === outfit[s.name]) return;
     Object.assign(outfit, keepLayers({ ...outfit, [s.name]: opt }, s.name));
     refresh();
     void kvPut('outfit', { ...outfit });
@@ -472,16 +513,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     syncEditor();
   }
   favBtn.addEventListener('click', toggleFavourite);
-  favRow.addEventListener('click', (e) => {
-    const hex = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-hex]')?.dataset.hex;
-    if (!hex) return;
-    setColour(hex);
-    void kvPut('colours', { ...colours });
-  });
-  moreBtn.addEventListener('click', () => {
-    showAll = !showAll;
-    syncEditor();
-  });
   addBtn.addEventListener('click', async () => {
     const s = editing;
     const g = s && (garmentOf(s) as GarmentId | undefined);
@@ -525,7 +556,6 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
     if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
   };
-  let packReady = false;
   void viewer.ready.then(() => {
     packReady = true;
     if (gone) return;
@@ -539,7 +569,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     const look: OutfitLook = {};
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
-      if (!g) continue;
+      if (!g || s.name === UNDER_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
       const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;

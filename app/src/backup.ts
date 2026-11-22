@@ -3,6 +3,7 @@ import { kvDelete, kvGet, kvPut } from './store';
 import { cleanFavourites, FAVOURITES_KEY } from './favourites';
 import { cleanOutfits, OUTFITS_KEY } from './outfits';
 import { cleanItems, NECKLINE_KEY, SHEER_KEY, WARDROBE_KEY } from './wardrobe';
+import { cleanTrips, TRIPS_KEY } from './trips';
 
 export const BACKUP_FORMAT = 'huedrobe-backup';
 export const BACKUP_VERSION = 1;
@@ -25,6 +26,7 @@ const KEYS: Record<string, (v: unknown) => unknown> = {
   [COLOURS_KEY]: cleanStringMap,
   [NECKLINE_KEY]: (v) => (typeof v === 'string' ? v : undefined),
   [SHEER_KEY]: (v) => (typeof v === 'boolean' ? v : undefined),
+  [TRIPS_KEY]: cleanTrips,
 };
 
 /** The keys that sync between devices (V2-06b): the same as the backup. The server's list in deploy/datastore.mjs must match. */

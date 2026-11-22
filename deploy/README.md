@@ -11,6 +11,12 @@ Puts the app on **Cloud Run** behind **Identity-Aware Proxy (IAP)**. Google does
 
 The server makes two kinds of outgoing call: it fetches Google's IAP public keys from `https://www.gstatic.com/iap/verify/public_key-jwk` about once an hour, and it reads and writes Firestore (`firestore.googleapis.com`) with a token from Cloud Run's metadata server.
 
+- `identify.mjs` (V4-01) is `POST /api/identify`: the app sends one shrunk garment photo and the list of garments it ships, the server makes one Gemini call (structured JSON) and returns `{ templateId, variant, hexColor, confidence }`, checked against the list. The photo is held in memory for the request only: never written, logged or sent back. Only the signed-in people can call it, from the app's own pages. From V4-02 the image may also be a crop of a retailer's product page (made on the phone, so only the chosen part is sent); the prompt tells Gemini to ignore page text, prices and other products, and to describe the garment, not a model wearing it (V4-00, amended 22 Nov 2026).
+
+## Gemini key (V4-01)
+
+Get an API key from [Google AI Studio](https://aistudio.google.com/apikey) and save it as `private/gemini-key.txt` (git-ignored, one line). `deploy.mjs` puts it in the service's environment as `GEMINI_API_KEY` (never in the app bundle or the repo). Without the file the deploy works as before and "Add from photo" shows that matching is not switched on. The model is `gemini-flash-latest` (Google's own alias for its current Flash model) unless `GEMINI_MODEL` is set. `gemini-2.5-flash` appears in the model list but answers 404, so it is not used.
+
 ## One-off setup
 
 Needs the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install) and a project with billing on.
@@ -98,12 +104,13 @@ and open http://localhost:8080. `LOCAL_PERSON` skips the sign-in and acts as tha
 
 ## Tests
 
-`node --test deploy/server.test.mjs deploy/sync.test.mjs` (also part of `npm run check`). It uses a key pair made in the test in place of Google's keys, and synthetic emails. It covers:
+`node --test deploy/server.test.mjs deploy/sync.test.mjs deploy/identify.test.mjs` (also part of `npm run check`). It uses a key pair made in the test in place of Google's keys, and synthetic emails. It covers:
 
 - good, forged, expired, wrong-audience, wrong-issuer and `alg` swapped tokens
 - strangers and missing sign-in on every path, including the avatar files
 - each person's pack hidden from the other, including `..` tricks
 - key refresh, path traversal and the https redirect
+- the photo call (`identify.test.mjs`, Gemini replaced by a stand-in): template list and photo checks, the request and its schema, answers checked against the list, the key kept out of the address and replies, nothing written to disk, strangers and other sites refused
 - synced data (`sync.test.mjs`): each person reads and writes only their own, unknown keys, other sites, non-JSON and oversized values refused, last write wins with clashes logged, a failing store, and the Firestore REST calls checked against a stand-in
 
 ## Signing in and the installed app

@@ -1,0 +1,20 @@
+{
+  "_note": "V3.1-03: crude tee from the archived shirts01 pack (CC0), used as shipped, MHCLO fit. Ships alongside the legacy tee (one neckline, not tucked). approved is false until Joe and B sign off the renders.",
+  "id": "tee_female",
+  "category": "base",
+  "pack_file": "tee_female",
+  "layer": "base",
+  "allowed_bodies": "female",
+  "source": {"pack": "shirts01", "asset": "joepal_crude_t-shirt_female"},
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "4feb91f93f9228d0ba3c030cf325f5896143583d81025311ae37b1c9c2dc04a7",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": ["all"],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain"
+}

@@ -1,6 +1,7 @@
 // The built-in colour chooser (V1.2-05). It lives inside the change-a-piece panel, so the avatar stays in view and
 // changes as a slider moves. It holds no garment logic: the screen gives it the current colour and hears about changes.
 import { SHOWN_FIRST, type Favourite } from './favourites';
+import { colourName } from './wardrobe';
 import { hexToHsv, hsvToHex, normaliseHex, type Hsv } from './colour-maths';
 
 export const BASICS = [
@@ -42,15 +43,17 @@ export function createColourChooser(handlers: ChooserHandlers) {
   el.innerHTML = `
     <div class="chooser-top">
       <span class="cur-swatch chooser-swatch" role="img" aria-label="Chosen colour"></span>
-      <label class="code-field"><span class="field-label">Colour code</span>
-        <input type="text" class="code" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off">
-      </label>
-      <button type="button" class="fav-btn" aria-pressed="false">${HEART}Favourite</button>
+      <span class="cur-text"><span class="cur-name"></span><span class="cur-hex"></span></span>
+      <button type="button" class="heart-btn fav-btn" aria-pressed="false" aria-label="Save colour to favourites">${HEART}</button>
     </div>
-    <div class="field" data-fav-field>
+    <div class="field">
       <span class="field-label">Favourites</span>
+      <p class="help fav-empty">Tap the heart to keep a colour here.</p>
       <div class="fav-row" role="group" aria-label="Favourite colours"></div>
-      <div class="fav-foot"><button type="button" class="link-btn" data-more hidden></button></div>
+      <div class="fav-foot">
+        <span class="legend" hidden><span class="legend-dot"></span>From your colour palette</span>
+        <button type="button" class="link-btn" data-more hidden></button>
+      </div>
     </div>
     <div class="field">
       <span class="field-label">Basics</span>
@@ -58,16 +61,29 @@ export function createColourChooser(handlers: ChooserHandlers) {
         (b) => `<button type="button" class="fav-tile" data-hex="${b.hex}" aria-pressed="false" aria-label="${b.name}" style="background:${b.hex}"></button>`,
       ).join('')}</div>
     </div>
-    <div class="sliders">${SLIDERS.map(
-      (s) => `<label class="slider"><span class="slider-text"><span class="slider-name">${s.label}</span>${s.hint ? `<span class="slider-hint">${s.hint}</span>` : ''}</span>
-        <input type="range" min="${s.min}" max="${s.max}" step="1" data-k="${s.key}"></label>`,
-    ).join('')}</div>`;
+    <div class="field">
+      <button type="button" class="fine-toggle" aria-expanded="false" aria-controls="fine-tune">Fine-tune colour<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></button>
+      <div class="fine" id="fine-tune" hidden>
+        <label class="code-field"><span class="field-label">Colour code</span>
+          <input type="text" class="code" maxlength="7" spellcheck="false" autocomplete="off" autocapitalize="off">
+        </label>
+        <div class="sliders">${SLIDERS.map(
+          (s) => `<label class="slider"><span class="slider-text"><span class="slider-name">${s.label}</span>${s.hint ? `<span class="slider-hint">${s.hint}</span>` : ''}</span>
+          <input type="range" min="${s.min}" max="${s.max}" step="1" data-k="${s.key}"></label>`,
+        ).join('')}</div>
+      </div>
+    </div>`;
 
   const swatch = el.querySelector<HTMLElement>('.chooser-swatch')!;
   const code = el.querySelector<HTMLInputElement>('.code')!;
   const favBtn = el.querySelector<HTMLButtonElement>('.fav-btn')!;
   const favRow = el.querySelector<HTMLElement>('[aria-label="Favourite colours"]')!;
-  const favField = el.querySelector<HTMLElement>('[data-fav-field]')!;
+  const favEmpty = el.querySelector<HTMLElement>('.fav-empty')!;
+  const legend = el.querySelector<HTMLElement>('.legend')!;
+  const curName = el.querySelector<HTMLElement>('.cur-name')!;
+  const curHex = el.querySelector<HTMLElement>('.cur-hex')!;
+  const fineBtn = el.querySelector<HTMLButtonElement>('.fine-toggle')!;
+  const fine = el.querySelector<HTMLElement>('.fine')!;
   const moreBtn = el.querySelector<HTMLButtonElement>('[data-more]')!;
   const basicTiles = [...el.querySelectorAll<HTMLButtonElement>('[aria-label="Basic colours"] [data-hex]')];
   const range = {
@@ -102,7 +118,8 @@ export function createColourChooser(handlers: ChooserHandlers) {
       drawnKey = key;
       if (keep) favRow.querySelector<HTMLElement>(`[data-hex="${keep}"]`)?.focus();
     }
-    favField.hidden = favourites.length === 0;
+    favEmpty.hidden = favourites.length > 0;
+    legend.hidden = !shown.some((f) => f.fromPalette);
     moreBtn.hidden = favourites.length <= SHOWN_FIRST;
     moreBtn.textContent = showAll ? 'Show fewer' : 'Show all';
     moreBtn.setAttribute('aria-expanded', String(showAll));
@@ -116,6 +133,8 @@ export function createColourChooser(handlers: ChooserHandlers) {
   const draw = () => {
     swatch.style.background = hex;
     swatch.setAttribute('aria-label', `Chosen colour ${hex}`);
+    curName.textContent = colourName(hex);
+    curHex.textContent = hex.toUpperCase();
     if (document.activeElement !== code) code.value = hex.toUpperCase();
     for (const k of ['h', 's', 'v'] as const) if (+range[k].value !== hsv[k]) range[k].value = String(hsv[k]);
     paintTracks();
@@ -156,6 +175,11 @@ export function createColourChooser(handlers: ChooserHandlers) {
     handlers.commit();
   });
   favBtn.addEventListener('click', () => handlers.toggleFavourite());
+  fineBtn.addEventListener('click', () => {
+    const open = fine.hidden;
+    fine.hidden = !open;
+    fineBtn.setAttribute('aria-expanded', String(open));
+  });
   moreBtn.addEventListener('click', () => {
     showAll = !showAll;
     draw();
@@ -163,6 +187,11 @@ export function createColourChooser(handlers: ChooserHandlers) {
 
   return {
     el,
+    /** Closes Fine-tune; called each time the colour page opens. */
+    reset() {
+      fine.hidden = true;
+      fineBtn.setAttribute('aria-expanded', 'false');
+    },
     /** Brings the chooser up to date with the colour on the garment and the favourites list. */
     sync(state: ChooserState) {
       favourites = state.favourites;

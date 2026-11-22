@@ -284,6 +284,57 @@ def shading_look(path, radius=0.015, edge_margin=0.04, skip=None):
     return out
 
 
+def layers(outers, inners, edge_margin=0.02):
+    """V3-05: the layer check. For each outer top (a sweatshirt or shirt built over the tee) and each tee it can be worn over (crew, V,
+    scoop): the outer must never pass through the inner one.
+    - intersecting_pairs: face pairs between the two meshes (the hard limit is zero).
+    - inner_inside_clearance_cm: for each inner vertex whose nearest point on the outer is at most 5 cm away and not within edge_margin of
+      the outer's open edges (hem, cuffs, neckline, where the nearest cloth says nothing), how far inside the outer it is along the outer's
+      outward normal: positive means covered. The minimum is what is held to a limit; a negative one is the inner garment showing
+      through the outer.
+    Arguments are {label: bmesh} in one frame (load_glb). Nothing here changes the meshes it is given."""
+    from mathutils.kdtree import KDTree
+    ins = {k: merged(v) for k, v in inners.items()}
+    R = {}
+    for lbl, ob in outers.items():
+        o = merged(ob)
+        ot = BVHTree.FromBMesh(o)
+        edge = [v.co.copy() for v in o.verts if v.is_boundary]
+        ekd = KDTree(max(1, len(edge)))
+        for i, p in enumerate(edge):
+            ekd.insert(p, i)
+        ekd.balance()
+        R[lbl] = {}
+        for tl, ib in ins.items():
+            it = BVHTree.FromBMesh(ib)
+            pairs = ot.overlap(it)
+            vals = []
+            ib.normal_update()
+            for v in ib.verts:
+                loc, nor, fi, d = ot.find_nearest(v.co)
+                if loc is None or d > 0.05 or (edge and ekd.find(loc)[2] < edge_margin):
+                    continue
+                s = -(v.co - loc).dot(nor)
+                if s < d - 1e-6:
+                    # the nearest point is on an edge or corner (a crease, such as between the arm and the shoulder in the A-pose): the
+                    # nearest face's normal can lie almost side-on there and gives a wrong sign. Decide inside or outside by a ray along
+                    # the inner garment's own outward normal: it meets the outer cloth from the inside if the vertex is covered. The
+                    # clearance is then the true (unsigned) distance to the outer surface.
+                    h = ot.ray_cast(v.co + v.normal * 1e-5, v.normal, 0.05)
+                    s = d if (h[0] is not None and h[1].dot(v.normal) > 0.0) else -d
+                vals.append((s * 100, v.co.copy()))
+            vals.sort(key=lambda t: t[0])
+            n = len(vals)
+            R[lbl][tl] = {"intersecting_pairs": len(pairs),
+                          "inner_inside_clearance_cm": {"vertices": n, "min": round(vals[0][0], 2) if n else None, "p05": round(vals[n // 20][0], 2) if n else None,
+                                                        "median": round(vals[n // 2][0], 2) if n else None,
+                                                        "min_at_xyz_cm": [round(c * 100, 1) for c in vals[0][1]] if n else None}}
+        o.free()
+    for b in ins.values():
+        b.free()
+    return R
+
+
 def tights_faces_z(bm, i):
     return bm.faces[i].calc_center_median().z
 

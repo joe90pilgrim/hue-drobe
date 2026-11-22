@@ -1,4 +1,4 @@
-export type Route = 'try-on' | 'wardrobe' | 'colours';
+export type Route = 'try-on' | 'wardrobe' | 'colours' | 'packing';
 
 /**
  * Maps a location hash such as "#/colours" to a screen. The old links #/dress and #/colour still work.
@@ -11,6 +11,8 @@ export function routeFromHash(hash: string): Route {
     case 'colours':
     case 'colour':
       return 'colours';
+    case 'packing':
+      return 'packing';
     default:
       return 'try-on';
   }

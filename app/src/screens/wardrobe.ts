@@ -9,6 +9,7 @@ import {
   wearOutfit,
   type Outfit,
 } from '../outfits';
+import { createPhotoAdd } from './wardrobe-photo';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -39,7 +40,7 @@ const pair = (o: Outfit, look: { top?: SavedItem; bottom?: SavedItem; dress?: Sa
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
-    <h1 class="page-title">Wardrobe</h1>
+    <div class="w-head"><h1 class="page-title">Wardrobe</h1><div id="w-photo-slot"></div></div>
     <div class="seg w-tabs" role="tablist" aria-label="Wardrobe">
       <button type="button" role="tab" id="tab-clothes" aria-controls="w-view" aria-selected="true"></button>
       <button type="button" role="tab" id="tab-outfits" aria-controls="w-view" aria-selected="false"></button>
@@ -67,6 +68,15 @@ export function renderWardrobe(el: HTMLElement): () => void {
   const sheet = $<HTMLDialogElement>('w-sheet');
   const confirmDlg = $<HTMLDialogElement>('w-confirm');
   const wide = window.matchMedia('(min-width: 900px)');
+  // V4-01: add a garment from a photo. The photo is sent for matching and never stored.
+  const photoAdd = createPhotoAdd((list, item) => {
+    items = list;
+    tab = 'clothes';
+    filter = 'all';
+    select({ kind: 'item', id: item.id });
+  });
+  $('w-photo-slot').replaceWith(photoAdd.buttons);
+  el.append(photoAdd.sheet);
 
   let items: SavedItem[] = [];
   let outfits: Outfit[] = [];
@@ -96,6 +106,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
 
   const drawChips = () => {
     chips.hidden = tab !== 'clothes';
+    photoAdd.setVisible(tab === 'clothes');
     const count = (f: Filter) => (f === 'all' ? items.length : items.filter((i) => slotOf(i) === f).length);
     const all: { f: Filter; label: string }[] = [{ f: 'all', label: 'All' }, ...GROUPS.map((g) => ({ f: g.slot as Filter, label: g.label }))];
     chips.innerHTML = all
@@ -345,6 +356,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
   drawGrid();
   return () => {
     gone = true;
+    photoAdd.dispose();
     wide.removeEventListener('change', onResize);
     if (sheet.open) sheet.close();
     if (confirmDlg.open) confirmDlg.close();

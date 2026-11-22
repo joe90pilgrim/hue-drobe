@@ -56,22 +56,39 @@ No open decisions for 1.2.
 - ~~**V3-03** Shirts: collar style?~~ **Decided 17 Nov 2026:** classic point collar.
 - ~~**V3-03** Shirts: tucked in, out or both?~~ **Decided 17 Nov 2026:** untucked first.
 - **V3-03** Shirts: agree the limits in `spike/tolerances.json` `shirt` (shoulder gap measured from 10 cm out, collar tip drop 4 cm, placket 0.3 cm; second pass: drawn collar shading at most 0.6) and `shading` (every garment's cloth shading turns at most 22 degrees in 1.5 cm); and look at the second-pass renders: does it read as a shirt, and do the tee, sweatshirt and trousers now read as cloth? (Joe asked on 17 Nov 2026 for the smoother shading on those too; done.)
-- **V3-04** Jackets and coats: open or closed front? Recommendation: closed first.
-- **V3-04** Jackets and coats: which jacket first? Recommendation: a plain zip-up or bomber style, no lapels.
-- **V3-05** Multiple top layers: how many layers at most? Recommendation: three (base, mid, outer).
-- **V3-05** Multiple top layers: which combinations? Recommendation: tee under shirt, tee under sweatshirt, shirt under sweatshirt; jackets added in V3-04.
+- ~~**V3-05** Multiple top layers: how many layers at most?~~ **Decided 17 Nov 2026:** three (base, mid, outer).
+- ~~**V3-05** Multiple top layers: which combinations?~~ **Decided 17 Nov 2026:** tee under shirt and tee under sweatshirt; not shirt under sweatshirt; jackets added in V3-04. See `docs/decisions/2026-11-17-v3-05-layers.md`.
+- ~~**V3-04** Jackets and coats: open or closed front; which jacket first?~~ **Superseded 17 Nov 2026:** the first jacket is the Suits 01 blazer template (V3-09).
+- ~~**Template pipeline** (proposal of 17 Nov 2026): approve the design, the three-round limit, the test pair and folding V3-06.~~ **Decided 17 Nov 2026:** approved across the board.
+- ~~**V3-05** Legacy layered tops: ship only the combinations that pass on each body, or drop legacy layering?~~ **Decided 17 Nov 2026:** ship only the passing combinations; no further procedural geometry work.
+- **V3-07** If MakeClothes can't run headlessly, how are templates from outside the packs authored? Decide only if V3-07 reports it.
+- **V3-08** Shirt: keep the procedural shirt, switch to the template, or offer both? Decide from the side-by-side renders.
+- **V3-09** Blazer: over the sweatshirt too, or only the tee and shirt? Recommendation: tee and shirt first.
+- **V3-10** Credits screen: where should it live? Recommendation: settings, as "About and credits".
+- ~~**V3-14** From the experiment's write-up: go, partial or no-go? If go: remove V3-07b's options or keep them off?~~ **Decided 18 Nov 2026:** carry on with rest-shape cloth and inner-layer hiding; remove V3-07b's options (V3.1-01).
+
+## v3.1-templates
+
+- ~~**V3.1-01** Merge the whole branch chain into `master` in one go, then remove the V3-07b code? Recommendation: yes.~~ **Decided 18 Nov 2026:** yes, one merge, then remove.
+- ~~**V3.1-01** Accept the shirt's remaining bust crease and cuff body pairs on the large female body as a known limit? Recommendation: accept; judge each template from its renders.~~ **Decided 18 Nov 2026:** accept as a known limit; judge each template from its renders.
+- **V3.1-03** Tee: ship the template alongside the legacy tee, and retire the legacy one later once necklines and tucking are covered? Recommendation: yes.
+- **V3.1-04** Trousers: add alongside first, retire legacy trousers (and the shorts and tights built from them) once approved? Recommendation: yes. If Pants 01 has no straight leg: archive Pants 02 (CC-BY) or model one?
+- **V3.1-05** Coat source: a long cardigan from Shirts 02 (CC-BY, archived), a coat modelled in Blender, or another site? Recommendation: the cardigan first.
 
 ## v4-real-wardrobe
 
 - **V4-00** Decision: sending data off the device: Yes or no, and with what limits? For example, photos of clothes only, never photos of people.
 - **V4-01** Photo to nearest item: On the device only, or via Gemini? Depends on V4-00.
 - **V4-01** Photo to nearest item: Is the photo kept with the saved item (the blueprint said yes, so colour can be re-extracted later)?
-- **V4-02** URL to nearest item (recommend dropping): Keep or drop? Recommendation: drop in favour of uploading a screenshot through V4-01.
-- **V4-03** Create a packing list: What is a trip: just a name and dates, or a destination too (needed for weather suggestions in V6-02)? Recommendation: include the destination now.
+- ~~**V4-02** URL to nearest item: Keep or drop?~~ **Decided 22 Nov 2026:** drop the URL idea; V4-02 is now "Screenshot to nearest item", a clear option beside Take photo and Upload photo.
+- ~~**V4-02** Screenshot to nearest item: product images showing a model.~~ **Decided 22 Nov 2026:** (b). A cropped product image of a model is allowed; never Joe, Beth or anyone they know. V4-00 amended.
+- ~~**V4-02** Screenshot to nearest item: ceiling and worker.~~ **Decided 22 Nov 2026:** 2 hours, Sonnet, high.
+- ~~**V4-03** Create a packing list: What is a trip: just a name and dates, or a destination too (needed for weather suggestions in V6-02)? Recommendation: include the destination now.~~ **Decided 22 Nov 2026:** a name and dates only. See `docs/decisions/2026-11-22-v4-03-packing-list.md`.
 
 ## v5-finishing-the-look
 
-- **V5-00** Decision: where shoes, hats, jewellery and hair come from: Make, reuse or buy? Recommendation: reuse MPFB2's free (CC0) assets where they exist, and make simple shoes and jewellery in Blender.
+- **V5-00** Spike: where shoes, hats, jewellery and hair come from. Before starting: ~~(1) ceiling 4 hours, Sonnet high?~~ **Decided 22 Nov 2026:** yes. ~~(2) archive the five CC-BY packs, locally and in the bucket?~~ **Decided 22 Nov 2026:** yes. ~~(3) may a rigid item (hat, jewellery) have one uniform size per body, with no change of shape?~~ **Decided 22 Nov 2026:** yes.
+- **V5-00** After the spike (write-up: `docs/decisions/2026-11-22-v5-00-asset-sources.md`): (a) which item per category per body, or none; (b) ~~does each person get their own garment library?~~ **Decided 22 Nov 2026 (Joe):** a mix of shared and per-person. Garments are shared by default; a garment type is restricted to one person (or kept for both) case by case, when it is added or amended, and the ticket for that type says which. There is no category rule. The app should offer each person only the garments in their own pack (this also fixes skirts and dresses being offered to Joe). The V2-06 data model is to be checked for saved outfits and sync before the ticket for that filter is written; (c) a hat over hair: accept the leftover hair tips or hide the hair under any hat; (d) is the pack json enough for items whose header says AGPL3; (e) hair that matches neither Joe nor B: nearest style and recolour, or model one.
 - **V5-01** Shoes: boots, sandals, trainers: Should trouser hems sit over boots, or tuck in? Which shoe types first?
 - **V5-02** Hats: Which hat types first? How do they work with hair styles (V5-04)?
 - **V5-03** Jewellery: necklaces, rings, watches: Rings and watches are tiny on a phone screen; worth it, or necklaces first?

@@ -4,6 +4,11 @@ import {
   cleanItems,
   colourName,
   deleteItem,
+  GARMENTS,
+  garmentFor,
+  optionFor,
+  typeVariantOf,
+  type GarmentId,
   ensureItem,
   itemKind,
   meshName,
@@ -109,5 +114,26 @@ describe('routes', () => {
   it('knows the wardrobe screen', () => {
     expect(routeFromHash('#/wardrobe')).toBe('wardrobe');
     expect(routeFromHash('#/nonsense')).toBe('try-on');
+  });
+});
+
+describe('garment type and variant lookup (V3-11)', () => {
+  it('maps every stored Top option from exactly one (type, variant) and back to the same garment', () => {
+    const tops = (Object.keys(GARMENTS) as GarmentId[]).filter((g) => GARMENTS[g].slot === 'Top');
+    const seen = new Set<string>();
+    for (const g of tops) {
+      const { type, variant } = typeVariantOf(GARMENTS[g].option);
+      expect(optionFor(type, variant)).toBe(GARMENTS[g].option);
+      expect(garmentFor(type, variant)).toBe(g);
+      const key = `${type}|${variant}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+    }
+    expect(seen.size).toBe(tops.length);
+  });
+  it('reads Shirt, long sleeves as Shirt and Long', () => {
+    expect(typeVariantOf('Shirt, long sleeves')).toEqual({ type: 'Shirt', variant: 'Long' });
+    expect(optionFor('Shirt', null)).toBe('Shirt, mid sleeves');
+    expect(optionFor('T-shirt', 'Long')).toBeNull();
   });
 });
