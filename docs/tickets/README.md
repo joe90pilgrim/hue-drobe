@@ -102,6 +102,9 @@ Closed by Joe. Done tickets stay as history; open ones are closed, retired or pa
 | V3-12 | [Colour row and colour page, collapsed Fine-tune](v3-loose-clothes/V3-12-top-sheet-colour-page.md) (parked) | V3-11 | Sonnet, medium |
 | V3-13 | [All garments list with search](v3-loose-clothes/V3-13-all-garments-list.md) (parked) | V3-11 | Sonnet, medium |
 | V3-14 | [Experiment: cloth, garment-side pins and inner-layer hiding](v3-loose-clothes/V3-14-cloth-layering-experiment.md) (closed: folded into V3.1-01) | V3-07, V3-07c | Opus, high |
+| V3-15 | [Garment silhouettes module](v3-loose-clothes/V3-15-garment-silhouettes.md) | - | Sonnet, medium |
+| V3-16 | [Clothes tab as a closet](v3-loose-clothes/V3-16-clothes-tab-closet.md) | V3-15 | Sonnet, medium |
+| V3-17 | [Outfits tab flat-lay cards](v3-loose-clothes/V3-17-outfits-flat-lay-cards.md) | V3-15, V3-16 | Sonnet, medium |
 
 ### Version 3.1: Template garments
 
@@ -128,7 +131,7 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V5-00 | [Decision: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (shoes and hair decided) | None | No agent. Joe. |
+| V5-00 | [Spike: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (separate options for Joe and B) | V2-09, V3-06, V3-07a | Sonnet, high |
 | V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) | V3-06, V5-05 | Sonnet, high |
 | V5-02 | [Hats](v5-finishing-the-look/V5-02-hats.md) (outline) | V5-00 | Sonnet, high (tentative) |
 | V5-03 | [Jewellery: necklaces, rings, watches](v5-finishing-the-look/V5-03-jewellery.md) (outline) | V5-00 | Sonnet, high (tentative) |

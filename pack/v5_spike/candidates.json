@@ -1,0 +1,31 @@
+{
+  "_note": "V5-00 spike candidates. Chosen from the pack json names and the mhclo sex tags, before any fitting; nothing was swapped after a result. 'bodies' lists where each item is tried (an item with no stated sex is tried on both). 'baseline' marks the item the 16 Nov 2026 decision named (Shoes 01 and Hair 01), kept as the comparison. An item the spike does not run on a body is simply absent from its list.",
+  "candidates": [
+    {"category": "shoes", "pack": "shoes01", "asset": "toigo_ankle_boots_male",            "role": "boots (baseline)",   "bodies": ["joe"], "baseline": true},
+    {"category": "shoes", "pack": "shoes01", "asset": "toigo_ankle_boots_female",          "role": "ankle boots (baseline)", "bodies": ["b"], "baseline": true},
+    {"category": "shoes", "pack": "shoes02", "asset": "culturalibre_sneakers",             "role": "trainers",           "bodies": ["joe", "b"]},
+    {"category": "shoes", "pack": "shoes02", "asset": "mindfront_shoes_oxford_male",       "role": "low shoes",          "bodies": ["joe"]},
+    {"category": "shoes", "pack": "shoes02", "asset": "mindfront_shoes_oxford_female",     "role": "low shoes",          "bodies": ["b"]},
+    {"category": "shoes", "pack": "shoes02", "asset": "dressupdoc_sandals1",               "role": "sandals",            "bodies": ["b"]},
+    {"category": "shoes", "pack": "shoes03", "asset": "mindfront_shoes_biker_boots_male",  "role": "boots",              "bodies": ["joe"]},
+    {"category": "shoes", "pack": "shoes03", "asset": "punkduck_female_half-boots",        "role": "ankle boots",        "bodies": ["b"]},
+    {"category": "shoes", "pack": "shoes03", "asset": "punkduck_female_knee_boots",        "role": "boots",              "bodies": ["b"]},
+
+    {"category": "hair", "pack": "hair01", "asset": "cortu_short_messy_hair",   "role": "short, messy (baseline)", "bodies": ["joe"], "baseline": true},
+    {"category": "hair", "pack": "hair01", "asset": "toigo_blunt_bob",          "role": "bob (baseline)",          "bodies": ["b"], "baseline": true},
+    {"category": "hair", "pack": "hair02", "asset": "elvs_maxwell_hair",        "role": "men's style",             "bodies": ["joe"]},
+    {"category": "hair", "pack": "hair02", "asset": "elvs_grump_hair",          "role": "men's style",             "bodies": ["joe"]},
+    {"category": "hair", "pack": "hair03", "asset": "culturalibre_hair_11",     "role": "unstated sex",            "bodies": ["joe", "b"]},
+    {"category": "hair", "pack": "hair02", "asset": "elvs_wavy_bob",            "role": "short bob",               "bodies": ["b"]},
+    {"category": "hair", "pack": "hair02", "asset": "elvs_lady_hippy_hair",     "role": "longer",                  "bodies": ["b"]},
+    {"category": "hair", "pack": "hair03", "asset": "punkduck_alpha7_long",     "role": "long",                    "bodies": ["b"]},
+
+    {"category": "hats", "pack": "hats01", "asset": "jujube_newsboy_cap",       "role": "cap",           "bodies": ["joe", "b"]},
+    {"category": "hats", "pack": "hats03", "asset": "elvs_slouchy_beanie1",     "role": "soft hat",      "bodies": ["joe", "b"]},
+    {"category": "hats", "pack": "hats03", "asset": "elvs_male_trilby_hat",     "role": "brimmed hat",   "bodies": ["joe"]},
+    {"category": "hats", "pack": "hats01", "asset": "aethelraed_unraed_cloche_hat", "role": "brimmed hat", "bodies": ["b"]},
+
+    {"category": "jewellery", "asset": "necklace_wortmann", "source_url": "https://opengameart.org/content/necklace", "licence": "CC0",
+     "author": "Paul Wortmann", "role": "necklace (OpenGameArt, converted with MakeClothes; see prep_jewellery.py)", "bodies": ["joe", "b"]}
+  ]
+}

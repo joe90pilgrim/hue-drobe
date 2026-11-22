@@ -19,7 +19,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 ZIPS = HERE / "zips"
-URL = "https://files.makehumancommunity.org/asset_packs/{p}/{p}_{l}.zip"  # l is cc0 or ccby
+URL = "https://files.makehumancommunity.org/asset_packs/{p}/{f}"
 
 # sha256 prefixes recorded by the V2-07 spike (None = not in the spike).
 PACKS = {
@@ -34,13 +34,23 @@ PACKS = {
     "suits01": None,
     "shirts02": None,  # CC-BY (V3-07a)
     "shirts03": None,  # CC-BY (V3-07a)
+    "shoes02": None,  # CC-BY (V5-00)
+    "shoes03": None,  # CC-BY (V5-00)
+    "hair02": None,  # CC-BY (V5-00)
+    "hair03": None,  # CC-BY (V5-00)
+    "hats03": None,  # CC-BY (V5-00); the site names this file hats03_cc-by.zip
 }
-CCBY = {"shirts02", "shirts03"}
+CCBY = {"shirts02", "shirts03", "shoes02", "shoes03", "hair02", "hair03", "hats03"}
+FILE_NAME = {"hats03": "hats03_cc-by.zip"}  # exceptions to <pack>_<cc0|ccby>.zip
+
+
+def zip_name(pack):
+    return FILE_NAME.get(pack, f"{pack}_{'ccby' if pack in CCBY else 'cc0'}.zip")
 
 
 def download(pack, dest):  # noqa
     tmp = dest.with_suffix(".part")
-    with urllib.request.urlopen(URL.format(p=pack, l='ccby' if pack in CCBY else 'cc0'), timeout=60) as r, open(tmp, "wb") as f:
+    with urllib.request.urlopen(URL.format(p=pack, f=zip_name(pack)), timeout=60) as r, open(tmp, "wb") as f:
         while chunk := r.read(1 << 20):
             f.write(chunk)
     tmp.replace(dest)
@@ -62,7 +72,7 @@ def main():
     ZIPS.mkdir(exist_ok=True)
     rows, ok = [], True
     for pack, prefix in PACKS.items():
-        path = ZIPS / f"{pack}_{'ccby' if pack in CCBY else 'cc0'}.zip"
+        path = ZIPS / zip_name(pack)
         if not path.exists():
             if check:
                 rows.append((pack, "missing", "", "FAIL", "", ""))

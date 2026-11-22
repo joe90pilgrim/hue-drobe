@@ -1,0 +1,42 @@
+{
+  "id": "necklace_wortmann",
+  "category": "jewellery",
+  "layer": "outer",
+  "allowed_bodies": "both",
+  "source": {
+    "url": "https://opengameart.org/content/necklace"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "FILLED_BY_prep_jewellery.py",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "plain",
+  "authoring": {
+    "_note": "V5-00. Source units are the OBJ's own (the ring is 11 units across). Landmarks are in Blender axes after import (X right, Y back, Z up) of source.obj, which prep_jewellery.py has turned 90 degrees about the vertical so the pendant is at the front. They are correspondences, not points on the mesh: the two clavicle joints (0.0228 m either side) go to 1.79 units either side of the ring's centre (0.0228 / 1.79 = 0.01274 m per unit, so the ring is about 14 cm across front to back and 10 cm wide), and the neck joint goes 5.58 units above and 1.33 units behind that line, which puts the ring at clavicle height, 1.7 cm in front of the neck joint's depth, as the base body has them.",
+    "landmarks": {
+      "joint-l-clavicle": [
+        1.79,
+        0.04,
+        0.5
+      ],
+      "joint-r-clavicle": [
+        -1.79,
+        0.04,
+        0.5
+      ],
+      "joint-neck": [
+        0.0,
+        1.374,
+        6.08
+      ]
+    }
+  }
+}

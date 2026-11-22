@@ -87,7 +87,8 @@ No open decisions for 1.2.
 
 ## v5-finishing-the-look
 
-- **V5-00** Decision: where shoes, hats, jewellery and hair come from: Make, reuse or buy? Recommendation: reuse MPFB2's free (CC0) assets where they exist, and make simple shoes and jewellery in Blender.
+- **V5-00** Spike: where shoes, hats, jewellery and hair come from. Before starting: ~~(1) ceiling 4 hours, Sonnet high?~~ **Decided 22 Nov 2026:** yes. ~~(2) archive the five CC-BY packs, locally and in the bucket?~~ **Decided 22 Nov 2026:** yes. ~~(3) may a rigid item (hat, jewellery) have one uniform size per body, with no change of shape?~~ **Decided 22 Nov 2026:** yes.
+- **V5-00** After the spike: which item per category per body, and does each person get their own garment library (a data model and library scope change)? Joe is leaning towards separate clothes for the two bodies (22 Nov 2026); the spike gives the shared-versus-separate numbers.
 - **V5-01** Shoes: boots, sandals, trainers: Should trouser hems sit over boots, or tuck in? Which shoe types first?
 - **V5-02** Hats: Which hat types first? How do they work with hair styles (V5-04)?
 - **V5-03** Jewellery: necklaces, rings, watches: Rings and watches are tiny on a phone screen; worth it, or necklaces first?
