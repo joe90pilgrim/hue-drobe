@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inOutfitOnly, peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
+import { inOutfitOnly, peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, matchLine, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
 
 describe('picker search', () => {
   it('matches any part of a name, ignoring case and spaces at the ends', () => {
@@ -292,5 +292,60 @@ describe('peekItems', () => {
     const t = trip(['a', 'gone', 'b']);
     t.entries.push({ kind: 'outfit', ref: 'o', packed: false }, { kind: 'template', ref: 't', packed: false, text: 'Socks' } as never);
     expect(peekItems(t, wardrobe).map((i) => i.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('matchLine (V7-07)', () => {
+  const sug = (over: Record<string, unknown> = {}) => ({ kind: 'template' as const, ref: 'l1', packed: false, text: 'Rose jumper', label: 'Rose jumper', group: 'Layers', ...over });
+  const trip = (entries: Trip['entries']): Trip => ({ ...newTrip('Prague', '2026-12-11', '2026-12-14', 1), id: 't', entries });
+  const keep = { kind: 'template' as const, ref: 'l2', packed: false, text: 'Umbrella' };
+
+  it('swaps a suggestion for one piece, added by hand and not packed', () => {
+    const out = matchLine(trip([sug(), keep]), 'l1', ['a']);
+    expect(out.entries).toEqual([keep, { kind: 'item', ref: 'a', packed: false, own: true }]);
+  });
+
+  it('removes the suggestion without a second copy when the piece is already on the list', () => {
+    const out = matchLine(trip([sug(), { kind: 'item', ref: 'a', packed: true, own: true }]), 'l1', ['a']);
+    expect(out.entries).toEqual([{ kind: 'item', ref: 'a', packed: true, own: true }]);
+  });
+
+  it('makes a piece an outfit holds one that is also yours, once', () => {
+    const out = matchLine(trip([sug(), { kind: 'item', ref: 'a', packed: false, via: ['o1'] }]), 'l1', ['a']);
+    expect(out.entries).toEqual([{ kind: 'item', ref: 'a', packed: false, via: ['o1'], own: true }]);
+  });
+
+  it('lowers the quantity when fewer pieces are picked than asked for, and keeps the text in step', () => {
+    const two = sug({ text: '2 × Rose jumper', quantity: 2, matches: ['a', 'b'] });
+    const one = matchLine(trip([two]), 'l1', ['a']);
+    expect(one.entries[0]).toEqual({ kind: 'template', ref: 'l1', packed: false, text: 'Rose jumper', label: 'Rose jumper', group: 'Layers', matches: ['b'] });
+    expect(one.entries[1]).toEqual({ kind: 'item', ref: 'a', packed: false, own: true });
+    const three = matchLine(trip([sug({ text: '3 × Rose jumper', quantity: 3 })]), 'l1', ['a']);
+    expect(three.entries[0]).toMatchObject({ quantity: 2, text: '2 × Rose jumper' });
+  });
+
+  it('leaves the words of a line that was edited', () => {
+    const out = matchLine(trip([sug({ text: 'My own words', quantity: 2 })]), 'l1', ['a']);
+    expect(out.entries[0]).toMatchObject({ text: 'My own words' });
+    expect(out.entries[0].quantity).toBeUndefined();
+  });
+
+  it('removes the suggestion when as many pieces are picked as it asked for', () => {
+    const out = matchLine(trip([sug({ text: '2 × Rose jumper', quantity: 2 })]), 'l1', ['a', 'b']);
+    expect(out.entries).toEqual([
+      { kind: 'item', ref: 'a', packed: false, own: true },
+      { kind: 'item', ref: 'b', packed: false, own: true },
+    ]);
+  });
+
+  it('ignores pieces beyond the quantity and repeated ids', () => {
+    expect(matchLine(trip([sug()]), 'l1', ['a', 'b']).entries.map((e) => e.ref)).toEqual(['a']);
+    expect(matchLine(trip([sug({ text: '2 × Rose jumper', quantity: 2 })]), 'l1', ['a', 'a']).entries.filter((e) => e.kind === 'item')).toHaveLength(1);
+  });
+
+  it('changes nothing when nothing is picked or the line is not there', () => {
+    const t = trip([sug()]);
+    expect(matchLine(t, 'l1', [])).toBe(t);
+    expect(matchLine(t, 'nope', ['a'])).toBe(t);
   });
 });

@@ -366,8 +366,98 @@ test("Suggest sheet: cancelling sends nothing, and suggested rows show ghost sil
   await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('.p-sug-qty')).toHaveText('× 2');
   await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('svg[data-shape="tee"]')).toHaveCount(1);
   await expect(page.locator('.p-sug', { hasText: 'Umbrella' }).locator('svg[data-shape="hanger"]')).toHaveCount(1);
-  await expect(rose.getByRole('button', { name: 'Match Rose jumper' })).toBeDisabled();
+  await expect(rose.getByRole('button', { name: 'Match Rose jumper' })).toBeEnabled();
+  await expect(page.locator('.p-sug', { hasText: 'Umbrella' }).getByRole('button', { name: 'Match Umbrella' })).toBeDisabled(); // not clothes
   await expect(rose.getByRole('button', { name: 'Edit Rose jumper' })).toBeEnabled();
   const rowOverflow = await page.locator('.p-detail').evaluate((d) => d.scrollWidth - d.clientWidth);
   expect(rowOverflow).toBeLessThanOrEqual(0);
+});
+
+// V7-07: the Match sheet.
+const navyTee = { v: 2, id: 'tee-1', garment: 'tee', colour: '#1f2a5a', name: 'Navy tee', savedAt: 1 };
+const navyTee2 = { v: 2, id: 'tee-2', garment: 'tee', colour: '#202c5c', name: 'Dark blue tee', savedAt: 2 };
+const sugLine = (over: Record<string, unknown> = {}) => ({ kind: 'template', ref: 'l-1', packed: false, text: 'Navy top', label: 'Navy top', group: 'Tops', type: 'tee', colour: '#212c5c', ...over });
+const tripWith = (entries: unknown[]) => ({ ...lisbon, entries });
+
+async function openMatchFor(page: import('@playwright/test').Page, wardrobe: unknown[], entries: unknown[], line = 'Navy top') {
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  await seedStore(page, { wardrobe, trips: [tripWith(entries)] });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await page.getByRole('button', { name: `Match ${line}` }).click();
+  await expect(page.getByRole('dialog', { name: 'Match to your clothes' })).toBeVisible();
+}
+
+test('Match swaps a suggestion for a piece you own, and the list shows it as a tile', async ({ page }) => {
+  await openMatchFor(page, [navyTee, trousers], [sugLine(), { kind: 'template', ref: 'l-2', packed: false, text: 'Umbrella' }]);
+  const dlg = page.getByRole('dialog');
+  await expect(dlg.locator('.p-match-line')).toContainText('Navy top');
+  await expect(dlg.getByRole('button', { name: /^Tops · 1/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(dlg.getByRole('button', { name: /^All clothes · 2/ })).toBeVisible();
+  const tile = dlg.locator('[data-match-item="tee-1"]');
+  await expect(tile).toHaveAttribute('aria-pressed', 'true'); // close, so chosen already
+  await expect(tile).toContainText('Closest');
+  await expect(dlg.locator('[data-match-item="trousers-1"]')).toHaveCount(0); // another slot, until All clothes
+  const overflow = await page.locator('#p-sheet').evaluate((d) => d.scrollWidth - d.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  await dlg.getByRole('button', { name: 'Use Navy tee' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('#p-toast')).toHaveText('Matched to Navy tee');
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+  await expect(page.locator('.p-sug')).toHaveCount(1); // only the umbrella is left
+  await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
+
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+  await expect(page.locator('.p-sug')).toHaveCount(1);
+});
+
+test('Match on a piece already on the list removes the suggestion and adds no second copy', async ({ page }) => {
+  await openMatchFor(page, [navyTee], [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, sugLine()]);
+  const dlg = page.getByRole('dialog');
+  await expect(dlg.locator('[data-match-item="tee-1"]')).toContainText('On the list');
+  await expect(dlg.locator('#p-match-note')).toHaveText('Already on your list, so this suggestion is removed.');
+  await dlg.getByRole('button', { name: 'Use Navy tee' }).click();
+  await expect(page.locator('.p-sug')).toHaveCount(0);
+  await expect(page.locator('.p-count')).toHaveText('1 of 1 packed'); // still one piece, still packed
+  await page.locator('.p-packed-btn').click();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+});
+
+test('Match for two pieces: pick up to the quantity, and the rest stays as a suggestion', async ({ page }) => {
+  await openMatchFor(page, [navyTee, navyTee2], [sugLine({ text: '2 × Navy top', quantity: 2 })]);
+  const dlg = page.getByRole('dialog');
+  await expect(dlg.locator('.p-match-line .p-sug-qty')).toHaveText('× 2');
+  await expect(dlg.getByRole('button', { name: 'Use 2 pieces' })).toBeVisible();
+  await dlg.locator('[data-match-item="tee-2"]').click(); // drop one
+  await expect(dlg.locator('#p-match-note')).toHaveText('1 more stays on your suggestions.');
+  await dlg.getByRole('button', { name: 'Use Navy tee' }).click();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+  await expect(page.locator('.p-tile[data-ref="tee-2"]')).toHaveCount(0);
+  const rest = page.locator('.p-sug');
+  await expect(rest).toHaveCount(1);
+  await expect(rest).toContainText('Navy top');
+  await expect(rest.locator('.p-sug-qty')).toHaveCount(0); // one left, so no "x 2" chip
+});
+
+test('Match with nothing close chooses nothing, and the suggestion can stay', async ({ page }) => {
+  await openMatchFor(page, [navyTee], [sugLine({ colour: '#3a7d44', text: 'Green top', label: 'Green top' })], 'Green top');
+  const dlg = page.getByRole('dialog');
+  await expect(dlg.getByText('Nothing in your wardrobe is close to this colour. Pick something similar, or leave it as a note to buy or borrow.')).toBeVisible();
+  await expect(dlg.locator('[data-match-item="tee-1"]')).toHaveAttribute('aria-pressed', 'false');
+  await expect(dlg.getByRole('button', { name: 'Choose a piece' })).toBeDisabled();
+  await dlg.getByRole('button', { name: 'Keep as a suggestion' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.p-sug')).toHaveCount(1);
+  await expect(page.locator('.p-tile')).toHaveCount(0);
+
+  // The piece can still be picked by hand.
+  await page.getByRole('button', { name: 'Match Green top' }).click();
+  await page.getByRole('dialog').locator('[data-match-item="tee-1"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Use Navy tee' }).click();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+  await expect(page.locator('.p-sug')).toHaveCount(0);
 });

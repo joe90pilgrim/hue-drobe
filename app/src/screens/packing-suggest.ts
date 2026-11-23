@@ -4,6 +4,7 @@
 // wardrobe as names, types and colours only when there is something saved.
 import { silhouetteSvg } from '../silhouettes';
 import type { SavedItem } from '../wardrobe';
+import { slotOf } from '../match';
 import { formatDates, templateText, type PackEntry, type Trip } from '../trips';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -34,7 +35,7 @@ export const liveMatches = (e: PackEntry, items: SavedItem[]) => (e.matches ?? [
 /** The lines Gemini matched to clothes that still exist. */
 export const matchedLines = (lines: PackEntry[], items: SavedItem[]) => lines.filter((e) => liveMatches(e, items) > 0);
 
-/** A suggested line: dashed row, ghost silhouette, name, quantity chip, a Match button (off until V7-07), Edit and Remove. */
+/** A suggested line: dashed row, ghost silhouette, name, quantity chip, a Match button, Edit and Remove. Match is off for a line that is not clothes. */
 export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
   const { name, quantity } = lineName(e);
   const n = liveMatches(e, items);
@@ -48,7 +49,7 @@ export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
         ${quantity > 1 ? `<span class="p-sug-qty">× ${quantity}</span>` : ''}
       </label>
       <span class="p-sug-btns">
-        <button type="button" class="secondary" data-act="match-line" data-ref="${e.ref}" disabled aria-label="Match ${esc(name)}">Match</button>
+        <button type="button" class="secondary" data-act="match-line" data-ref="${e.ref}"${slotOf(e) || n ? '' : ' disabled'} aria-label="Match ${esc(name)}">Match</button>
         <button type="button" class="secondary" data-act="edit-line" data-ref="${e.ref}" aria-label="Edit ${esc(name)}">Edit</button>
         <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(name)}">Remove</button>
       </span>

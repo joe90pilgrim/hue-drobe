@@ -252,6 +252,30 @@ export function editTemplateLine(list: Trip[], id: string, ref: string, text: st
   return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.map((e) => (e.kind === 'template' && e.ref === ref ? { ...e, text: line } : e)) }));
 }
 
+/**
+ * Swaps a suggestion for pieces you own (V7-07). Each piece becomes an item put there by hand (`own`), so taking an outfit off
+ * later never drops it; a piece already on the list is not added twice, though one an outfit held is now also yours. The
+ * suggestion is removed, or, when it asked for more than the pieces picked, lowered by that number and kept (its text is
+ * rewritten only if it still reads as it came from Gemini, so a line Joe edited keeps his words). Pieces beyond the
+ * quantity are ignored. Returns the trip as it was when the line is missing or nothing is picked.
+ */
+export function matchLine(trip: Trip, lineId: string, itemIds: string[]): Trip {
+  const line = trip.entries.find((e) => e.kind === 'template' && e.ref === lineId);
+  const ids = [...new Set(itemIds)].slice(0, line?.quantity ?? 1);
+  if (!line || !ids.length) return trip;
+  const left = (line.quantity ?? 1) - ids.length;
+  const asked = line.label && line.text === templateText({ label: line.label, quantity: line.quantity });
+  const entries = trip.entries.flatMap((e): PackEntry[] => {
+    if (e !== line) return [e];
+    if (left < 1) return [];
+    const { quantity: _q, matches: _m, ...rest } = e;
+    const matches = (e.matches ?? []).filter((id) => !ids.includes(id));
+    return [{ ...rest, ...(left > 1 && { quantity: left }), ...(matches.length && { matches }), ...(asked && { text: templateText({ label: line.label!, quantity: left }) }) }];
+  });
+  const added = ids.flatMap((ref): PackEntry[] => (entries.some((e) => e.kind === 'item' && e.ref === ref) ? [] : [{ kind: 'item', ref, packed: false, own: true }]));
+  return { ...trip, entries: [...entries.map((e) => (e.kind === 'item' && ids.includes(e.ref) && !e.own ? { ...e, own: true as const } : e)), ...added] };
+}
+
 function newLineRef(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

@@ -2,6 +2,8 @@ import { GARMENTS, itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
 import { flatLayOf, itemSilhouette } from '../silhouettes';
 import { matchBanner, matchedLines, suggestedSection, suggestSheet, type SuggestStep } from './packing-suggest';
+import { matchChips, matchFoot, matchGrid, matchHint, matchSheet, type MatchView } from './packing-match';
+import { preselected, rankCandidates, slotOf as lineSlotOf } from '../match';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
   addOutfit,
@@ -14,6 +16,7 @@ import {
   inOutfitOnly,
   loadTrips,
   matchesSearch,
+  matchLine,
   newTrip,
   packedCount,
   peekItems,
@@ -46,6 +49,7 @@ export function renderPacking(el: HTMLElement): () => void {
     <section class="p-detail" id="p-detail" hidden></section>
     <dialog class="sheet p-sheet" id="p-sheet" aria-labelledby="p-sheet-title"></dialog>
     <dialog class="sheet p-sheet" id="p-confirm" aria-labelledby="p-confirm-title"></dialog>
+    <div class="p-toast" id="p-toast" role="status" aria-live="polite" hidden></div>
     </div>`;
 
   const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>('#' + id)!;
@@ -54,6 +58,7 @@ export function renderPacking(el: HTMLElement): () => void {
   const detail = $('p-detail');
   const sheet = $<HTMLDialogElement>('p-sheet');
   const confirmDlg = $<HTMLDialogElement>('p-confirm');
+  const toast = $('p-toast');
 
   let trips: Trip[] = [];
   let items: SavedItem[] = [];
@@ -69,6 +74,17 @@ export function renderPacking(el: HTMLElement): () => void {
   let making: string | null = null;
   let templateError: { trip: string; message: string } | null = null;
   let gone = false;
+  /** The Match sheet's state: the suggestion, how the pieces are filtered and which are chosen. Null when it is not open. */
+  let matching: { ref: string; scope: 'slot' | 'all'; picked: string[] } | null = null;
+  let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+  /** A short dark message at the foot of the page, for a few seconds. */
+  const showToast = (text: string) => {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => (toast.hidden = true), 4000);
+  };
 
   const selectedTrip = () => trips.find((t) => t.id === selected);
   const save = () => void saveTrips(trips);
@@ -368,6 +384,67 @@ export function renderPacking(el: HTMLElement): () => void {
     if (!gone) showSuggest(t, { step: 'confirm' });
   };
 
+  // --- The Match sheet (V7-07) -------------------------------------------------------------------------------------
+
+  /** What the Match sheet shows right now, or null when its suggestion has gone. */
+  const matchView = (): MatchView | null => {
+    const t = selectedTrip();
+    const line = t?.entries.find((e) => e.kind === 'template' && e.ref === matching?.ref);
+    if (!t || !line || !matching) return null;
+    const slot = lineSlotOf(line);
+    return {
+      line,
+      scope: matching.scope,
+      ranked: rankCandidates(line, items, t, matching.scope),
+      picked: matching.picked,
+      slotCount: slot ? items.filter((i) => GARMENTS[i.garment].slot === slot).length : items.length,
+      allCount: items.length,
+    };
+  };
+
+  const openMatch = (t: Trip, ref: string) => {
+    const line = t.entries.find((e) => e.kind === 'template' && e.ref === ref);
+    if (!line) return;
+    matching = { ref, scope: 'slot', picked: preselected(rankCandidates(line, items, t, 'slot'), line.quantity ?? 1) };
+    sheet.innerHTML = matchSheet(matchView()!);
+    if (!sheet.open) sheet.showModal();
+    sheet.querySelector<HTMLElement>('.p-match-tile, [data-act="match-later"]')?.focus();
+  };
+
+  /** Redraws the parts of the Match sheet that change as pieces are chosen, so the sheet keeps its scroll. */
+  const drawMatch = () => {
+    const v = matchView();
+    if (!v) return;
+    sheet.querySelector<HTMLElement>('#p-match-hint')!.textContent = matchHint(v);
+    sheet.querySelector<HTMLElement>('#p-match-chips')!.innerHTML = matchChips(v);
+    sheet.querySelector<HTMLElement>('#p-match-grid')!.innerHTML = matchGrid(v);
+    sheet.querySelector<HTMLElement>('#p-match-foot')!.innerHTML = matchFoot(v);
+  };
+
+  /** Chooses or drops a piece. One needed: the piece replaces the choice. More: up to the quantity, the oldest choice making way. */
+  const pickMatch = (id: string) => {
+    const v = matchView();
+    if (!matching || !v) return;
+    const max = v.line.quantity ?? 1;
+    matching.picked = matching.picked.includes(id) ? matching.picked.filter((x) => x !== id) : [...matching.picked, id].slice(-max);
+    drawMatch();
+    sheet.querySelector<HTMLElement>(`[data-match-item="${id}"]`)?.focus();
+  };
+
+  const useMatch = (t: Trip) => {
+    if (!matching || !matchView() || !matching.picked.length) return;
+    const ref = matching.ref;
+    const ids = matching.picked;
+    const names = ids.map((id) => items.find((i) => i.id === id)?.name).filter(Boolean);
+    trips = trips.map((x) => (x.id === t.id ? matchLine(x, ref, ids) : x));
+    save();
+    matching = null;
+    sheet.close();
+    draw();
+    showToast(`Matched to ${names.length === 1 ? names[0] : names.length === 2 ? names.join(' and ') : `${names.length} pieces`}`);
+    (detail.querySelector<HTMLElement>(`.p-tile[data-ref="${ids[0]}"]`) ?? detail.querySelector<HTMLElement>('.p-sug [data-act="match-line"]'))?.focus();
+  };
+
   const askDelete = (t: Trip) => {
     confirmDlg.innerHTML = `
       <h2 id="p-confirm-title">Delete ${esc(t.name)}?</h2>
@@ -403,6 +480,9 @@ export function renderPacking(el: HTMLElement): () => void {
         break;
       case 'make-template':
         void openSuggest(t);
+        break;
+      case 'match-line':
+        openMatch(t, b.dataset.ref!);
         break;
       case 'edit-line':
         openLineForm(t, b.dataset.ref!);
@@ -451,8 +531,17 @@ export function renderPacking(el: HTMLElement): () => void {
   sheet.addEventListener('click', (e) => {
     if (e.target === sheet) return sheet.close(); // a tap on the scrim
     const target = e.target as HTMLElement;
-    const pickBtn = target.closest<HTMLButtonElement>('.p-pick');
     const t = selectedTrip();
+    const matchTile = target.closest<HTMLElement>('[data-match-item]');
+    if (matchTile && matching) return pickMatch(matchTile.dataset.matchItem!);
+    const scopeBtn = target.closest<HTMLElement>('[data-match-scope]');
+    if (scopeBtn && matching) {
+      matching.scope = scopeBtn.dataset.matchScope as 'slot' | 'all';
+      drawMatch();
+      sheet.querySelector<HTMLElement>(`[data-match-scope="${matching.scope}"]`)?.focus();
+      return;
+    }
+    const pickBtn = target.closest<HTMLButtonElement>('.p-pick[data-kind]');
     if (pickBtn && t) {
       const kind = pickBtn.dataset.kind as PackEntry['kind'];
       const id = pickBtn.dataset.id!;
@@ -483,6 +572,19 @@ export function renderPacking(el: HTMLElement): () => void {
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
+    if (act === 'match-use' && t) return useMatch(t);
+    if (act === 'match-later') return sheet.close();
+    if (act === 'match-edit' && t && matching) {
+      const ref = matching.ref;
+      matching = null;
+      return openLineForm(t, ref);
+    }
+    if (act === 'match-remove' && t && matching) {
+      trips = removeEntry(trips, t.id, 'template', matching.ref);
+      save();
+      sheet.close();
+      return draw();
+    }
     if (act === 'suggest-ask') {
       const open = selectedTrip();
       if (open) void makeTemplate(open);
@@ -509,6 +611,7 @@ export function renderPacking(el: HTMLElement): () => void {
   // Any way of closing the sheet (X, scrim, Escape) drops an answer still on its way, so it cannot land in a different sheet.
   sheet.addEventListener('close', () => {
     suggestRun++;
+    matching = null;
   });
 
   sheet.addEventListener('input', (e) => {
@@ -594,6 +697,7 @@ export function renderPacking(el: HTMLElement): () => void {
 
   return () => {
     gone = true;
+    clearTimeout(toastTimer);
     if (sheet.open) sheet.close();
     if (confirmDlg.open) confirmDlg.close();
   };
