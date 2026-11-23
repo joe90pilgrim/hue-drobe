@@ -1,49 +1,49 @@
-// Writes the app icons (the Hue-drobe colour wheel with a centre dot on a light square) with no dependencies.
-import { deflateSync } from 'node:zlib';
-import { writeFileSync } from 'node:fs';
+// Renders public/icon.svg in headless Chromium and writes the app icons (192, 512 and the 180 px Apple touch icon).
+// It also measures the maskable safe zone: the artwork without the tile must stay within 0.40 of the size from the centre.
+// Run: npm run icons
+import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
 
-const crcTable = Array.from({ length: 256 }, (_, n) => {
-  let c = n;
-  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-  return c >>> 0;
-});
-const crc = (buf) => {
-  let c = 0xffffffff;
-  for (const b of buf) c = crcTable[(c ^ b) & 255] ^ (c >>> 8);
-  return (c ^ 0xffffffff) >>> 0;
-};
-const chunk = (type, data) => {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length);
-  const body = Buffer.concat([Buffer.from(type), data]);
-  const sum = Buffer.alloc(4); sum.writeUInt32BE(crc(body));
-  return Buffer.concat([len, body, sum]);
-};
-const hsl = (h) => {
-  // Full-saturation hue at 55% lightness, as RGB 0-255.
-  const k = (n) => (n + h / 30) % 12, f = (n) => 0.55 - 0.45 * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
-  return [f(0), f(8), f(4)].map((v) => Math.round(v * 255));
-};
-function png(size) {
-  const bg = [0xf5, 0xf5, 0xf5], white = [255, 255, 255], ink = [0x16, 0x16, 0x16];
-  const raw = Buffer.alloc((size * 3 + 1) * size);
-  const c = size / 2, R = size * 0.3; // the wheel stays inside the maskable safe zone
-  for (let y = 0; y < size; y++) {
-    raw[y * (size * 3 + 1)] = 0;
-    for (let x = 0; x < size; x++) {
-      const d = Math.hypot(x + 0.5 - c, y + 0.5 - c);
-      const wedge = Math.floor(((Math.atan2(y + 0.5 - c, x + 0.5 - c) * 180) / Math.PI + 360) % 360 / 60) * 60 + 30;
-      const px = d < R * 0.12 ? ink : d < R * 0.36 ? white : d < R ? hsl(wedge) : bg;
-      raw.set(px, y * (size * 3 + 1) + 1 + x * 3);
-    }
+const here = (p) => fileURLToPath(new URL(p, import.meta.url));
+const svg = readFileSync(here('../public/icon.svg'), 'utf8');
+const SIZES = { 'icon-192.png': 192, 'icon-512.png': 512, 'apple-touch-icon.png': 180 };
+const SAFE_LIMIT = 0.4;
+const uri = (s) => `data:image/svg+xml;base64,${Buffer.from(s).toString('base64')}`;
+
+const browser = await chromium.launch();
+try {
+  const page = await browser.newPage();
+  for (const [file, size] of Object.entries(SIZES)) {
+    await page.setViewportSize({ width: size, height: size });
+    await page.setContent(`<body style="margin:0"><img src="${uri(svg)}" width="${size}" height="${size}" style="display:block"></body>`);
+    await page.waitForFunction(() => document.images[0].complete);
+    writeFileSync(here(`../public/${file}`), await page.screenshot({ clip: { x: 0, y: 0, width: size, height: size } }));
+    console.log(`wrote public/${file} (${size} px)`);
   }
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(size, 0); ihdr.writeUInt32BE(size, 4); ihdr[8] = 8; ihdr[9] = 2;
-  return Buffer.concat([
-    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
-    chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0)),
-  ]);
-}
-for (const s of [192, 512]) {
-  writeFileSync(fileURLToPath(new URL(`../public/icon-${s}.png`, import.meta.url)), png(s));
+
+  // Safe zone: draw the artwork without the tile and find the opaque pixel farthest from the centre.
+  const bare = svg.replace(/<rect [^>]*\/>/, '');
+  const frac = await page.evaluate(async ({ src, n }) => {
+    const img = new Image();
+    img.src = src;
+    await img.decode();
+    const c = document.createElement('canvas');
+    c.width = c.height = n;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, n, n);
+    const d = ctx.getImageData(0, 0, n, n).data;
+    let far = 0;
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      if (d[(y * n + x) * 4 + 3] > 127) far = Math.max(far, Math.hypot(x + 0.5 - n / 2, y + 0.5 - n / 2));
+    }
+    return far / n;
+  }, { src: uri(bare), n: 512 });
+  console.log(`safe zone: farthest opaque pixel at ${frac.toFixed(3)} of the size (limit ${SAFE_LIMIT})`);
+  if (frac > SAFE_LIMIT) {
+    console.error('Artwork is outside the maskable safe zone.');
+    process.exitCode = 1;
+  }
+} finally {
+  await browser.close();
 }

@@ -46,7 +46,7 @@ function precacheServiceWorker(): Plugin {
     apply: 'build',
     generateBundle(_, bundle) {
       const files = Object.keys(bundle).map((f) => `./${f}`);
-      const extras = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', ...FONT_FILES.map((f) => `./fonts/${f}`)];
+      const extras = ['./', './index.html', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png', ...FONT_FILES.map((f) => `./fonts/${f}`)];
       const urls = JSON.stringify([...new Set([...extras, ...files])]);
       const version = Date.now().toString(36);
       this.emitFile({
