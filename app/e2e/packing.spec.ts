@@ -205,7 +205,7 @@ test('Suggest a list adds ticked-off-able lines, sends the palette only after th
   await seedStore(page, { wardrobe: [tee], trips: [{ ...lisbon, entries: [{ kind: 'item', ref: 'tee-1', packed: false, own: true }] }] });
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
-  await expect(page.locator('#p-tpl-note')).not.toContainText('Sends the trip name'); // the long paragraph is gone from the page
+  await expect(page.locator('#p-tpl-note')).toHaveCount(0); // the explanatory paragraph is gone from the page
 
   // The sheet says what is sent and what stays; nothing is sent until Ask Gemini.
   await page.getByRole('button', { name: 'Suggest a list' }).click();
