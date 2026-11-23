@@ -172,8 +172,8 @@ export function renderPacking(el: HTMLElement): () => void {
     const lines = t.entries.filter((e) => e.kind === 'template');
     const list = t.entries.length
       ? `${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
-        ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${looks.length ? `<h3 class="p-group">Planned looks</h3><ul class="p-looks" aria-label="Planned looks">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
+        ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${lines.length ? `${matchBanner(lines, items)}${suggestedSection(lines, items)}` : ''}`
       : '<p class="help">Tap Add items and outfits, or Suggest a list, to build the list.</p>';
     return `
@@ -189,10 +189,9 @@ export function renderPacking(el: HTMLElement): () => void {
         </div>
         <div class="p-actions">
           <button type="button" class="primary" data-act="add">Add items and outfits</button>
-          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Asking Gemini…' : 'Suggest a list'}</button>
+          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Asking Gemini…' : 'Suggest a list <span aria-hidden="true">✦</span>'}</button>
         </div>
       </div>
-      <p class="help" id="p-tpl-note">Suggestions come from Gemini. Tap Suggest a list to see what is sent.</p>
       <p class="help" id="p-tpl-status" role="status">${templateError?.trip === t.id ? esc(templateError.message) : ''}</p>
       ${list}`;
   };
