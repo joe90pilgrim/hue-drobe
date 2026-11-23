@@ -27,21 +27,42 @@ test('makes a trip, adds clothes and an outfit, ticks them off, and keeps the li
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
 
+  // The outfit brings its two garments (the tee is on the list once, not twice); the outfit itself is a planned look.
   await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
-  // One square for the clothes item, in its colour; one per piece for the outfit (navy tee and light grey trousers).
   const rowOf = (ref: string) => page.locator('.p-row').filter({ has: page.locator(`input[data-ref="${ref}"]`) });
+  await expect(page.locator('input[data-kind="item"]')).toHaveCount(2);
+  await expect(page.locator('input[data-kind="outfit"]')).toHaveCount(0);
+  await expect(page.locator('.p-look')).toContainText('Planned look: Navy tee, Light grey trousers');
+  await expect(page.locator('.p-look .p-swatch')).toHaveCount(2);
   await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCount(1);
   await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCSS('background-color', 'rgb(31, 42, 90)');
-  await expect(rowOf('o-1').locator('.p-swatch')).toHaveCount(2);
   await page.locator('input[data-kind="item"][data-ref="tee-1"]').check();
-  await page.locator('input[data-kind="outfit"][data-ref="o-1"]').check();
+  await page.locator('input[data-kind="item"][data-ref="trousers-1"]').check();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
 
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
   await expect(page.locator('input[data-kind="item"][data-ref="tee-1"]')).toBeChecked();
-  await expect(page.locator('input[data-kind="outfit"][data-ref="o-1"]')).toBeChecked();
+  await expect(page.locator('input[data-kind="item"][data-ref="trousers-1"]')).toBeChecked();
+});
+
+test('removing an outfit takes off only the garments it brought in, and old trips are backfilled once', async ({ page }) => {
+  await page.goto('/#/packing');
+  await seedStore(page, {
+    wardrobe: [tee, trousers],
+    outfits: [outfit],
+    trips: [{ v: 1, id: 't-1', name: 'Old trip', starts: '2026-12-14', ends: '2026-12-16', entries: [{ kind: 'item', ref: 'tee-1', packed: false }, { kind: 'outfit', ref: 'o-1', packed: true }], savedAt: 1 }],
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Old trip/ }).click();
+  await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
+  await page.getByRole('button', { name: 'Add items and outfits' }).click();
+  await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click();
+  await page.getByRole('button', { name: 'Done' }).click();
+  await expect(page.locator('.p-count')).toHaveText('1 of 1 packed');
+  await expect(page.locator('input[data-ref="tee-1"]')).toBeVisible();
+  await expect(page.locator('.p-look')).toHaveCount(0);
 });
 
 test('the add picker filters clothes and outfits by a search, and keeps the search while ticking', async ({ page }) => {

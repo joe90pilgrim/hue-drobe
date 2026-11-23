@@ -3,11 +3,19 @@
 import { kvGet, kvPut } from './store';
 import { cleanName } from './wardrobe';
 
-/** One thing on a list: a saved item or a saved outfit, by id, and whether it is packed. */
+/**
+ * One thing on a list: a saved item or a saved outfit, by id. Items are packed and ticked off. An outfit is a "planned
+ * look": it is never ticked, and its garments are the item entries that name it in `via` (V4-04). Both extra fields are
+ * optional, so lists saved before V4-04 still load.
+ */
 export interface PackEntry {
   kind: 'item' | 'outfit';
   ref: string;
   packed: boolean;
+  /** Item entries only: ids of the outfits that brought this item onto the list. */
+  via?: string[];
+  /** Item entries only: true when the item was also added by hand. */
+  own?: true;
 }
 
 /**
@@ -94,10 +102,19 @@ function cleanEntries(value: unknown): PackEntry[] {
   const out: PackEntry[] = [];
   for (const raw of value) {
     if (!raw || typeof raw !== 'object') continue;
-    const { kind, ref, packed } = raw as Record<string, unknown>;
+    const { kind, ref, packed, via, own } = raw as Record<string, unknown>;
     if ((kind !== 'item' && kind !== 'outfit') || typeof ref !== 'string' || !ref) continue;
     if (out.some((e) => e.kind === kind && e.ref === ref)) continue;
-    out.push({ kind, ref, packed: packed === true });
+    if (kind === 'outfit') {
+      out.push({ kind, ref, packed: packed === true }); // an old tick is read by the backfill, then cleared
+      continue;
+    }
+    const ids = Array.isArray(via) ? [...new Set(via.filter((v): v is string => typeof v === 'string' && !!v))] : [];
+    // An item that no outfit brought in can only have been added by hand, so lists saved before V4-04 count as hand-added.
+    const entry: PackEntry = { kind, ref, packed: packed === true };
+    if (ids.length) entry.via = ids;
+    if (own === true || !ids.length) entry.own = true;
+    out.push(entry);
   }
   return out;
 }
@@ -118,13 +135,86 @@ export function deleteTrip(list: Trip[], id: string): Trip[] {
 
 export const hasEntry = (trip: Trip, kind: PackEntry['kind'], ref: string) => trip.entries.some((e) => e.kind === kind && e.ref === ref);
 
-/** Puts an item or outfit on the list (not packed yet), or takes it off when it is already there. */
-export function toggleEntry(list: Trip[], id: string, kind: PackEntry['kind'], ref: string): Trip[] {
-  return mapTrip(list, id, (t) =>
-    hasEntry(t, kind, ref)
-      ? { ...t, entries: t.entries.filter((e) => !(e.kind === kind && e.ref === ref)) }
-      : { ...t, entries: [...t.entries, { kind, ref, packed: false }] },
-  );
+/** Items on a list are tickable; outfits are planned looks and are not. */
+const isItem = (e: PackEntry) => e.kind === 'item';
+
+/**
+ * Hand-adds an item (not packed yet), or takes the hand-add off when it was already hand-added. An item that an outfit
+ * also needs stays on the list. Outfits go through `addOutfit` and `removeOutfit`.
+ */
+export function toggleEntry(list: Trip[], id: string, ref: string): Trip[] {
+  return mapTrip(list, id, (t) => {
+    const e = t.entries.find((x) => x.kind === 'item' && x.ref === ref);
+    if (!e) return { ...t, entries: [...t.entries, { kind: 'item', ref, packed: false, own: true }] };
+    if (!e.own) return { ...t, entries: t.entries.map((x) => (x === e ? { ...x, own: true } : x)) };
+    if (e.via?.length) return { ...t, entries: t.entries.map((x) => (x === e ? withoutOwn(x) : x)) };
+    return { ...t, entries: t.entries.filter((x) => x !== e) };
+  });
+}
+
+function withoutOwn(e: PackEntry): PackEntry {
+  const { own: _own, ...rest } = e;
+  return rest;
+}
+
+/** Takes one entry off the list whatever else needs it. Used for entries whose item was deleted from the wardrobe. */
+export function removeEntry(list: Trip[], id: string, kind: PackEntry['kind'], ref: string): Trip[] {
+  return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.filter((e) => !(e.kind === kind && e.ref === ref)) }));
+}
+
+/** Adds the outfit as a planned look and each of its items as an entry, once each. Items already there just record the outfit. */
+export function addOutfit(list: Trip[], id: string, outfitId: string, itemIds: string[]): Trip[] {
+  return mapTrip(list, id, (t) => ({ ...t, entries: withOutfit(t.entries, outfitId, itemIds) }));
+}
+
+function withOutfit(entries: PackEntry[], outfitId: string, itemIds: string[], packed = false): PackEntry[] {
+  let out = entries.some((e) => e.kind === 'outfit' && e.ref === outfitId) ? entries : [...entries, { kind: 'outfit' as const, ref: outfitId, packed: false }];
+  for (const ref of new Set(itemIds)) {
+    const e = out.find((x) => x.kind === 'item' && x.ref === ref);
+    if (!e) {
+      out = [...out, { kind: 'item', ref, packed, via: [outfitId] }];
+    } else if (!e.via?.includes(outfitId) || (packed && !e.packed)) {
+      out = out.map((x) => (x === e ? { ...x, via: [...new Set([...(x.via ?? []), outfitId])], packed: x.packed || packed } : x));
+    }
+  }
+  return out;
+}
+
+/** Takes the outfit off, and the items only it brought in. Items added by hand or by another outfit stay. */
+export function removeOutfit(list: Trip[], id: string, outfitId: string): Trip[] {
+  return mapTrip(list, id, (t) => ({
+    ...t,
+    entries: t.entries.flatMap((e): PackEntry[] => {
+      if (e.kind === 'outfit') return e.ref === outfitId ? [] : [e];
+      if (!e.via?.includes(outfitId)) return [e];
+      const via = e.via.filter((v) => v !== outfitId);
+      if (!via.length && !e.own) return [];
+      const { via: _via, ...rest } = e;
+      return [via.length ? { ...rest, via } : rest];
+    }),
+  }));
+}
+
+/**
+ * One-off backfill for trips saved before V4-04, which hold outfit entries with no items. Each outfit's items are added
+ * (packed if the outfit was ticked) and the outfit stops being ticked. Safe to run on every load: once done it changes
+ * nothing, and it returns the same list object so the caller can tell.
+ */
+export function backfillOutfitPieces(list: Trip[], itemsOf: (outfitId: string) => string[]): Trip[] {
+  let changed = false;
+  const out = list.map((t) => {
+    let entries = t.entries;
+    for (const o of t.entries.filter((e) => e.kind === 'outfit')) {
+      const next = withOutfit(entries, o.ref, itemsOf(o.ref), o.packed);
+      if (next !== entries || o.packed) {
+        entries = next.map((e) => (e.kind === 'outfit' && e.ref === o.ref ? { ...e, packed: false } : e));
+      }
+    }
+    if (entries === t.entries) return t;
+    changed = true;
+    return { ...t, entries };
+  });
+  return changed ? out : list;
 }
 
 /** Ticks an entry as packed, or unticks it. */
@@ -139,7 +229,8 @@ export function matchesSearch(query: string, texts: string[]): boolean {
 }
 
 export function packedCount(trip: Trip): { packed: number; total: number } {
-  return { packed: trip.entries.filter((e) => e.packed).length, total: trip.entries.length };
+  const items = trip.entries.filter(isItem);
+  return { packed: items.filter((e) => e.packed).length, total: items.length };
 }
 
 function mapTrip(list: Trip[], id: string, fn: (t: Trip) => Trip): Trip[] {
