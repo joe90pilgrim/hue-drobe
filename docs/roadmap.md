@@ -53,8 +53,11 @@ Comes after version 3 on purpose: matching real clothes to the library only work
 - **Create a packing list (12):** a list built from saved items.
 
 ### 5 Finishing the look
-- Shoes (boots, sandals, trainers), hats, jewellery (necklaces, rings, watches), hair styles (11).
-- These are rigid objects attached to the body, not fitted to it. That's a different technique from garments, and generally easier, but it's polish rather than core value.
+- Shoes (boots, sandals, trainers), hats, hair styles (11), and possibly a necklace.
+- **Updated 23 Nov 2026 after the V5-00 spike** (`docs/decisions/2026-11-22-v5-00-asset-sources.md`). These items are not a separate, easier technique: they are MHCLO templates fitted to each person's body by `pack/fit_template.py`, like the garments, and they are judged by the same checks. The community packs supply shoes, hats and hair. The sources are mostly CC-BY, so credits are needed (V3-10).
+- **Shoes:** usable for Joe (biker boots) and B (sandals, Oxfords); the shoe textures look wrong on 8 of 10 fits and must be diagnosed first. **Hats:** a cap and a beanie work on both; a hat over hair is not solved by hiding the hair alone. **Hair:** no style matches Joe's real hair, and B's only roughly. **Jewellery:** rings and watches are not worth doing in 3D at phone size; a necklace is possible but faint, and Joe decides whether it runs.
+- Each person is offered only the garments in their own pack (a mix of shared and per-person items, decided 22 Nov 2026).
+- Polish rather than core value.
 
 ### 6 Style assistant
 These are recommendations, which the MVP deliberately left out. They work best once the app knows your wardrobe and your season.
