@@ -104,7 +104,7 @@ Closed by Joe. Done tickets stay as history; open ones are closed, retired or pa
 | V3-14 | [Experiment: cloth, garment-side pins and inner-layer hiding](v3-loose-clothes/V3-14-cloth-layering-experiment.md) (closed: folded into V3.1-01) | V3-07, V3-07c | Opus, high |
 | V3-15 | [Garment silhouettes module](v3-loose-clothes/V3-15-garment-silhouettes.md) | - | Sonnet, medium |
 | V3-16 | [Clothes tab as a closet](v3-loose-clothes/V3-16-clothes-tab-closet.md) | V3-15 | Sonnet, medium |
-| V3-17 | [Outfits tab flat-lay cards](v3-loose-clothes/V3-17-outfits-flat-lay-cards.md) | V3-15, V3-16 | Sonnet, medium |
+| V3-17 | [Outfits tab flat-lay cards](v3-loose-clothes/V3-17-outfits-flat-lay-cards.md) (done) | V3-15, V3-16 | Sonnet, medium |
 
 ### Version 3.1: Template garments
 
