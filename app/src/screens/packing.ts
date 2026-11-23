@@ -31,11 +31,15 @@ import {
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
+/** The trip last looked at. Kept for as long as the app is open, so coming back from another tab opens the same trip. */
+let lastSelected: string | null = null;
+
 /** Packing lists (V4-03). A trip has a name and dates; its list holds saved clothes and saved outfits to tick off. */
 export function renderPacking(el: HTMLElement): () => void {
   el.innerHTML = `
     <div class="p-page">
-    <div class="w-head"><h1 class="page-title">Packing</h1><button type="button" class="primary" id="p-new">New trip</button></div>
+    <div class="w-head"><h1 class="page-title">Packing</h1></div>
+    <button type="button" class="primary p-new" id="p-new">New trip</button>
     <p class="help w-empty" id="p-empty" hidden>No trips yet. Tap New trip to start a packing list.</p>
     <div class="p-trips" id="p-trips"></div>
     <section class="p-detail" id="p-detail" hidden></section>
@@ -53,7 +57,9 @@ export function renderPacking(el: HTMLElement): () => void {
   let trips: Trip[] = [];
   let items: SavedItem[] = [];
   let outfits: Outfit[] = [];
-  let selected: string | null = null;
+  let selected: string | null = lastSelected;
+  /** False until the saved trips are read, so a remembered trip is not dropped by the first, empty draw. */
+  let loaded = false;
   /** The trip the form is editing, or null for a new trip. */
   let editing: string | null = null;
   /** The template line the edit form is changing. */
@@ -142,9 +148,9 @@ export function renderPacking(el: HTMLElement): () => void {
     const looks = t.entries.filter((e) => e.kind === 'outfit');
     const lines = t.entries.filter((e) => e.kind === 'template');
     const list = t.entries.length
-      ? `${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
+      ? `${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
+        ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${looks.length ? `<h3 class="p-group">Planned looks</h3><ul class="p-looks" aria-label="Planned looks">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
-        ${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
         ${lines.length ? `<h3 class="p-group">Your template</h3><ul class="p-list" aria-label="Template lines">${lines.map(templateRow).join('')}</ul>` : ''}`
       : '<p class="help">Tap Add items and outfits, or Make me a template, to build the list.</p>';
     return `
@@ -169,7 +175,8 @@ export function renderPacking(el: HTMLElement): () => void {
   };
 
   const draw = () => {
-    if (selected && !selectedTrip()) selected = null;
+    if (loaded && selected && !selectedTrip()) selected = null;
+    if (loaded) lastSelected = selected;
     empty.hidden = trips.length > 0;
     tripsEl.innerHTML = trips
       .map((t) => {
@@ -272,7 +279,10 @@ export function renderPacking(el: HTMLElement): () => void {
     pickFilter = 'all';
     sheet.innerHTML = `
       <div class="grab" aria-hidden="true"></div>
-      <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
+      <div class="p-sheet-head">
+        <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
+        <button type="button" class="p-close" data-act="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="seg w-tabs p-pick-tabs" role="tablist" aria-label="Add from">
         <button type="button" role="tab" id="p-tab-clothes" data-tab="clothes" aria-selected="true"></button>
         <button type="button" role="tab" id="p-tab-outfits" data-tab="outfits" aria-selected="false"></button>
@@ -370,7 +380,6 @@ export function renderPacking(el: HTMLElement): () => void {
     if (!id) return;
     selected = id;
     draw();
-    detail.scrollIntoView({ block: 'start' });
   });
 
   detail.addEventListener('click', (e) => {
@@ -466,7 +475,7 @@ export function renderPacking(el: HTMLElement): () => void {
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
-    if (act === 'done') sheet.close();
+    if (act === 'done' || act === 'close') sheet.close();
     if (act === 'cancel-form') sheet.close();
     if (act === 'delete-trip') {
       const open = selectedTrip();
@@ -551,6 +560,7 @@ export function renderPacking(el: HTMLElement): () => void {
       return o ? piecesOf(o).map((i) => i.id) : [];
     });
     if (trips !== loadedTrips) save();
+    loaded = true;
     draw();
   });
   draw();

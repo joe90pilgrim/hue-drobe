@@ -257,3 +257,46 @@ test('with no key or a Gemini error the screen says so plainly and the trip is u
   await expect(page.getByText('Socks')).toBeVisible();
   await expect(page.locator('input[data-kind="template"]')).toHaveCount(1);
 });
+
+test('snag list: the last trip is reopened, New trip sits above the trips, the page stays put, Packed is above To pack, and the add sheet closes with its X', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 700 });
+  await page.goto('/#/packing');
+  const entries = [
+    { kind: 'item', ref: 'tee-1', packed: true, own: true },
+    { kind: 'item', ref: 'trousers-1', packed: false, own: true },
+  ];
+  await seedStore(page, {
+    wardrobe: [tee, trousers],
+    trips: [
+      { ...lisbon, entries },
+      { ...lisbon, id: 't-2', name: 'Peak District', starts: '2027-01-02', ends: '2027-01-04', savedAt: 2, entries: [] },
+    ],
+  });
+  await page.reload();
+
+  // New trip is after the heading and before the first trip card.
+  const y = async (sel: string) => (await page.locator(sel).first().boundingBox())!.y;
+  expect(await y('.page-title')).toBeLessThan(await y('#p-new'));
+  expect(await y('#p-new')).toBeLessThan(await y('.p-trip'));
+
+  // Choosing a trip does not scroll the page.
+  await page.getByRole('button', { name: /Peak District/ }).click();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  expect(await page.evaluate(() => window.scrollY)).toBe(0);
+
+  // Packed comes before To pack.
+  expect(await y('.p-packed-btn')).toBeLessThan(await y('h3.p-group'));
+
+  // Leave for another tab and come back: the same trip is open.
+  await page.evaluate(() => { location.hash = '#/wardrobe'; });
+  await expect(page.locator('#p-detail')).toHaveCount(0);
+  await page.evaluate(() => { location.hash = '#/packing'; });
+  await expect(page.locator('#p-title')).toHaveText('Lisbon weekend');
+  await expect(page.getByRole('button', { name: /Lisbon weekend/ })).toHaveAttribute('aria-pressed', 'true');
+
+  // The add sheet has a close button.
+  await page.getByRole('button', { name: 'Add items and outfits' }).click();
+  await expect(page.getByRole('dialog', { name: /Add to Lisbon weekend/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});

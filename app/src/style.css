@@ -441,6 +441,11 @@ button { font-family: inherit; }
 .p-chev { width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-right: 4px; transition: transform .15s; }
 .p-packed-btn[aria-expanded="true"] .p-chev { transform: rotate(-135deg); }
 .p-tile:focus-visible, .p-packed-btn:focus-visible, .p-gone button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+/* Snag list 23 Nov 2026: New trip sits between the heading and the trips; the add sheet has a close button. */
+.p-new { display: block; width: 100%; margin: 12px 0 14px; }
+.p-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.p-close { flex: 0 0 auto; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -6px -8px -6px 0; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink); }
+.p-close svg { width: 22px; height: 22px; }
 /* V7-02: trip cards and the summary card */
 .p-trips { display: flex; flex-direction: column; gap: 10px; }
 .p-trip { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; min-height: 44px; padding: 14px 40px 14px 14px; border: 1px solid #e3e3e3; border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; }
