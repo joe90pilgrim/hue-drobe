@@ -420,6 +420,25 @@ def run():
         bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True)
         return os.path.getsize(path)
 
+    def alpha_clip(mesh):
+        """Makes the exporter write alphaMode MASK (alpha clip) for a textured item whose alpha comes from its texture. The exporter reads
+        the node tree: a texture alpha straight into the Principled alpha becomes BLEND, which draws overlapping triangles in arbitrary
+        order, so inner surfaces show through the outer one (V5-01: the patchy shoes). A Round node in between makes it MASK: cut-out
+        straps (sandals) stay cut out, and an opaque texture is drawn opaque. Returns the number of alpha links changed."""
+        changed = 0
+        for mat in mesh.materials:
+            if mat is None or not mat.use_nodes:
+                continue
+            nt = mat.node_tree
+            for bsdf in [n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"]:
+                for link in list(bsdf.inputs["Alpha"].links):
+                    rnd = nt.nodes.new("ShaderNodeMath")
+                    rnd.operation = "ROUND"
+                    nt.links.new(link.from_socket, rnd.inputs[0])
+                    nt.links.new(rnd.outputs[0], bsdf.inputs["Alpha"])
+                    changed += 1
+        return changed
+
     def import_glb(path):
         """The GLB's mesh as one object in world space (other imported objects removed)."""
         before = set(bpy.data.objects)
@@ -825,6 +844,8 @@ def run():
                 wm.materials.append(m_)
                 while wm.uv_layers:
                     wm.uv_layers.remove(wm.uv_layers[0])
+            elif meta["category"] == "shoes":
+                R["alpha_links_clipped"] = alpha_clip(wm)
             R["glb_kb"] = round(export_glb(iob, glb) / 1024)
             R["texture_kept"] = keep_texture
             item_bm = mesh_checks.load_glb(glb)
