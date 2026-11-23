@@ -39,7 +39,7 @@ Treat these as settled unless the spike proves one unworkable. If that happens, 
 - **Three strikes.** If a fix fails three times, stop and ask Joe, even with time left.
 - **Open decisions stop the work.** If a ticket has an open decision for Joe, stop and ask rather than guess.
 - **Only Joe creates or starts tickets.** Don't write new tickets, split a ticket, or start another one. If more work is needed, propose it in the ticket's note or the decision record, and stop.
-- **Joe and B only (Joe's decision, 18 Nov 2026; definitive, overrides any ticket, spec or doc that says otherwise).** Builds, template tuning, renders, comparisons and acceptance numbers use only Joe's and B's real bodies (`python pack/build_pack.py --private --only joe`, then `--only b`). Skip all synthetic bodies in builds: do not build them, render them or report on them, and do not list them in acceptance criteria. Synthetic bodies remain only where committed tests need them (they cannot use private data), and `npm run check` is unchanged until Joe says otherwise.
+- **Joe and B only (Joe's decision, 18 Nov 2026; definitive, overrides any ticket, spec or doc that says otherwise).** Builds, template tuning, renders, comparisons and acceptance numbers use only Joe's and B's real bodies (`python pack/build_pack.py --private --only joe`, then `--only b`). Skip all synthetic bodies in builds: do not build them, render them or report on them, and do not list them in acceptance criteria. Synthetic bodies remain only where committed tests need them (they cannot use private data), and the full `npm run check` keeps using them, as described under Testing.
 - **Test on one body first.** Don't run a full multi-body build to try a parameter. Run Blender builds, checks and tests in a subagent, and bring back only the results and render paths.
 - **Measure, never assert.** Every accuracy claim needs a number, the script that produced it and a render. Never call a result good without the comparison.
 - **Scripts over manual steps.** Blender work runs headlessly from Python so it can be re-run from the repo. Record the Blender and library versions used.
@@ -75,7 +75,13 @@ Added 22 Nov 2026, after the V5-00 pull request carried 33 commits instead of 2:
 
 ## Testing
 
-Anything that can be automated should be. Tolerances live in one config file (`spike/tolerances.json`) that the tests read, so changing one is a visible, reviewed edit. `npm run check` runs everything that can run locally and must pass before every commit. The layers:
+Anything that can be automated should be. Tolerances live in one config file (`spike/tolerances.json`) that the tests read, so changing one is a visible, reviewed edit. `npm run check` runs everything that can run locally. Run the right amount at the right time:
+
+- **While a ticket is in progress,** run only the checks for what changed: `npm --prefix app run typecheck`, `npx vitest related <files>`, and the affected Playwright specs (`npx playwright test e2e/<spec>.ts` or `--only-changed`).
+- **Run the full `npm run check` once before the ticket's final commit and before any pull request,** with nothing else loading the machine. It must pass at both points.
+- **Commits that change only docs need no checks.**
+
+The layers:
 
 - Geometry checks: generated bodies against the input measurements, garment landmarks, body clipping, layer clipping, and "body as drawn" for pack and template items. These fail the asset build when a tolerance is missed, except for templates not yet approved, whose numbers are reported only.
 - Visual checks: close-up renders (front, three-quarter, back) for Joe's sign-off.

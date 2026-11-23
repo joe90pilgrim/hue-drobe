@@ -12,8 +12,9 @@ const FONT_FILES = ['bricolage-grotesque-latin-600-normal.woff2', 'bricolage-gro
 const DEV_PERSON = process.env.LOCAL_PERSON ?? 'joe';
 
 // Dev and preview only: serves the private avatar packs at /pack/<person>/, and /api/me. Packs are never copied into a build.
+// With E2E_PACK=fixture (set by playwright.config.ts) it serves the committed placeholder pack in e2e/fixtures/pack/ instead.
 function servePrivatePack(): Plugin {
-  const root = fileURLToPath(new URL('../private/pack/', import.meta.url));
+  const root = fileURLToPath(new URL(process.env.E2E_PACK === 'fixture' ? './e2e/fixtures/pack/' : '../private/pack/', import.meta.url));
   const handler = (req: { url?: string }, res: any, next: () => void) => {
     const url = (req.url ?? '').split('?')[0];
     if (url === '/api/me') {

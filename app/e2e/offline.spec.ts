@@ -3,8 +3,10 @@ import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 
 // Offline start (V2-06 phone check): with no network the installed app must open from its cache quickly, avatar included.
 // A phone in aeroplane mode can leave requests hanging rather than failing, so both cases are tested.
-// Needs Joe's private avatar pack, which the preview server serves from private/pack/joe/.
-test.skip(!existsSync(new URL('../../private/pack/joe/body.glb', import.meta.url)), 'needs the private avatar pack');
+// Runs with a service worker (the rest of the suite blocks them). The preview server serves the placeholder pack by default,
+// and Joe's real pack from private/pack/joe/ under `npm run check:private`.
+test.use({ serviceWorkers: 'allow' });
+test.skip(!!process.env.E2E_PRIVATE_PACK && !existsSync(new URL('../../private/pack/joe/body.glb', import.meta.url)), 'needs the private avatar pack');
 
 /** The longest an offline start may take, from reload to the avatar showing. */
 const OFFLINE_START_MS = 6000;

@@ -103,8 +103,13 @@ test('a change made offline is sent once back online', async ({ browser }) => {
   const phone = await device(browser, server);
 
   server.state.unreachable = true;
-  await addNavyTee(phone.page);
-  await phone.page.waitForTimeout(1500); // past the send delay: the round fails and the save stays marked
+  await phone.page.goto('/#/try-on');
+  await openSlot(phone.page, 'Top');
+  await setColour(phone.page, '#1f2a5a');
+  const failedRound = phone.page.waitForEvent('requestfailed', (r) => r.url().includes('/api/data')); // the first round after the save fails; the save stays marked
+  await addToWardrobe(phone.page).click();
+  await expect(inWardrobe(phone.page)).toBeVisible();
+  await failedRound;
   expect(wardrobeOnServer(server)()).toEqual([]);
 
   server.state.unreachable = false;

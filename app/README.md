@@ -14,6 +14,16 @@ npm run icons      # regenerate the icons in public/
 
 Install and offline use only work from a build (`preview`), not `dev`. On a phone they also need HTTPS or localhost; see `deploy/README.md` for the Cloud Run deploy.
 
+## Checks (T-01)
+
+```
+npm run check          # the full check: typecheck, Vitest, check:assets, check:deploy, e2e; prints each step's time; stops at the first failure
+npm run check:private  # only the e2e tests, on Joe's and B's real packs in ../private/pack/ (run before a pack or viewer change goes in)
+npm run make:test-pack # rewrites the placeholder pack in e2e/fixtures/pack/ (only needed if the viewer's pack file list changes)
+```
+
+While working on a ticket, run only what changed: `npm run typecheck`, `npx vitest related <files>`, `npx playwright test e2e/<spec>.ts`. The e2e tests serve a committed placeholder pack (a box per garment), so they need no private files. They block service workers; `e2e/offline.spec.ts` opts back in.
+
 ## Add from screenshot (V4-02)
 
 On the Wardrobe Clothes tab, **Add from screenshot** takes a screenshot of a product page (file picker on a phone; on a laptop also Ctrl+V or a dropped file). The screenshot is shown on the device with a crop box. Only the part inside the box is shrunk (longest side 1024 px) and sent to `/api/identify`, the same route and confirm sheet as "Take photo" and "Upload photo". Nothing is stored. The crop geometry is in `src/crop.ts`.
