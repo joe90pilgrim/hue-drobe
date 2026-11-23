@@ -339,27 +339,12 @@ button { font-family: inherit; }
 .w-card-text { display: flex; flex-direction: column; gap: 1px; padding: 0 4px; min-width: 0; }
 .w-name { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
 .w-sub { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
-/* An outfit tile: the top above a narrower bottom. A slot with nothing in it is a dashed outline. */
-.w-tile.o-tile, .d-swatch.o-tile { background: #efefef; box-shadow: none; }
-.o-tile { display: flex; align-items: center; justify-content: center; }
-.o-stack { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-.o-slice { display: block; height: 28px; border-radius: 8px; box-shadow: var(--swatch-edge); }
-.o-slice.top { width: 64px; }
-.o-slice.bottom { width: 44px; }
-.o-slice.o-empty { box-shadow: none; }
-/* V2-04: tights, a thin strip under the bottom. */
-.o-slice.legs { width: 40px; height: 12px; }
-.o-stack .o-slice.legs { width: 58px; height: 16px; }
-.o-stack.big .o-slice.legs { width: 60px; height: 14px; }
+/* V3-17: an outfit card shows the flat-lay of its pieces. A deleted piece is a dashed outline (.o-gap). */
+.o-flat { display: flex; align-items: center; justify-content: center; width: 100%; height: 190px; padding: 8px; box-sizing: border-box; border-radius: 10px; background: #efefef; }
+.o-flat svg { display: block; width: 100%; height: 100%; }
+.o-gap path { fill: none; stroke: var(--line-strong); stroke-width: 1.6; stroke-dasharray: 4 3; stroke-linejoin: round; }
 .layer-note { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
-.o-stack.big .o-slice { height: 44px; }
-.o-stack.big .o-slice.top { width: 96px; }
-.o-stack.big .o-slice.bottom { width: 66px; }
-/* Outfit tiles in the phone grid are taller, with larger slices (as in the design). */
-.w-tile.o-tile { height: 124px; }
-.o-stack .o-slice.top { width: 92px; height: 50px; }
-.o-stack .o-slice.bottom { width: 64px; height: 50px; }
 .w-name-input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 16px; }
 .w-card:focus-visible, .chip-btn:focus-visible, .w-tabs button:focus-visible, .w-name-input:focus-visible, .w-sheet button:focus-visible, .w-panel button:focus-visible, .w-confirm button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* The chosen piece: sheet content (phone) and panel content (laptop) are the same markup. */
@@ -379,6 +364,36 @@ button { font-family: inherit; }
 .d-hint { margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .w-tip { display: none; margin: 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
 .w-tip[hidden] { display: none; }
+
+/* V3-16: the Clothes tab as a closet. All rules are scoped under .closet or .c-*, so packing and the Outfits tab keep their cards. */
+.w-grid.closet { display: flex; flex-direction: column; gap: 14px; }
+.closet .c-bay { padding: 10px 10px 8px; border-radius: 16px; background: #ebebeb; min-width: 0; }
+.closet .c-bay-h { margin: 0 0 4px 4px; font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.closet .c-bay-h span { font-weight: 600; }
+/* A row of three on a phone (a chosen chip); each card draws its own piece of rail, so every row has one. */
+.closet .c-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 10px; }
+.closet .c-row.slide { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
+.closet .c-row.slide::-webkit-scrollbar { display: none; }
+.closet .w-card { position: relative; gap: 4px; padding: 0 2px 6px; border: 2px solid transparent; border-radius: 14px; background: transparent; }
+.closet .c-row.slide .w-card { flex: 0 0 104px; scroll-snap-align: start; }
+.closet .w-card.on { padding: 0 2px 6px; border: 2px solid var(--ink); background: rgba(255, 255, 255, .65); }
+.closet .c-art { display: block; width: 100%; max-width: 96px; aspect-ratio: 1; margin: 0 auto; }
+.closet .c-art svg { display: block; width: 100%; height: 100%; }
+.closet .c-rail .w-card::before { content: ''; position: absolute; z-index: -1; top: 3px; left: -2px; right: -2px; height: 4px; background: #9a9a9a; }
+.closet .c-rail .c-row { isolation: isolate; }
+.closet .c-shelf .w-card::after { content: ''; position: absolute; left: -2px; right: -2px; bottom: 36px; height: 8px; background: #cdcdcd; z-index: -1; }
+.closet .c-shelf .c-row { isolation: isolate; }
+.closet .w-card-text { padding: 0 2px; align-items: center; text-align: center; }
+.closet .w-name { font-size: 13px; font-weight: 700; }
+.closet .w-sub { font-size: 12px; }
+.d-swatch.d-sil { background: #ebebeb; box-shadow: none; padding: 4px; box-sizing: border-box; }
+.d-swatch.d-sil svg { display: block; width: 100%; height: 100%; }
+.d-swatch.o-flat { flex: 0 0 84px; width: 84px; height: 132px; padding: 6px; box-shadow: none; }
+@media (min-width: 900px) {
+  /* Side panel open: rails wrap rather than slide. */
+  .closet .c-row, .closet .c-row.slide { display: flex; flex-wrap: wrap; overflow: visible; row-gap: 10px; }
+  .closet .c-row .w-card, .closet .c-row.slide .w-card { flex: 0 0 104px; }
+}
 
 /* Packing lists (V4-03) */
 .p-detail { display: flex; flex-direction: column; gap: 14px; margin-top: 24px; }
@@ -421,13 +436,12 @@ button { font-family: inherit; }
   .w-tile { height: 104px; }
   .w-panel { flex: 0 0 auto; width: 100%; max-width: 340px; min-width: 280px; position: sticky; top: 0; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
   .w-panel .d-swatch { flex: 0 0 160px; width: 100%; height: 160px; border-radius: 14px; }
+  .w-panel .d-swatch.o-flat { flex: 0 0 240px; height: 240px; }
   .w-panel .d-head { flex-direction: column; align-items: stretch; gap: 14px; }
   .w-panel .d-try { height: 48px; }
   .w-panel .d-pair .primary, .w-panel .d-pair .secondary { height: 44px; }
   .w-card.on { border-width: 2px; }
-  .w-tile.o-tile { height: 150px; }
-  .o-stack .o-slice.top { width: 104px; height: 60px; }
-  .o-stack .o-slice.bottom { width: 72px; height: 60px; }
+  .o-flat { height: 220px; }
   .d-hint { display: none; }
   .w-tip { display: block; }
 }

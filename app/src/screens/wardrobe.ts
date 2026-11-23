@@ -8,35 +8,43 @@ import {
   saveOutfits,
   wearOutfit,
   type Outfit,
+  type OutfitLook,
 } from '../outfits';
 import { createPhotoAdd } from './wardrobe-photo';
+import { flatLaySvg, silhouetteSvg, type FlatPiece } from '../silhouettes';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
-/** The filter chips. A garment's group is its slot, so a new garment type sorts itself into Tops or Bottoms. */
-const GROUPS = [
-  { slot: 'Top', label: 'Tops' },
-  { slot: 'Bottom', label: 'Bottoms' },
-  { slot: 'Dress', label: 'Dresses' },
-  { slot: 'Legs', label: 'Tights' },
-] as const;
+/**
+ * The filter chips and the closet's bays, in closet order (V3-16). A garment's group is its slot, so a new garment type sorts itself
+ * into Tops or Bottoms. `storage` is how the group is kept: things that hang go on a `rail`; hats and shoes (V5) will sit on a `shelf`.
+ */
+const GROUPS: readonly { slot: 'Top' | 'Dress' | 'Bottom' | 'Legs'; label: string; storage: 'rail' | 'shelf' }[] = [
+  { slot: 'Top', label: 'Tops', storage: 'rail' },
+  { slot: 'Dress', label: 'Dresses', storage: 'rail' },
+  { slot: 'Bottom', label: 'Bottoms', storage: 'rail' },
+  { slot: 'Legs', label: 'Tights', storage: 'rail' },
+];
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
+
+const silhouetteOf = (i: SavedItem, mode: 'hang' | 'shelf' | 'flat') =>
+  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
 
 type Selection = { kind: 'item' | 'outfit'; id: string } | null;
 
-/** One slice of an outfit tile: the item's colour, or a dashed outline when the slot is empty or its item was deleted. */
-const slice = (item: SavedItem | undefined, cls: string) =>
-  `<span class="o-slice ${cls}${item ? '' : ' o-empty'}"${item ? ` style="background:${item.colour}"` : ''}></span>`;
-
-/** Tights (V2-04) add a thin third slice, only when the outfit has them, so older two-piece tiles look as they did. */
-const stacked = (top?: SavedItem, bottom?: SavedItem, big = false, legs?: SavedItem | null) =>
-  `<span class="o-stack${big ? ' big' : ''}" aria-hidden="true">${slice(top, 'top')}${slice(bottom, 'bottom')}${legs !== null && legs !== undefined ? slice(legs, 'legs') : legs === null ? slice(undefined, 'legs') : ''}</span>`;
-/** The legs slice: the tights, an empty slot when the outfit's tights were deleted, or nothing when it never had tights. */
-const legsOf = (o: Outfit, look: { legs?: SavedItem }) => (o.legs ? (look.legs ?? null) : undefined);
-
-/** The top and bottom slices of a tile: a dress fills both, in its colour (or both empty if its item was deleted). */
-const pair = (o: Outfit, look: { top?: SavedItem; bottom?: SavedItem; dress?: SavedItem }): [SavedItem | undefined, SavedItem | undefined] =>
-  o.dress ? [look.dress, look.dress] : [look.top, look.bottom];
+/**
+ * The flat-lay of an outfit (V3-17): the silhouettes of its pieces, stacked head to toe. A piece the outfit has but that was deleted
+ * is a dashed outline in its place; a piece the outfit never had is left out. An outfit with nothing in it shows a dashed top and bottom.
+ */
+const flatLay = (o: Outfit, look: OutfitLook) => {
+  const piece = (slot: FlatPiece['slot'], id: string | undefined, item: SavedItem | undefined): FlatPiece[] =>
+    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
+  const pieces = [
+    ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
+    ...piece('legs', o.legs, look.legs),
+  ];
+  return flatLaySvg(pieces.length ? pieces : [{ slot: 'top' }, { slot: 'bottom' }]);
+};
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
@@ -102,6 +110,17 @@ export function renderWardrobe(el: HTMLElement): () => void {
     return parts.map(esc).join(', ');
   };
 
+  /**
+   * The second line of an outfit card. While the name is still the automatic list of pieces it would repeat the name, so it
+   * says how many items there are; with a custom name or a deleted piece it keeps the list.
+   */
+  const subOf = (o: Outfit) => {
+    const look = resolveOutfit(o, items);
+    const count = [o.dress, o.top, o.bottom, o.legs].filter(Boolean).length;
+    const gone = (o.dress && !look.dress) || (o.top && !look.top) || (o.bottom && !look.bottom) || (o.legs && !look.legs);
+    return !gone && o.name === autoOutfitName(look) ? `${count} item${count === 1 ? '' : 's'}` : piecesOf(o);
+  };
+
   // --- The grid -------------------------------------------------------------------------------------------------
 
   const drawChips = () => {
@@ -130,23 +149,31 @@ export function renderWardrobe(el: HTMLElement): () => void {
       empty.hidden = list.length > 0;
       empty.textContent =
         items.length === 0 ? 'Nothing here yet. On Try on, change a piece and tap Add to wardrobe.' : `No ${GROUPS.find((g) => g.slot === filter)?.label.toLowerCase() ?? 'clothes'} yet.`;
-      grid.innerHTML = list
-        .map(
-          (i) => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
-            <span class="w-tile" style="background:${i.colour}"></span>
+      grid.classList.add('closet');
+      const card = (i: SavedItem, mode: 'hang' | 'shelf') => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
+            <span class="c-art">${silhouetteOf(i, mode)}</span>
             <span class="w-card-text"><span class="w-name">${esc(i.name)}</span><span class="w-sub">${esc(itemKind(i))}</span></span>
-          </button>`,
-        )
-        .join('');
+          </button>`;
+      // One bay per group that has items. "All" is one rail per group; a chosen chip shows only that group, wrapped into rows.
+      grid.innerHTML = GROUPS.map((g) => {
+        const mine = list.filter((i) => slotOf(i) === g.slot);
+        if (!mine.length) return '';
+        const mode = g.storage === 'shelf' ? 'shelf' : 'hang';
+        return `<section class="c-bay c-${g.storage}" aria-label="${g.label}">
+          <h2 class="c-bay-h">${g.label}<span> · ${mine.length}</span></h2>
+          <div class="c-row${filter === 'all' ? ' slide' : ''}">${mine.map((i) => card(i, mode)).join('')}</div>
+        </section>`;
+      }).join('');
     } else {
+      grid.classList.remove('closet');
       empty.hidden = outfits.length > 0;
       empty.textContent = 'No outfits yet. On Try on, put a look together and tap Save outfit.';
       grid.innerHTML = outfits
         .map((o) => {
           const look = resolveOutfit(o, items);
           return `<button type="button" class="w-card${on('outfit', o.id) ? ' on' : ''}" data-kind="outfit" data-id="${o.id}" aria-pressed="${on('outfit', o.id)}">
-            <span class="w-tile o-tile">${stacked(...pair(o, look), false, legsOf(o, look))}</span>
-            <span class="w-card-text"><span class="w-name">${esc(o.name)}</span><span class="w-sub">${piecesOf(o)}</span></span>
+            <span class="o-flat">${flatLay(o, look)}</span>
+            <span class="w-card-text"><span class="w-name">${esc(o.name)}</span><span class="w-sub">${subOf(o)}</span></span>
           </button>`;
         })
         .join('');
@@ -161,9 +188,9 @@ export function renderWardrobe(el: HTMLElement): () => void {
     if (!item && !outfit) return '';
     const look = outfit ? resolveOutfit(outfit, items) : undefined;
     const art = item
-      ? `<span class="d-swatch" style="background:${item.colour}"></span>`
-      : `<span class="d-swatch o-tile">${stacked(...pair(outfit!, look!), true, legsOf(outfit!, look!))}</span>`;
-    const sub = item ? esc(itemKind(item)) : piecesOf(outfit!);
+      ? `<span class="d-swatch d-sil">${silhouetteOf(item, 'hang')}</span>`
+      : `<span class="d-swatch o-flat">${flatLay(outfit!, look!)}</span>`;
+    const sub = item ? esc(itemKind(item)) : subOf(outfit!);
     const head = renaming
       ? `<div class="d-text"><label class="field-label" for="w-rename">Name</label>
            <input id="w-rename" class="w-name-input" value="${esc(nameOf())}" maxlength="40" autocomplete="off"></div>`

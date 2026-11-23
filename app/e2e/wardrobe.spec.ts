@@ -85,13 +85,16 @@ test('with 20 saved pieces the grid fits several on a screen and can be cut down
   await expect(page.getByRole('button', { name: 'Tops · 10' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Bottoms · 10' })).toBeVisible();
 
-  // Two columns on a phone, and several cards in view at once.
+  // V3-16: in All, each group is one sliding rail. Cards in a rail share a row, the rail runs past the screen edge but
+  // not the page, and the next group's rail sits below it. Several cards are in view at once.
   const box = async (n: number) => (await page.locator('.w-card').nth(n).boundingBox())!;
-  const [a, b, c] = [await box(0), await box(1), await box(2)];
+  const [a, b, c, first2] = [await box(0), await box(1), await box(2), await box(10)];
   expect(b.y).toBeCloseTo(a.y, 0);
-  expect(c.y).toBeGreaterThan(a.y);
-  const inView = await page.locator('.w-card').evaluateAll((els) => els.filter((e) => e.getBoundingClientRect().bottom <= window.innerHeight).length);
-  expect(inView).toBeGreaterThanOrEqual(8);
+  expect(c.y).toBeCloseTo(a.y, 0);
+  expect(first2.y).toBeGreaterThan(a.y);
+  const inView = await page.locator('.w-card').evaluateAll((els) => els.filter((e) => { const r = e.getBoundingClientRect(); return r.right <= window.innerWidth && r.bottom <= window.innerHeight; }).length);
+  expect(inView).toBeGreaterThanOrEqual(6);
+  expect(await page.locator('.c-row.slide').first().evaluate((e) => e.scrollWidth > e.clientWidth)).toBe(true);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(412);
 
   await page.getByRole('button', { name: 'Tops · 10' }).click();
@@ -115,6 +118,9 @@ test('on a laptop the grid uses the width and a card opens a panel beside it', a
     return els.filter((e) => e.getBoundingClientRect().top === top).length;
   });
   expect(firstRow).toBeGreaterThanOrEqual(4);
+  // V3-16: rails wrap rather than slide, so nothing scrolls sideways and the 10 tops take more than one row.
+  expect(firstRow).toBeLessThan(10);
+  expect(await page.locator('.c-row').first().evaluate((e) => e.scrollWidth <= e.clientWidth)).toBe(true);
 
   await card(page, 'Piece 1').click();
   const panel = page.locator('.w-panel');
