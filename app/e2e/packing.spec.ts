@@ -113,6 +113,7 @@ test('an entry whose clothes were deleted shows as removed, can be taken off, an
   await page.getByRole('button', { name: 'Take off' }).click();
   await expect(page.getByText('Nothing on the list yet')).toBeVisible();
 
+  await page.getByRole('button', { name: 'Edit trip' }).click();
   await page.getByRole('button', { name: 'Delete trip' }).click();
   await page.getByRole('dialog', { name: /^Delete / }).getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page.getByText('No trips yet. Tap New trip to start a packing list.')).toBeVisible();

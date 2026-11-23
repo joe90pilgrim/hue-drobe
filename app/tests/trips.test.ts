@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip } from '../src/trips';
+import { peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
 
 describe('picker search', () => {
   it('matches any part of a name, ignoring case and spaces at the ends', () => {
@@ -236,5 +236,20 @@ describe('template lines (V6-01)', () => {
     ]);
     const plain = { ...base, entries: [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, { kind: 'outfit', ref: 'o-1', packed: false }] };
     expect(cleanTrips([plain])[0].entries).toEqual(plain.entries);
+  });
+});
+
+describe('peekItems', () => {
+  const item = (id: string) => ({ v: 2, id, garment: 'tee', colour: '#000000', name: id, savedAt: 1 }) as never;
+  const wardrobe = ['a', 'b', 'c', 'd', 'e'].map(item);
+  const trip = (refs: string[]): Trip => ({ ...newTrip('T', '2026-12-01', '2026-12-02'), entries: refs.map((ref) => ({ kind: 'item' as const, ref, packed: false })) });
+  const ids = (refs: string[]) => peekItems(trip(refs), wardrobe).map((i) => i.id);
+  it('is empty for a trip with no items', () => expect(ids([])).toEqual([]));
+  it('returns fewer than four when there are fewer', () => expect(ids(['a', 'b'])).toEqual(['a', 'b']));
+  it('stops at four, in list order', () => expect(ids(['e', 'd', 'c', 'b', 'a'])).toEqual(['e', 'd', 'c', 'b']));
+  it('skips a deleted item and outfit or template entries', () => {
+    const t = trip(['a', 'gone', 'b']);
+    t.entries.push({ kind: 'outfit', ref: 'o', packed: false }, { kind: 'template', ref: 't', packed: false, text: 'Socks' } as never);
+    expect(peekItems(t, wardrobe).map((i) => i.id)).toEqual(['a', 'b']);
   });
 });

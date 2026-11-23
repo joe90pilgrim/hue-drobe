@@ -416,8 +416,25 @@ button { font-family: inherit; }
 .p-swatch { display: block; width: 16px; height: 16px; border-radius: 4px; box-shadow: var(--swatch-edge); }
 .p-row.packed .w-name { text-decoration: line-through; color: var(--muted); }
 .p-row .secondary { height: 40px; padding: 0 12px; font-size: 14px; }
-.p-trips .w-card-text { gap: 2px; }
-.p-trips .w-card { min-height: 44px; }
+/* V7-02: trip cards and the summary card */
+.p-trips { display: flex; flex-direction: column; gap: 10px; }
+.p-trip { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; width: 100%; min-height: 44px; padding: 14px 40px 14px 14px; border: 1px solid #e3e3e3; border-radius: 16px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; }
+.p-trip.on { border: 2px solid #111; padding: 13px 39px 13px 13px; }
+.p-trip-ring { position: absolute; top: 12px; right: 12px; width: 10px; height: 10px; border: 1.5px solid #b4b4b4; border-radius: 50%; }
+.p-trip-name { font-size: 16px; font-weight: 700; overflow-wrap: anywhere; }
+.p-trip-sub { font-size: 13px; color: var(--muted); }
+.p-trip-peek { display: flex; }
+.p-trip-circle { display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; background: var(--sunken); border: 2px solid var(--surface); box-sizing: border-box; overflow: hidden; }
+.p-trip-circle + .p-trip-circle { margin-left: -8px; }
+.p-trip-circle svg { width: 22px; height: 22px; }
+.p-bar { display: block; width: 100%; height: 6px; border-radius: 3px; background: var(--sunken); overflow: hidden; }
+.p-bar-fill { display: block; height: 100%; background: var(--ink); border-radius: 3px; }
+.p-summary { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); }
+.p-summary-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.p-summary .p-edit { flex: 0 0 auto; height: 40px; padding: 0 14px; font-size: 14px; }
+.p-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.p-actions .primary, .p-actions .secondary { flex: 1 1 160px; min-height: 48px; }
+.p-delete { align-self: center; min-height: 44px; padding: 0 12px; border: 0; background: none; color: var(--danger); font: inherit; font-weight: 600; text-decoration: underline; }
 .p-sheet:not([open]) { display: none; }
 .p-sheet { display: flex; flex-direction: column; gap: 12px; max-height: 92vh; overflow-y: auto; }
 .p-sheet h2 { margin: 0; }
@@ -428,11 +445,14 @@ button { font-family: inherit; }
 .p-pick.on { border: 2px solid var(--ink); padding: 7px 13px; background: var(--sunken); }
 .p-pick-mark { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: var(--muted); }
 .p-pick.on .p-pick-mark { color: var(--ink); }
-.p-pick:focus-visible, .p-row button:focus-visible, .p-check input:focus-visible, .p-form button:focus-visible, .p-form input:focus-visible, .p-sheet button:focus-visible, .p-trips .w-card:focus-visible, .p-detail .primary:focus-visible, .p-detail .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+.p-pick:focus-visible, .p-row button:focus-visible, .p-check input:focus-visible, .p-form button:focus-visible, .p-form input:focus-visible, .p-sheet button:focus-visible, .p-trip:focus-visible, .p-delete:focus-visible, .p-detail .primary:focus-visible, .p-detail .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .p-form { display: flex; flex-direction: column; gap: 8px; }
 .p-form .sheet-actions { margin-top: 8px; }
 #p-f-error:not(:empty) { color: var(--danger); }
 @media (min-width: 900px) {
+  .p-page { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 360px) minmax(0, 1fr); column-gap: 24px; align-items: start; }
+  .p-page > .w-head, .p-page > .w-empty { grid-column: 1 / -1; }
+  .p-page > .p-detail { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; }
   .w-tabs { width: 300px; max-width: 100%; }
   .w-tabs button { min-height: 40px; }
   .chip-btn { min-height: 40px; }

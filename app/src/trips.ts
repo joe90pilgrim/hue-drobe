@@ -1,7 +1,7 @@
 // Packing lists (V4-03): a trip has a name and dates, and holds saved clothes and saved outfits to tick off as packed.
 // Stored on the device with the other data, and synced like it (see backup.ts and deploy/datastore.mjs).
 import { kvGet, kvPut } from './store';
-import { cleanName } from './wardrobe';
+import { cleanName, type SavedItem } from './wardrobe';
 
 /**
  * One thing on a list: a saved item or a saved outfit, by id. Items are packed and ticked off. An outfit is a "planned
@@ -286,6 +286,18 @@ export function matchesSearch(query: string, texts: string[]): boolean {
 export function packedCount(trip: Trip): { packed: number; total: number } {
   const items = trip.entries.filter(isItem);
   return { packed: items.filter((e) => e.packed).length, total: items.length };
+}
+
+/** The first four clothes items on the trip that are still in the wardrobe, in list order. Outfits, template lines and deleted items are skipped. */
+export function peekItems(trip: Trip, items: SavedItem[]): SavedItem[] {
+  const out: SavedItem[] = [];
+  for (const e of trip.entries) {
+    if (e.kind !== 'item') continue;
+    const item = items.find((i) => i.id === e.ref);
+    if (item) out.push(item);
+    if (out.length === 4) break;
+  }
+  return out;
 }
 
 function mapTrip(list: Trip[], id: string, fn: (t: Trip) => Trip): Trip[] {

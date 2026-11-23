@@ -11,7 +11,7 @@ import {
   type OutfitLook,
 } from '../outfits';
 import { createPhotoAdd } from './wardrobe-photo';
-import { flatLaySvg, silhouetteSvg, type FlatPiece } from '../silhouettes';
+import { flatLaySvg, itemSilhouette as silhouetteOf, type FlatPiece } from '../silhouettes';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -28,9 +28,6 @@ const GROUPS: readonly { slot: 'Hat' | 'Top' | 'Dress' | 'Bottom' | 'Legs' | 'Sh
   { slot: 'Hat', label: 'Hats', storage: 'shelf' }, // V5-02
 ];
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
-
-const silhouetteOf = (i: SavedItem, mode: 'hang' | 'shelf' | 'flat') =>
-  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
 
 type Selection = { kind: 'item' | 'outfit'; id: string } | null;
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, silhouetteKey, silhouetteSvg } from '../src/silhouettes';
+import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, silhouetteKey, silhouetteSvg, itemSilhouette } from '../src/silhouettes';
 
 describe('silhouettes', () => {
   it('draws every garment id with a shape of its own', () => {
@@ -96,5 +96,12 @@ describe('flat-lay', () => {
     expect(svg.match(/class="o-gap"/g)).toHaveLength(1);
     expect(svg).toContain('aria-hidden="true"');
     expect(svg).not.toContain('<text');
+  });
+});
+
+describe('itemSilhouette', () => {
+  it('draws a saved item in its own colour, the same as silhouetteSvg', () => {
+    const item = { v: 2, id: 'x', garment: 'tee', colour: '#1f2a5a', name: 'Navy tee', savedAt: 1 } as never;
+    expect(itemSilhouette(item, 'flat')).toBe(silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat' }));
   });
 });

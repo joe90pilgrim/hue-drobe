@@ -1,6 +1,6 @@
 // V3-15: one drawn silhouette per garment, filled with the item's colour. Pure drawing, no DOM, no store.
 // Mid-fidelity shapes from docs/decisions/2026-11-22-wardrobe-closet-redesign-spec.md. Joe signs off the look.
-import { GARMENTS, NECKLINES, type GarmentId, type Neckline } from './wardrobe';
+import { GARMENTS, NECKLINES, type GarmentId, type Neckline, type SavedItem } from './wardrobe';
 
 export type SilhouetteMode = 'hang' | 'flat' | 'shelf';
 
@@ -142,6 +142,10 @@ function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean):
 }
 
 /** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
+/** The silhouette of a saved item, in its own colour. Shared by the Wardrobe and Packing screens. */
+export const itemSilhouette = (i: SavedItem, mode: SilhouetteMode): string =>
+  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
+
 export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
   const key = silhouetteKey(garment, neckline);
   const hang = mode === 'hang';

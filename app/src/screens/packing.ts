@@ -1,5 +1,6 @@
 import { itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
+import { itemSilhouette } from '../silhouettes';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
   addOutfit,
@@ -13,6 +14,7 @@ import {
   matchesSearch,
   newTrip,
   packedCount,
+  peekItems,
   removeEntry,
   removeOutfit,
   replaceTemplate,
@@ -35,12 +37,14 @@ const swatches = (colours: string[]) =>
 /** Packing lists (V4-03). A trip has a name and dates; its list holds saved clothes and saved outfits to tick off. */
 export function renderPacking(el: HTMLElement): () => void {
   el.innerHTML = `
+    <div class="p-page">
     <div class="w-head"><h1 class="page-title">Packing</h1><button type="button" class="primary" id="p-new">New trip</button></div>
     <p class="help w-empty" id="p-empty" hidden>No trips yet. Tap New trip to start a packing list.</p>
-    <div class="w-grid p-trips" id="p-trips"></div>
+    <div class="p-trips" id="p-trips"></div>
     <section class="p-detail" id="p-detail" hidden></section>
     <dialog class="sheet p-sheet" id="p-sheet" aria-labelledby="p-sheet-title"></dialog>
-    <dialog class="sheet p-sheet" id="p-confirm" aria-labelledby="p-confirm-title"></dialog>`;
+    <dialog class="sheet p-sheet" id="p-confirm" aria-labelledby="p-confirm-title"></dialog>
+    </div>`;
 
   const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>('#' + id)!;
   const empty = $('p-empty');
@@ -131,24 +135,29 @@ export function renderPacking(el: HTMLElement): () => void {
     const seasonNote = hasSeason ? ', and your colour season and palette' : '';
     const c = packedCount(t);
     const count = c.total ? `${c.packed} of ${c.total} packed` : 'Nothing on the list yet';
+    const pct = c.total ? Math.round((c.packed / c.total) * 100) : 0;
     const list = t.entries.length
       ? `<ul class="p-list" aria-label="Packing list">${t.entries.map(rowHtml).join('')}</ul>`
       : '<p class="help">Tap Add items and outfits, or Make me a template, to build the list.</p>';
     return `
-      <div class="p-head">
-        <h2 id="p-title">${esc(t.name)}</h2>
-        <span class="d-sub">${esc(formatDates(t.starts, t.ends))}</span>
-        <p class="p-count" id="p-count">${count}</p>
+      <div class="p-summary">
+        <div class="p-head">
+          <div class="p-summary-top">
+            <h2 id="p-title">${esc(t.name)}</h2>
+            <button type="button" class="secondary p-edit" data-act="edit">Edit trip</button>
+          </div>
+          <span class="d-sub">${esc(formatDates(t.starts, t.ends))}</span>
+          <p class="p-count" id="p-count">${count}</p>
+          <span class="p-bar" aria-hidden="true"><span class="p-bar-fill" style="width:${pct}%"></span></span>
+        </div>
+        <div class="p-actions">
+          <button type="button" class="primary" data-act="add">Add items and outfits</button>
+          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Making a template…' : 'Make me a template'}</button>
+        </div>
       </div>
-      <button type="button" class="primary" data-act="add">Add items and outfits</button>
-      <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Making a template…' : 'Make me a template'}</button>
       <p class="help" id="p-tpl-note">Sends the trip name and dates${seasonNote} to Gemini to suggest a list. It replaces the template lines on this trip and never touches clothes or outfits you added.</p>
       <p class="help" id="p-tpl-status" role="status">${templateError?.trip === t.id ? esc(templateError.message) : ''}</p>
-      ${list}
-      <div class="d-pair">
-        <button type="button" class="secondary" data-act="edit">Edit trip</button>
-        <button type="button" class="secondary danger" data-act="delete">Delete trip</button>
-      </div>`;
+      ${list}`;
   };
 
   const draw = () => {
@@ -158,8 +167,18 @@ export function renderPacking(el: HTMLElement): () => void {
       .map((t) => {
         const c = packedCount(t);
         const on = t.id === selected;
-        return `<button type="button" class="w-card${on ? ' on' : ''}" data-id="${t.id}" aria-pressed="${on}">
-          <span class="w-card-text"><span class="w-name">${esc(t.name)}</span><span class="w-sub">${esc(formatDates(t.starts, t.ends))}</span><span class="w-sub">${c.total ? `${c.packed} of ${c.total} packed` : 'Nothing added yet'}</span></span>
+        const peek = peekItems(t, items);
+        const pct = c.total ? Math.round((c.packed / c.total) * 100) : 0;
+        const circles = peek.length
+          ? `<span class="p-trip-peek" aria-hidden="true">${peek.map((i) => `<span class="p-trip-circle">${itemSilhouette(i, 'flat')}</span>`).join('')}</span>`
+          : '';
+        const bar = c.total ? `<span class="p-bar" aria-hidden="true"><span class="p-bar-fill" style="width:${pct}%"></span></span>` : '';
+        return `<button type="button" class="p-trip${on ? ' on' : ''}" data-id="${t.id}" aria-pressed="${on}">
+          <span class="p-trip-ring" aria-hidden="true"></span>
+          <span class="p-trip-name">${esc(t.name)}</span>
+          <span class="p-trip-sub">${esc(formatDates(t.starts, t.ends))}</span>
+          ${circles}${bar}
+          <span class="p-trip-sub">${c.total ? `${c.packed} of ${c.total} packed` : 'Nothing added yet'}</span>
         </button>`;
       })
       .join('');
@@ -234,6 +253,7 @@ export function renderPacking(el: HTMLElement): () => void {
           <button type="submit" class="primary">Save trip</button>
           <button type="button" class="secondary" data-act="cancel-form">Cancel</button>
         </div>
+        ${t ? '<button type="button" class="p-delete" data-act="delete-trip">Delete trip</button>' : ''}
       </form>`;
     if (!sheet.open) sheet.showModal();
     sheet.querySelector<HTMLInputElement>('#p-f-name')?.focus();
@@ -297,7 +317,7 @@ export function renderPacking(el: HTMLElement): () => void {
   $('p-new').addEventListener('click', () => openForm(null));
 
   tripsEl.addEventListener('click', (e) => {
-    const id = (e.target as HTMLElement).closest<HTMLElement>('.w-card')?.dataset.id;
+    const id = (e.target as HTMLElement).closest<HTMLElement>('.p-trip')?.dataset.id;
     if (!id) return;
     selected = id;
     draw();
@@ -314,9 +334,6 @@ export function renderPacking(el: HTMLElement): () => void {
         break;
       case 'edit':
         openForm(t);
-        break;
-      case 'delete':
-        askDelete(t);
         break;
       case 'make-template':
         void makeTemplate(t);
@@ -373,6 +390,11 @@ export function renderPacking(el: HTMLElement): () => void {
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
     if (act === 'done') sheet.close();
     if (act === 'cancel-form') sheet.close();
+    if (act === 'delete-trip') {
+      const open = selectedTrip();
+      sheet.close();
+      if (open) askDelete(open);
+    }
   });
 
   sheet.addEventListener('input', (e) => {
