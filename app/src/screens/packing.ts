@@ -1,6 +1,6 @@
 import { itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
-import { itemSilhouette } from '../silhouettes';
+import { flatLayOf, itemSilhouette } from '../silhouettes';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
   addOutfit,
@@ -80,35 +80,36 @@ export function renderPacking(el: HTMLElement): () => void {
 
   // --- The list of trips and the chosen trip's checklist -------------------------------------------------------------
 
-  const rowHtml = (e: PackEntry) => {
-    if (e.kind === 'item') {
-      const item = items.find((i) => i.id === e.ref);
-      if (!item) return goneRow(e, 'Clothes item');
-      return checkRow(e, esc(item.name), esc(itemKind(item)), [item.colour]);
-    }
-    if (e.kind === 'template') return templateRow(e);
-    const outfit = outfits.find((o) => o.id === e.ref);
-    if (!outfit) return goneRow(e, 'Outfit');
-    return lookRow(esc(outfit.name), piecesText(outfit), piecesOf(outfit).map((i) => i.colour));
+  /** One clothes item as a tile: its silhouette, name, type and a tick ring. The whole tile is the button (V7-03). */
+  const tileHtml = (e: PackEntry) => {
+    const item = items.find((i) => i.id === e.ref);
+    if (!item) return goneTile(e, 'Clothes item');
+    const kind = itemKind(item);
+    const label = `${item.name}, ${kind}, ${e.packed ? 'packed. Tap to unpack' : 'not packed. Tap to pack'}`;
+    return `
+    <li class="p-tile-li">
+      <button type="button" class="p-tile${e.packed ? ' packed' : ''}" data-act="toggle" data-kind="item" data-ref="${e.ref}" aria-pressed="${!!e.packed}" aria-label="${esc(label)}">
+        <span class="p-tile-ring" aria-hidden="true">${e.packed ? '<svg viewBox="0 0 24 24"><path d="M6.5 12.5l3.7 3.7 7.3-7.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}</span>
+        <span class="p-tile-art" aria-hidden="true">${itemSilhouette(item, 'flat')}</span>
+        <span class="w-name p-tile-name">${esc(item.name)}</span>
+        <span class="w-sub">${esc(kind)}</span>
+      </button>
+    </li>`;
   };
 
-  /** A planned look: shown on the trip but not ticked. Its garments are the rows that are ticked. */
-  const lookRow = (name: string, sub: string, colours: string[]) => `
-    <li class="p-row p-look">
-      <span class="p-check">
-        ${swatches(colours)}
-        <span class="p-text"><span class="w-name">${name}</span><span class="w-sub">Planned look${sub ? `: ${sub}` : ''}</span></span>
-      </span>
+  /** A planned look: the flat-lay card from the Outfits tab, shown on the trip but not ticked. Its garments are the tiles that are ticked. */
+  const lookCard = (e: PackEntry, t: Trip) => {
+    const outfit = outfits.find((o) => o.id === e.ref);
+    if (!outfit) return goneTile(e, 'Outfit');
+    const pieces = piecesOf(outfit);
+    const done = pieces.filter((i) => t.entries.some((x) => x.kind === 'item' && x.ref === i.id && x.packed)).length;
+    return `
+    <li class="p-look">
+      <span class="o-flat p-look-art">${flatLayOf(outfit, resolveOutfit(outfit, items))}</span>
+      <span class="w-name p-look-name">${esc(outfit.name)}</span>
+      <span class="w-sub">${done} of ${pieces.length} ${pieces.length === 1 ? 'piece' : 'pieces'} packed</span>
     </li>`;
-
-  const checkRow = (e: PackEntry, name: string, sub: string, colours: string[]) => `
-    <li class="p-row${e.packed ? ' packed' : ''}">
-      <label class="p-check">
-        <input type="checkbox" data-kind="${e.kind}" data-ref="${e.ref}"${e.packed ? ' checked' : ''}>
-        ${swatches(colours)}
-        <span class="p-text"><span class="w-name">${name}</span><span class="w-sub">${sub}</span></span>
-      </label>
-    </li>`;
+  };
 
   /** A line from the packing template: plain text with a tick, which can be edited or removed. */
   const templateRow = (e: PackEntry) => `
@@ -121,12 +122,17 @@ export function renderPacking(el: HTMLElement): () => void {
       <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(e.text ?? '')}">Remove</button>
     </li>`;
 
-  /** An entry whose clothes item or outfit was deleted. It stays until taken off the list. */
-  const goneRow = (e: PackEntry, what: string) => `
-    <li class="p-row p-gone">
-      <span class="p-text"><span class="w-sub">${what} removed from your wardrobe</span></span>
-      <button type="button" class="secondary" data-act="take-off" data-kind="${e.kind}" data-ref="${e.ref}">Take off</button>
+  /** An entry whose clothes item or outfit was deleted: a dashed tile. It stays until taken off the list. */
+  const goneTile = (e: PackEntry, what: string) => `
+    <li class="p-tile-li p-gone-li">
+      <span class="p-gone">
+        <span class="w-sub">${what} removed from your wardrobe</span>
+        <button type="button" class="secondary" data-act="take-off" data-kind="${e.kind}" data-ref="${e.ref}">Take off</button>
+      </span>
     </li>`;
+
+  /** Whether the Packed section is open. Kept in memory only, so it is closed again next time the screen opens. */
+  let packedOpen = false;
 
   /** Whether the colour quiz was finished, read when the screen opens, so the note says what is sent. */
   let hasSeason = false;
@@ -136,8 +142,16 @@ export function renderPacking(el: HTMLElement): () => void {
     const c = packedCount(t);
     const count = c.total ? `${c.packed} of ${c.total} packed` : 'Nothing on the list yet';
     const pct = c.total ? Math.round((c.packed / c.total) * 100) : 0;
+    const itemEntries = t.entries.filter((e) => e.kind === 'item');
+    const toPack = itemEntries.filter((e) => !e.packed || !items.some((i) => i.id === e.ref));
+    const packed = itemEntries.filter((e) => e.packed && items.some((i) => i.id === e.ref));
+    const looks = t.entries.filter((e) => e.kind === 'outfit');
+    const lines = t.entries.filter((e) => e.kind === 'template');
     const list = t.entries.length
-      ? `<ul class="p-list" aria-label="Packing list">${t.entries.map(rowHtml).join('')}</ul>`
+      ? `${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
+        ${looks.length ? `<h3 class="p-group">Planned looks</h3><ul class="p-looks" aria-label="Planned looks">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
+        ${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
+        ${lines.length ? `<h3 class="p-group">Your template</h3><ul class="p-list" aria-label="Template lines">${lines.map(templateRow).join('')}</ul>` : ''}`
       : '<p class="help">Tap Add items and outfits, or Make me a template, to build the list.</p>';
     return `
       <div class="p-summary">
@@ -345,6 +359,21 @@ export function renderPacking(el: HTMLElement): () => void {
         trips = removeEntry(trips, t.id, 'template', b.dataset.ref!);
         save();
         draw();
+        break;
+      case 'toggle': {
+        const kind = b.dataset.kind as PackEntry['kind'];
+        const ref = b.dataset.ref!;
+        trips = setPacked(trips, t.id, kind, ref, b.getAttribute('aria-pressed') !== 'true');
+        save();
+        draw();
+        // The tile may have moved between sections; keep focus on it, or on the Packed button if that section is closed.
+        (detail.querySelector<HTMLElement>(`.p-tile[data-ref="${ref}"]`) ?? detail.querySelector<HTMLElement>('[data-act="toggle-packed"]') ?? detail.querySelector<HTMLElement>('.p-tile'))?.focus();
+        break;
+      }
+      case 'toggle-packed':
+        packedOpen = !packedOpen;
+        draw();
+        detail.querySelector<HTMLElement>('[data-act="toggle-packed"]')?.focus();
         break;
       case 'take-off':
         trips = b.dataset.kind === 'outfit' ? removeOutfit(trips, t.id, b.dataset.ref!) : removeEntry(trips, t.id, 'item', b.dataset.ref!);

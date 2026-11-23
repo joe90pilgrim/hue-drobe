@@ -1,6 +1,7 @@
 // V3-15: one drawn silhouette per garment, filled with the item's colour. Pure drawing, no DOM, no store.
 // Mid-fidelity shapes from docs/decisions/2026-11-22-wardrobe-closet-redesign-spec.md. Joe signs off the look.
 import { GARMENTS, NECKLINES, type GarmentId, type Neckline, type SavedItem } from './wardrobe';
+import type { Outfit, OutfitLook } from './outfits';
 
 export type SilhouetteMode = 'hang' | 'flat' | 'shelf';
 
@@ -235,6 +236,23 @@ export function flatLaySvg(pieces: FlatPiece[]): string {
     return `<g data-slot="${pl.slot}" data-shape="${pl.key}" transform="${tf}">${shapeParts(pl.key, it.colour, !!it.sheer, false).join('')}</g>`;
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">${groups.join('')}</svg>`;
+}
+
+/**
+ * The flat-lay of an outfit (V3-17): the silhouettes of its pieces, stacked head to toe. A piece the outfit has but that was deleted
+ * is a dashed outline in its place; a piece the outfit never had is left out. An outfit with nothing in it shows a dashed top and bottom.
+ * Shared by the Wardrobe and Packing screens (V7-03).
+ */
+export function flatLayOf(o: Outfit, look: OutfitLook): string {
+  const piece = (slot: FlatSlot, id: string | undefined, item: SavedItem | undefined): FlatPiece[] =>
+    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
+  const pieces = [
+    ...piece('hat', o.hat, look.hat),
+    ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
+    ...piece('legs', o.legs, look.legs),
+    ...piece('shoes', o.shoes, look.shoes),
+  ];
+  return flatLaySvg(pieces.length ? pieces : [{ slot: 'top' }, { slot: 'bottom' }]);
 }
 
 // Shared by callers and the test, so adding a garment or neckline fails the test until it gets a shape.

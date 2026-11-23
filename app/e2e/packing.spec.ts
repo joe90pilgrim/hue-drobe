@@ -37,22 +37,45 @@ test('makes a trip, adds clothes and an outfit, ticks them off, and keeps the li
 
   // The outfit brings its two garments (the tee is on the list once, not twice); the outfit itself is a planned look.
   await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
-  const rowOf = (ref: string) => page.locator('.p-row').filter({ has: page.locator(`input[data-ref="${ref}"]`) });
-  await expect(page.locator('input[data-kind="item"]')).toHaveCount(2);
-  await expect(page.locator('input[data-kind="outfit"]')).toHaveCount(0);
-  await expect(page.locator('.p-look')).toContainText('Planned look: Navy tee, Light grey trousers');
-  await expect(page.locator('.p-look .p-swatch')).toHaveCount(2);
-  await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCount(1);
-  await expect(rowOf('tee-1').locator('.p-swatch')).toHaveCSS('background-color', 'rgb(31, 42, 90)');
-  await page.locator('input[data-kind="item"][data-ref="tee-1"]').check();
-  await page.locator('input[data-kind="item"][data-ref="trousers-1"]').check();
+  const tile = (ref: string) => page.locator(`.p-tile[data-ref="${ref}"]`);
+  await expect(page.locator('.p-tile')).toHaveCount(2);
+  await expect(page.locator('[data-kind="outfit"].p-tile')).toHaveCount(0);
+  await expect(page.locator('.p-look')).toHaveCount(1);
+  await expect(page.locator('.p-look')).toContainText('Work day');
+  await expect(page.locator('.p-look')).toContainText('0 of 2 pieces packed');
+  await expect(page.locator('.p-look [data-slot]')).toHaveCount(2);
+  expect(await page.locator('.p-look [data-slot]').evaluateAll((els) => els.map((e) => e.getAttribute('data-slot')))).toEqual(['top', 'bottom']);
+  await expect(page.locator('.p-packed-btn')).toHaveCount(0);
+  await expect(tile('tee-1').locator('svg path').first()).toHaveAttribute('fill', '#1f2a5a');
+  await expect(tile('tee-1')).toHaveAttribute('aria-pressed', 'false');
+  await expect(tile('tee-1')).toHaveAccessibleName(/not packed/);
+
+  // Ticking a tile moves it to Packed (closed by default) and the look card counts it.
+  await tile('tee-1').click();
+  await expect(page.locator('.p-count')).toHaveText('1 of 2 packed');
+  await expect(page.locator('.p-tile')).toHaveCount(1);
+  await expect(page.locator('.p-look')).toContainText('1 of 2 pieces packed');
+  await expect(page.locator('.p-packed-btn')).toHaveText('Packed 1');
+  await page.locator('.p-packed-btn').click();
+  await expect(tile('tee-1')).toHaveAttribute('aria-pressed', 'true');
+  await tile('tee-1').click(); // unticking sends it back to To pack
+  await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
+  await expect(page.locator('.p-packed-btn')).toHaveCount(0);
+  await tile('tee-1').click();
+  await tile('trousers-1').click();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
+  await expect(page.getByRole('heading', { name: 'To pack' })).toHaveCount(0);
+  await expect(page.locator('.p-look')).toContainText('2 of 2 pieces packed');
+  const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
+  expect(noOverflow).toBe(true);
 
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
-  await expect(page.locator('input[data-kind="item"][data-ref="tee-1"]')).toBeChecked();
-  await expect(page.locator('input[data-kind="item"][data-ref="trousers-1"]')).toBeChecked();
+  await expect(page.locator('.p-packed-btn')).toHaveText('Packed 2'); // closed again after a reload
+  await expect(page.locator('.p-tile')).toHaveCount(0);
+  await page.locator('.p-packed-btn').click();
+  await expect(page.locator('.p-tile[aria-pressed="true"]')).toHaveCount(2);
 });
 
 test('removing an outfit takes off only the garments it brought in, and old trips are backfilled once', async ({ page }) => {
@@ -69,7 +92,9 @@ test('removing an outfit takes off only the garments it brought in, and old trip
   await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click();
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(page.locator('.p-count')).toHaveText('1 of 1 packed');
-  await expect(page.locator('input[data-ref="tee-1"]')).toBeVisible();
+  await expect(page.locator('.p-packed-btn')).toHaveText('Packed 1'); // the tee was packed, so it sits in the closed Packed section
+  await page.locator('.p-packed-btn').click();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toBeVisible();
   await expect(page.locator('.p-look')).toHaveCount(0);
 });
 
@@ -168,7 +193,7 @@ test('Make me a template adds ticked-off-able lines, sends the palette only afte
   await page.getByRole('button', { name: 'Make me a template' }).click();
   await expect(page.getByText('Linen shirt')).toBeVisible();
   await expect(page.getByText('Passport and visa')).toHaveCount(0);
-  await expect(page.locator('input[data-kind="item"][data-ref="tee-1"]')).toBeVisible();
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toBeVisible();
   expect(Object.keys(bodies[1]).sort()).toEqual(['ends', 'name', 'season', 'starts']);
   const season = bodies[1].season as { name: string; palette: string[] };
   expect(season.name).toMatch(/Spring|Summer|Autumn|Winter/);

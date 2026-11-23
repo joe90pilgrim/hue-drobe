@@ -1,7 +1,7 @@
 # Ticket: Packing list as a tray of tiles, with planned looks (V7-03)
 
 ## Summary
-- **Status:** designed 23 Nov 2026.
+- **Status:** built 23 Nov 2026 (visual sign-off from Joe pending).
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. List rendering, a flat-lay extraction and e2e updates.
 - **Depends on:** V7-02 (same screen file and stylesheet), V3-17 (flat-lay cards, done).
@@ -50,3 +50,7 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - No new dependency. If one seems needed, say why and stop.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
+
+## Note
+Built: item tiles, flat-lay planned-look cards and a collapsed Packed section; `flatLayOf` moved to `silhouettes.ts` and tested. `npm run check` passes (83 passed, 6 skipped).
+Changed from the ticket: `flatLayOf(outfit, look)` takes the outfit as well as the look, because the look alone cannot show a deleted piece. Packed closed by default, as recommended and as the spec says.

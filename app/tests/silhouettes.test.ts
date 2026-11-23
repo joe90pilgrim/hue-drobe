@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, silhouetteKey, silhouetteSvg, itemSilhouette } from '../src/silhouettes';
+import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, flatLayOf, silhouetteKey, silhouetteSvg, itemSilhouette } from '../src/silhouettes';
 
 describe('silhouettes', () => {
   it('draws every garment id with a shape of its own', () => {
@@ -103,5 +103,26 @@ describe('itemSilhouette', () => {
   it('draws a saved item in its own colour, the same as silhouetteSvg', () => {
     const item = { v: 2, id: 'x', garment: 'tee', colour: '#1f2a5a', name: 'Navy tee', savedAt: 1 } as never;
     expect(itemSilhouette(item, 'flat')).toBe(silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat' }));
+  });
+});
+
+describe('flatLayOf', () => {
+  const item = (id: string, garment: string, colour: string) => ({ v: 2, id, garment, colour, name: id, savedAt: 1 }) as never;
+  const outfit = (o: object) => ({ v: 1, id: 'o', name: 'Look', savedAt: 1, ...o }) as never;
+  const slots = (svg: string) => [...svg.matchAll(/data-slot="(\w+)"/g)].map((m) => m[1]);
+
+  it('stacks a top above a bottom', () => {
+    const svg = flatLayOf(outfit({ top: 't', bottom: 'b' }), { top: item('t', 'tee', '#1f2a5a'), bottom: item('b', 'trousers', '#c8c8c8') });
+    expect(slots(svg)).toEqual(['top', 'bottom']);
+    expect(svg).not.toContain('o-gap');
+  });
+  it('draws a dress alone, ignoring a top and bottom', () => {
+    const svg = flatLayOf(outfit({ dress: 'd', top: 't' }), { dress: item('d', 'dress', '#aa3355'), top: item('t', 'tee', '#1f2a5a') });
+    expect(slots(svg)).toEqual(['dress']);
+  });
+  it('keeps a deleted piece as a dashed outline in its place', () => {
+    const svg = flatLayOf(outfit({ top: 't', bottom: 'b' }), { bottom: item('b', 'trousers', '#c8c8c8') });
+    expect(slots(svg)).toEqual(['top', 'bottom']);
+    expect(svg.match(/class="o-gap"/g)).toHaveLength(1);
   });
 });

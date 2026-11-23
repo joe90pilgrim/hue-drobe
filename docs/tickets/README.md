@@ -162,7 +162,7 @@ Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.
 | --- | --- | --- | --- |
 | V7-01 | [App icon: hanger and tee](v7-packing-and-icon/V7-01-app-icon-hanger-tee.md) (designed) | none | Sonnet, medium |
 | V7-02 | [Packing page: trip cards and summary](v7-packing-and-icon/V7-02-packing-page-trip-cards.md) (designed) | V3-15 | Sonnet, medium |
-| V7-03 | [Packing list as a tray of tiles, with planned looks](v7-packing-and-icon/V7-03-packing-tray-and-looks.md) (designed) | V7-02, V3-17 | Sonnet, medium |
+| V7-03 | [Packing list as a tray of tiles, with planned looks](v7-packing-and-icon/V7-03-packing-tray-and-looks.md) (built, awaiting sign-off) | V7-02, V3-17 | Sonnet, medium |
 | V7-04 | [Add items and outfits sheet as tiles](v7-packing-and-icon/V7-04-add-items-sheet.md) (designed) | V7-03 | Sonnet, medium |
 | V7-05 | [Send the wardrobe list to Gemini, with structured suggestions](v7-packing-and-icon/V7-05-gemini-wardrobe-list.md) (designed; needs Joe's data-model decision) | V6-01 | Sonnet, high |
 | V7-06 | ["Suggest a list" sheet and Suggested rows](v7-packing-and-icon/V7-06-suggest-sheet-and-rows.md) (designed) | V7-03, V7-05 | Sonnet, medium |
