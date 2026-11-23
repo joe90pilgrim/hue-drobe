@@ -1,0 +1,27 @@
+{
+  "_note": "V5-02. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. Chosen by Joe on 23 Nov 2026 (cap and beanie, for both). Unisex, plain colour. Worn over the person's hair: the hair faces the beanie covers are hidden (hide_inner), drawn as hair_under_beanie.glb.",
+  "id": "slouchy_beanie",
+  "category": "hats",
+  "pack_file": "beanie",
+  "layer": "outer",
+  "allowed_bodies": "both",
+  "source": {
+    "pack": "hats03",
+    "asset": "elvs_slouchy_beanie1"
+  },
+  "licence": "CC-BY",
+  "credit": "Elvaerwyn, elvs_slouchy_beanie1, MakeHuman community assets (hats03)",
+  "sha256": "46d8c3635b1e3299e9c4194c2f15afbc4a489f83a9bd2fce2748514011047184",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [
+    "hair"
+  ],
+  "approved": false,
+  "colour": "plain"
+}

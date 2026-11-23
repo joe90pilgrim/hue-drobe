@@ -1,0 +1,27 @@
+{
+  "_note": "V5-02. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. Chosen by Joe on 23 Nov 2026 (cap and beanie, for both). Unisex, plain colour. The item's own header says AGPL3; the pack json says CC0, which Joe accepted in V5-00 (d). Worn over the person's hair: the hair faces the cap covers are hidden (hide_inner), drawn as hair_under_cap.glb.",
+  "id": "newsboy_cap",
+  "category": "hats",
+  "pack_file": "cap",
+  "layer": "outer",
+  "allowed_bodies": "both",
+  "source": {
+    "pack": "hats01",
+    "asset": "jujube_newsboy_cap"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "5e62bf1986288ddf433a7c07fc5d318a7aba7cf1d65a97cd600d7d692e54684f",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [
+    "hair"
+  ],
+  "approved": false,
+  "colour": "plain"
+}

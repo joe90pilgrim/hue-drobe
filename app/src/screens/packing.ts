@@ -59,7 +59,7 @@ export function renderPacking(el: HTMLElement): () => void {
   /** The pieces an outfit is made of, as the saved items that are still in the wardrobe. */
   const piecesOf = (o: Outfit): SavedItem[] => {
     const look = resolveOutfit(o, items);
-    return [look.dress, look.top, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i);
+    return [look.hat, look.dress, look.top, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i);
   };
 
   /** What an outfit is made of, as words: "Navy tee, Brown trousers". */

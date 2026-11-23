@@ -2,16 +2,16 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
-import { SHOE_MESHES, parseLayerCombos, parseUnderFiles, type LayerCombos } from './wardrobe';
+import { HAT_MESHES, SHOE_MESHES, parseLayerCombos, parseUnderFiles, type LayerCombos } from './wardrobe';
 
 /** V3-05: the sweatshirt and shirts as worn over the tee. A pack has only the ones that passed on that body (the manifest lists them). */
 const OVER_TEE = ['sweatshirt_over_tee', 'shirt_short_over_tee', 'shirt_mid_over_tee', 'shirt_long_over_tee'];
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb', 'hair.glb', ...OVER_TEE.map((n) => n + '.glb'), ...SHOE_MESHES.map((n) => n + '.glb')];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb', 'hair.glb', ...OVER_TEE.map((n) => n + '.glb'), ...SHOE_MESHES.map((n) => n + '.glb'), ...HAT_MESHES.map((n) => n + '.glb')];
 /** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error.
  * V3-02: so do `dress` and `body_dress` (the body with the parts under the dress removed, drawn in place of `body` while the dress is worn). */
 // The shirts (V3-03) are optional too, so a pack built before them still opens: the Dress screen offers a shirt only when its mesh loaded.
-const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', 'hair', ...OVER_TEE, ...SHOE_MESHES]);
+const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', 'hair', ...OVER_TEE, ...SHOE_MESHES, ...HAT_MESHES]);
 // V5-01: the shoes, and the body with the feet hidden under each (and, for the dress, under both), are optional too: a person's pack has only the shoes built for them.
 /** V5-04: hair is drawn on every avatar that has it, in this dark brown until the person picks another (Joe, 23 Nov 2026: dark brown). */
 export const DEFAULT_HAIR_COLOUR = '#3b2a1f';
@@ -100,7 +100,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   stage.append(hud);
 
   const garments = new Map<string, THREE.Object3D>();
-  const wanted = new Map<string, boolean>();
+  const wanted = new Map<string, boolean>([['hair', true]]); // the hair is always drawn (V5-04); a hat swaps it for its `hair_under_<hat>` file (V5-02)
   const colours = new Map<string, string>();
   const sheers = new Map<string, boolean>();
   /** V3.1-02: the manifest's `inner_layers_drawn`: outer pack mesh -> inner mesh -> the file of the inner garment with the faces the outer covers removed. */
@@ -162,7 +162,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       if (disposed) return;
       gltf.scene.visible = false;
       garments.set(name, gltf.scene);
-      const colour = colours.get(groupOf(name));
+      const colour = colours.get(groupOf(name)) ?? (groupOf(name) === 'hair' ? DEFAULT_HAIR_COLOUR : undefined);
       if (colour) paint(gltf.scene, colour);
       scene.add(gltf.scene);
       syncUnder();

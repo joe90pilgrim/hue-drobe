@@ -146,7 +146,11 @@ class LoadTemplates(unittest.TestCase):
         self.assertTrue(ft.mhclo_path(dress, "X").replace("\\", "/").endswith("X/dress01/clothes/toigo_shift_dress/toigo_shift_dress.mhclo"))
         self.assertIsNone(ft.settle_settings(dress))  # the approved dress is fitted exactly as before
         self.assertFalse(ft.hides_inner(dress))
-        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female", "trainers", "monk_straps", "oxfords_female", "sandals", "ankle_boots", "culturalibre_hair_01", "culturalibre_hair_02"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03; the shoes with V5-01; the hair with V5-04
+        for hat in ("newsboy_cap", "slouchy_beanie"):  # V5-02: each hat is worn over the hair and hides the hair it covers, for both bodies
+            m = next(x for x in metas if x["id"] == hat)
+            self.assertEqual((m["category"], m["layer"], m["inner_layers"], m["allowed_bodies"], m["colour"]), ("hats", "outer", ["hair"], "both", "plain"))
+            self.assertTrue(ft.hides_inner(m))
+        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female", "trainers", "monk_straps", "oxfords_female", "sandals", "ankle_boots", "culturalibre_hair_01", "culturalibre_hair_02", "newsboy_cap", "slouchy_beanie"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03; the shoes with V5-01; the hair with V5-04; the hats with V5-02
 
 
 class Settle(unittest.TestCase):

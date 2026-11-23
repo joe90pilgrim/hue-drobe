@@ -26,6 +26,9 @@ export const GARMENTS = {
   monk_straps: { label: 'monk straps', slot: 'Shoes', option: 'Monk straps' },
   sandals: { label: 'sandals', slot: 'Shoes', option: 'Sandals' },
   ankle_boots: { label: 'ankle boots', slot: 'Shoes', option: 'Ankle boots' },
+  // V5-02 (Joe, 23 Nov 2026): hats, a slot of their own, for both people. Plain colour, worn over the person's hair (the manifest's `garments.hats`).
+  cap: { label: 'cap', slot: 'Hat', option: 'Cap' },
+  beanie: { label: 'beanie', slot: 'Hat', option: 'Beanie' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 
@@ -37,6 +40,11 @@ export const isShoe = (garment: string): boolean => garment in GARMENTS && GARME
 export const bodyWithShoe = (shoe: string, dress = false) => (dress ? `body_dress_${shoe}` : `body_${shoe}`);
 /** Every shoe pack mesh the viewer may load: each shoe, the body worn with it, and the body worn with it and the dress. */
 export const SHOE_MESHES: readonly string[] = (['trainers', 'oxfords', 'monk_straps', 'sandals', 'ankle_boots'] as const).flatMap((s) => [s, bodyWithShoe(s), bodyWithShoe(s, true)]);
+
+/** V5-02: the slot the hats go in, and the pack mesh of each hat. While one is worn, the hair is drawn as `hair_under_<hat>` (the faces it covers removed). */
+export const HAT_SLOT = 'Hat';
+export const isHat = (garment: string): boolean => garment in GARMENTS && GARMENTS[garment as GarmentId].slot === HAT_SLOT;
+export const HAT_MESHES: readonly string[] = ['cap', 'beanie'];
 
 /**
  * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between
