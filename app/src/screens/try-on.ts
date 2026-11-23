@@ -130,11 +130,15 @@ export function renderTryOn(el: HTMLElement): () => void {
     <div class="try-on">
       <div class="stage" id="stage">
         <p class="stage-status" role="status"></p>
+        <button type="button" class="wear-row hair-pill" data-box="${HAIR_SLOT}" data-row="${HAIR_SLOT}" aria-haspopup="dialog" hidden>
+          <span class="wear-swatch" data-row-swatch="${HAIR_SLOT}"></span>
+          <span class="wear-text"><span class="slot-label">${HAIR_SLOT}</span><span class="wear-name" data-slot="${HAIR_SLOT}"></span></span>
+        </button>
         <span class="stage-hint" hidden>${matchMedia('(pointer: coarse)').matches ? 'Drag to turn · pinch to zoom' : 'Drag to turn · scroll to zoom'}</span>
       </div>
       <section class="panel" aria-labelledby="wearing-title">
         <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
-        ${SLOTS.map(
+        ${SLOTS.filter((s) => s.name !== HAIR_SLOT).map(
           (s) => `<div class="slot" data-box="${s.name}">
             <button type="button" class="wear-row" data-row="${s.name}" aria-haspopup="dialog">
               <span class="wear-swatch" data-row-swatch="${s.name}"></span>
@@ -392,15 +396,19 @@ export function renderTryOn(el: HTMLElement): () => void {
   // --- The panel for one slot: a bottom sheet under the stage on a phone, in place of the row on a laptop. ---
   const place = () => {
     const s = editing;
-    for (const slot of SLOTS) rowOf(slot).hidden = false;
+    for (const slot of SLOTS) if (slot.name !== HAIR_SLOT) rowOf(slot).hidden = false; // the hair pill is shown or hidden by renderRows, by whether the pack has hair
     if (!s) {
       tryOn.classList.remove('sheet-open');
       return;
     }
     if (laptop.matches) {
       tryOn.classList.remove('sheet-open');
-      el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
-      rowOf(s).hidden = true;
+      if (s.name === HAIR_SLOT) {
+        outfitBtn.before(editor); // the hair control is a pill on the stage, so its panel goes at the foot of the list
+      } else {
+        el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
+        rowOf(s).hidden = true;
+      }
     } else {
       tryOn.classList.add('sheet-open');
       stage.after(editor);
@@ -467,7 +475,11 @@ export function renderTryOn(el: HTMLElement): () => void {
   const onLayout = () => place();
   laptop.addEventListener('change', onLayout);
 
-  for (const s of SLOTS) rowOf(s).addEventListener('click', () => openEditor(s, rowOf(s)));
+  for (const s of SLOTS)
+    rowOf(s).addEventListener('click', () => {
+      if (s.name === HAIR_SLOT && editing && editing !== s) return requestClose(); // the pill is on the stage, so while another panel is open a tap on it just closes that panel
+      openEditor(s, rowOf(s));
+    });
   editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
   backBtn.addEventListener('click', () => showChooser(false));
   chooseBtn.addEventListener('click', () => showChooser(true));
@@ -480,6 +492,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let down: { x: number; y: number } | null = null;
   stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   stage.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.hair-pill')) return; // the hair pill is inside the stage: it opens its own panel, it does not close one
     if (!tryOn.classList.contains('sheet-open')) return;
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
     requestClose();
