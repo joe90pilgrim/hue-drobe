@@ -113,6 +113,16 @@ class LoadTemplates(unittest.TestCase):
             with self.assertRaisesRegex(ft.MetaError, "both write shirt.glb"):
                 ft.find_templates(root)
 
+    def test_a_male_and_a_female_template_may_share_a_file_but_not_with_both(self):
+        """V5-01: Joe's and B's Oxfords are two templates that write oxfords.glb, never for the same body."""
+        with tempfile.TemporaryDirectory() as root:
+            self.write(root, "shoes", "oxfords_male", {**GOOD, "id": "oxfords_male", "category": "shoes", "pack_file": "oxfords", "allowed_bodies": "male"})
+            self.write(root, "shoes", "oxfords_female", {**GOOD, "id": "oxfords_female", "category": "shoes", "pack_file": "oxfords", "allowed_bodies": "female"})
+            self.assertEqual(len(ft.find_templates(root)), 2)
+            self.write(root, "shoes", "oxfords_any", {**GOOD, "id": "oxfords_any", "category": "shoes", "pack_file": "oxfords", "allowed_bodies": "both"})
+            with self.assertRaisesRegex(ft.MetaError, "both write oxfords.glb"):
+                ft.find_templates(root)
+
     def test_outside_source_needs_template_mhclo(self):
         with tempfile.TemporaryDirectory() as root:
             d = self.write(root, "tops", "plain_shirt", {**GOOD, "source": {"url": "https://example.org/shirt"}})
@@ -136,7 +146,7 @@ class LoadTemplates(unittest.TestCase):
         self.assertTrue(ft.mhclo_path(dress, "X").replace("\\", "/").endswith("X/dress01/clothes/toigo_shift_dress/toigo_shift_dress.mhclo"))
         self.assertIsNone(ft.settle_settings(dress))  # the approved dress is fitted exactly as before
         self.assertFalse(ft.hides_inner(dress))
-        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03
+        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female", "trainers", "oxfords_male", "oxfords_female", "sandals", "ankle_boots"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03; the shoes with V5-01
 
 
 class Settle(unittest.TestCase):

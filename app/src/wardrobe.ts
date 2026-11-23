@@ -18,8 +18,23 @@ export const GARMENTS = {
   skirt: { label: 'skirt', slot: 'Bottom', option: 'Skirt' },
   // V3-02: the pack's shift dress, a slot of its own that replaces the top and the bottom (see `keepLayers`). Women's packs only.
   dress: { label: 'dress', slot: 'Dress', option: 'Shift dress' },
+  // V5-01 (Joe, 23 Nov 2026): shoes, a slot of their own. A person's pack has only the ones built for them (the manifest's `garments.shoes`):
+  // Joe trainers, Oxfords and sandals; B those and ankle boots. The saved item's colour is a tint over the shoe's texture, white meaning as made.
+  trainers: { label: 'trainers', slot: 'Shoes', option: 'Trainers' },
+  oxfords: { label: 'Oxfords', slot: 'Shoes', option: 'Oxfords' },
+  sandals: { label: 'sandals', slot: 'Shoes', option: 'Sandals' },
+  ankle_boots: { label: 'ankle boots', slot: 'Shoes', option: 'Ankle boots' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
+
+/** V5-01: the slot the shoes go in, and the tint that leaves a shoe as it was made (the texture times white). */
+export const SHOES_SLOT = 'Shoes';
+export const SHOES_AS_MADE = '#ffffff';
+export const isShoe = (garment: string): boolean => garment in GARMENTS && GARMENTS[garment as GarmentId].slot === SHOES_SLOT;
+/** The pack mesh a shoe is, with the body drawn while it is worn (the body with the feet hidden) and, for a dress, the body hidden under both. */
+export const bodyWithShoe = (shoe: string, dress = false) => (dress ? `body_dress_${shoe}` : `body_${shoe}`);
+/** Every shoe pack mesh the viewer may load: each shoe, the body worn with it, and the body worn with it and the dress. */
+export const SHOE_MESHES: readonly string[] = (['trainers', 'oxfords', 'sandals', 'ankle_boots'] as const).flatMap((s) => [s, bodyWithShoe(s), bodyWithShoe(s, true)]);
 
 /**
  * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between
@@ -243,6 +258,7 @@ export function colourName(hex: string): string {
 
 /** The automatic name, such as 'Navy tee', 'Navy V-neck tee' or 'Black sheer tights'. */
 export function autoName(garment: GarmentId, hex: string, neckline?: Neckline, sheer?: boolean): string {
+  if (isShoe(garment) && hex.toLowerCase() === SHOES_AS_MADE) return GARMENTS[garment].label.replace(/^./, (c) => c.toUpperCase()); // as made: "Trainers", not "White trainers"
   const word = hasNecklines(garment) && neckline ? NECKLINES[neckline].name : hasSheer(garment) && sheer ? 'sheer' : '';
   return `${colourName(hex)} ${word ? word + ' ' : ''}${GARMENTS[garment].label}`;
 }
