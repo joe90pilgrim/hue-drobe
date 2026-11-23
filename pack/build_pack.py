@@ -164,7 +164,7 @@ def render_templates(name, out, metas):
         top, bottom = r["top_z_m"], r["bottom_z_m"]
         prefix = folder / meta["pack_file"]
         cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), ",".join(shown), "", "",
-               f"{(top + bottom) / 2:.3f}", f"{top - bottom + 0.15:.3f}"]
+               f"{(top + bottom) / 2:.3f}", f"{0.62 if meta['category'] == 'shoes' else top - bottom + 0.15:.3f}"]  # shoes: both feet in the frame (V5-01)
         with open(out / f"{name}_render_{meta['pack_file']}.log", "w") as log:
             subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
         done.append(f"{prefix}_front.png, _q34.png, _back.png")

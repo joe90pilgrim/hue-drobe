@@ -47,7 +47,7 @@ test("Joe is offered trainers, Oxfords and sandals, never ankle boots, and a tin
   await expect(shoes(page)).toHaveText('Oxfords');
 });
 
-test("B is offered ankle boots as well, and wears them with the dress without the avatar failing to draw", async ({ page }) => {
+test("B is offered ankle boots as well as the other three, and wears them", async ({ page }) => {
   test.skip(!(await hasShoes(page, 'b')), "needs B's private pack with shoes (python pack/build_pack.py --private)");
   await signInAs(page, 'b');
   await page.goto('/#/try-on');
