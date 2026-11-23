@@ -59,6 +59,8 @@ PACK_FILES.update({"dress": "{n}_dress.glb", "body_dress": "{n}_body_dress.glb"}
 SHOES = ("trainers", "oxfords", "monk_straps", "sandals", "ankle_boots")
 SHOE_FILES = tuple(k for sh in SHOES for k in (sh, "body_" + sh, "body_dress_" + sh))  # the last: the body with the feet and the dress hidden (B only)
 PACK_FILES.update({k: "{n}_" + k + ".glb" for k in SHOE_FILES})
+# V5-04: the person's hair, in plain colour (the app sets the colour). Each person's hair template has `pack_file` "hair"; a pack without one has no hair.
+PACK_FILES["hair"] = "{n}_hair.glb"
 
 
 def arg(flag, default=None):
@@ -252,6 +254,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
             continue
         shoe_of = next((sh for sh in SHOES if key == sh or key.endswith("_" + sh)), None)
         if key in SHOE_FILES and (body_only or built_shoes.get(shoe_of, {}).get("status") != "ok" or (key.startswith("body_") and not built_shoes[shoe_of].get("delete_group"))):  # V5-01: only a shoe this build made for this body; a file left in the build folder by an earlier build is not packed
+            continue
+        if key == "hair" and (body_only or built_shoes.get("hair", {}).get("status") != "ok"):  # V5-04: only hair this build made for this body
             continue
         src = build_dir / pattern.format(n=name)
         if (key in WOMENS_ONLY or key in SHOE_FILES) and not src.exists():  # a man's pack has no skirt or ankle boots; for a woman the checks have already failed without them

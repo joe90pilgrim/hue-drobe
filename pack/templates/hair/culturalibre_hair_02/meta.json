@@ -1,8 +1,8 @@
 {
-  "_note": "V5-04. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. Joe's short hair: a short, neat cut, no fringe. Chosen from the pack thumbnails and picked by Joe from renders on 23 Nov 2026. The item's own header says AGPL3; the pack json says CC0, which Joe accepted in V5-00 (d) (see assets/packs/CREDITS.md). Not approved: the hair check has no limits yet.",
+  "_note": "V5-04. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. Joe's short hair: a short, neat cut, no fringe. Chosen from the pack thumbnails and picked by Joe from renders on 23 Nov 2026. The item's own header says AGPL3; the pack json says CC0, which Joe accepted in V5-00 (d) (see assets/packs/CREDITS.md). Plain colour, not the pack texture (Joe, 23 Nov 2026: a textured hair file would take B's pack over 15 MB; the app sets the colour). Not approved: the hair check has no limits yet.",
   "id": "culturalibre_hair_02",
   "category": "hair",
-  "pack_file": "culturalibre_hair_02",
+  "pack_file": "hair",
   "layer": "base",
   "allowed_bodies": "male",
   "source": {
@@ -21,5 +21,5 @@
   "replaces": [],
   "inner_layers": [],
   "approved": false,
-  "colour": "texture"
+  "colour": "plain"
 }
