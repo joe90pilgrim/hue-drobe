@@ -61,6 +61,10 @@ SHOE_FILES = tuple(k for sh in SHOES for k in (sh, "body_" + sh, "body_dress_" +
 PACK_FILES.update({k: "{n}_" + k + ".glb" for k in SHOE_FILES})
 # V5-04: the person's hair, in plain colour (the app sets the colour). Each person's hair template has `pack_file` "hair"; a pack without one has no hair.
 PACK_FILES["hair"] = "{n}_hair.glb"
+# V5-02 (Joe, 23 Nov 2026: cap and beanie, for both): the hats, in plain colour. Each is worn over the hair, so the build also writes hair_under_<hat>.glb
+# (the hair with the faces the hat covers removed), which the pack lists under inner_layers_drawn. A pack without a hat built for it has none.
+HATS = ("cap", "beanie")
+PACK_FILES.update({h: "{n}_" + h + ".glb" for h in HATS})
 
 
 def arg(flag, default=None):
@@ -166,7 +170,7 @@ def render_templates(name, out, metas):
         top, bottom = r["top_z_m"], r["bottom_z_m"]
         prefix = folder / meta["pack_file"]
         cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), ",".join(shown), "", "",
-               f"{(top + bottom) / 2:.3f}", f"{0.62 if meta['category'] == 'shoes' else top - bottom + 0.15:.3f}"]  # shoes: both feet in the frame (V5-01)
+               f"{(top + bottom) / 2:.3f}", f"{0.62 if meta['category'] == 'shoes' else 0.38 if meta['category'] == 'hats' else top - bottom + 0.15:.3f}"]  # shoes: both feet in the frame (V5-01); hats: the head and the hair edge (V5-02)
         with open(out / f"{name}_render_{meta['pack_file']}.log", "w") as log:
             subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
         done.append(f"{prefix}_front.png, _q34.png, _back.png")
@@ -255,6 +259,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         shoe_of = next((sh for sh in SHOES if key == sh or key.endswith("_" + sh)), None)
         if key in SHOE_FILES and (body_only or built_shoes.get(shoe_of, {}).get("status") != "ok" or (key.startswith("body_") and not built_shoes[shoe_of].get("delete_group"))):  # V5-01: only a shoe this build made for this body; a file left in the build folder by an earlier build is not packed
             continue
+        if key in HATS and (body_only or built_shoes.get(key, {}).get("status") != "ok"):  # V5-02: only a hat this build made for this body
+            continue
         if key == "hair" and (body_only or built_shoes.get("hair", {}).get("status") != "ok"):  # V5-04: only hair this build made for this body
             continue
         src = build_dir / pattern.format(n=name)
@@ -296,6 +302,7 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
                                    "tucked_tops": {"crew": "tee_tucked.glb", "v": "tee_v_tucked.glb", "scoop": "tee_scoop_tucked.glb"}}}
                         if "skirt.glb" in files else {}),
                      **({"shoes": {sh: {"file": sh + ".glb", **({"body_while_worn": "body_" + sh + ".glb"} if "body_" + sh + ".glb" in files else {}), **({"body_while_worn_with_dress": "body_dress_" + sh + ".glb"} if "body_dress_" + sh + ".glb" in files else {})} for sh in SHOES if sh + ".glb" in files}} if any(sh + ".glb" in files for sh in SHOES) else {}),
+                     **({"hats": {h: {"file": h + ".glb", **({"hair_while_worn": under[h]["hair"]} if under.get(h, {}).get("hair") else {})} for h in HATS if h + ".glb" in files}} if any(h + ".glb" in files for h in HATS) else {}),
                      "inner_layers_drawn": under},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),
