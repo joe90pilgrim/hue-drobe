@@ -194,7 +194,7 @@ test('will not save a trip that ends before it starts', async ({ page }) => {
   await expect(page.getByRole('dialog', { name: 'New trip' })).toBeVisible();
 });
 
-test('Make me a template adds ticked-off-able lines, sends the palette only after the quiz, and keeps clothes on a re-run', async ({ page }) => {
+test('Suggest a list adds ticked-off-able lines, sends the palette only after the quiz, and keeps clothes on a re-run', async ({ page }) => {
   const bodies: Record<string, unknown>[] = [];
   let reply = { items: [{ label: 'Socks', quantity: 3, group: 'Clothes' }, { label: 'Passport', quantity: null, group: 'Documents' }, { label: 'Umbrella', quantity: null, group: null }] };
   await page.route('**/api/packing-template', (route) => {
@@ -205,17 +205,26 @@ test('Make me a template adds ticked-off-able lines, sends the palette only afte
   await seedStore(page, { wardrobe: [tee], trips: [{ ...lisbon, entries: [{ kind: 'item', ref: 'tee-1', packed: false, own: true }] }] });
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
-  await expect(page.getByText(/Sends the trip name and dates to Gemini/)).toBeVisible();
+  await expect(page.locator('#p-tpl-note')).not.toContainText('Sends the trip name'); // the long paragraph is gone from the page
+
+  // The sheet says what is sent and what stays; nothing is sent until Ask Gemini.
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  const dlg = page.getByRole('dialog', { name: 'Suggest a packing list' });
+  await expect(dlg.locator('#p-sug-sent')).toHaveText('The trip name and dates, and a list of your clothes: names, types and colours.');
+  await expect(dlg.locator('#p-sug-stays')).toHaveText('Your photos and measurements. Gemini sees your clothes as names, types and colours, never as pictures.');
+  expect(bodies).toHaveLength(0);
 
   // No quiz yet: the name, the dates and the wardrobe list (id, garment, name, colour; V7-05) leave the phone, and nothing else.
-  await page.getByRole('button', { name: 'Make me a template' }).click();
+  await dlg.getByRole('button', { name: 'Ask Gemini' }).click();
+  await expect(page.getByRole('dialog', { name: /suggestions added/ })).toBeVisible();
+  await page.getByRole('button', { name: 'See the list' }).click();
   await expect(page.locator('input[data-kind="template"]')).toHaveCount(3);
   expect(bodies[0]).toEqual({ name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16', wardrobe: [{ id: 'tee-1', garment: 'tee', name: 'Navy tee', colour: '#1f2a5a' }] });
   await expect(page.locator('.p-count')).toHaveText('0 of 4 packed');
-  await expect(page.getByText('3 × Socks')).toBeVisible();
+  await expect(page.locator('.p-row', { hasText: 'Socks' }).locator('.p-sug-qty')).toHaveText('× 3');
 
   // Tick a line, edit one, remove one; the changes survive a reload.
-  await page.locator('.p-row', { hasText: '3 × Socks' }).locator('input').check();
+  await page.locator('.p-row', { hasText: 'Socks' }).locator('input').check();
   await page.getByRole('button', { name: 'Edit Passport' }).click();
   await page.getByLabel('Text').fill('Passport and visa');
   await page.getByRole('button', { name: 'Save line' }).click();
@@ -225,12 +234,15 @@ test('Make me a template adds ticked-off-able lines, sends the palette only afte
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
   await expect(page.getByText('Passport and visa')).toBeVisible();
   await expect(page.getByText('Umbrella')).toHaveCount(0);
-  await expect(page.locator('.p-row', { hasText: '3 × Socks' }).locator('input')).toBeChecked();
+  await expect(page.locator('.p-row', { hasText: 'Socks' }).locator('input')).toBeChecked();
 
   // With the quiz done, the season and palette are sent. A re-run replaces the template lines and keeps the tee.
   await seedStore(page, { colourQuiz: FINISHED_QUIZ });
   reply = { items: [{ label: 'Linen shirt', quantity: null, group: 'Tops' }] };
-  await page.getByRole('button', { name: 'Make me a template' }).click();
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await expect(page.locator('#p-sug-sent')).toHaveText('The trip name and dates, your colour season and palette, and a list of your clothes: names, types and colours.');
+  await page.getByRole('button', { name: 'Ask Gemini' }).click();
+  await page.getByRole('button', { name: 'See the list' }).click();
   await expect(page.getByText('Linen shirt')).toBeVisible();
   await expect(page.getByText('Passport and visa')).toHaveCount(0);
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toBeVisible();
@@ -246,14 +258,20 @@ test('with no key or a Gemini error the screen says so plainly and the trip is u
   await seedStore(page, { trips: [{ ...lisbon, entries: [{ kind: 'template', ref: 'a', packed: false, text: 'Socks' }] }] });
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
-  await page.getByRole('button', { name: 'Make me a template' }).click();
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await page.getByRole('button', { name: 'Ask Gemini' }).click();
+  await expect(page.locator('#p-sug-error')).toHaveText('Packing templates are not switched on yet.');
   await expect(page.locator('#p-tpl-status')).toHaveText('Packing templates are not switched on yet.');
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByText('Socks')).toBeVisible();
 
   await page.unroute('**/api/packing-template');
   await page.route('**/api/packing-template', (route) => route.fulfill({ status: 502, body: 'Try again later' }));
-  await page.getByRole('button', { name: 'Make me a template' }).click();
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await page.getByRole('button', { name: 'Ask Gemini' }).click();
+  await expect(page.locator('#p-sug-error')).toHaveText('Could not make a template. Try again in a moment.');
   await expect(page.locator('#p-tpl-status')).toHaveText('Could not make a template. Try again in a moment.');
+  await page.getByRole('button', { name: 'Cancel' }).click();
   await expect(page.getByText('Socks')).toBeVisible();
   await expect(page.locator('input[data-kind="template"]')).toHaveCount(1);
 });
@@ -299,4 +317,57 @@ test('snag list: the last trip is reopened, New trip sits above the trips, the p
   await expect(page.getByRole('dialog', { name: /Add to Lisbon weekend/ })).toBeVisible();
   await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test("Suggest sheet: cancelling sends nothing, and suggested rows show ghost silhouettes in Gemini's colours", async ({ page }) => {
+  let requests = 0;
+  await page.route('**/api/packing-template', (route) => {
+    requests++;
+    return route.fulfill({
+      json: {
+        items: [
+          { label: 'Rose jumper', quantity: null, group: 'Layers', colour: '#c9a0a0', type: 'sweatshirt', matches: ['tee-1', 'nope'] },
+          { label: 'Thermal tops', quantity: 2, group: 'Tops', colour: '#223344', type: 'tee' },
+          { label: 'Umbrella', quantity: null, group: null },
+        ],
+      },
+    });
+  });
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  await seedStore(page, { wardrobe: [tee], trips: [lisbon] });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+
+  // Cancel and the X send nothing.
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  expect(requests).toBe(0);
+
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  const overflow = await page.locator('#p-sheet').evaluate((d) => d.scrollWidth - d.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.getByRole('button', { name: 'Ask Gemini' }).click();
+  await expect(page.getByRole('dialog', { name: '3 suggestions added' })).toBeVisible();
+  await expect(page.getByText('Gemini matched 1 of them to clothes you own. Want to swap those in?')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review matches' })).toBeDisabled(); // V7-08
+  await page.getByRole('button', { name: 'See the list' }).click();
+  expect(requests).toBe(1);
+
+  await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 1 suggestion to clothes you own');
+  await expect(page.locator('.p-sug-banner button')).toBeDisabled();
+  const rose = page.locator('.p-sug', { hasText: 'Rose jumper' });
+  await expect(rose.locator('svg[data-mode="ghost"] path[fill="#c9a0a0"][fill-opacity="0.4"]')).toHaveCount(1);
+  await expect(rose.locator('.p-sug-match')).toHaveText('1 in your wardrobe'); // the unknown id is not counted
+  await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('.p-sug-qty')).toHaveText('× 2');
+  await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('svg[data-shape="tee"]')).toHaveCount(1);
+  await expect(page.locator('.p-sug', { hasText: 'Umbrella' }).locator('svg[data-shape="hanger"]')).toHaveCount(1);
+  await expect(rose.getByRole('button', { name: 'Match Rose jumper' })).toBeDisabled();
+  await expect(rose.getByRole('button', { name: 'Edit Rose jumper' })).toBeEnabled();
+  const rowOverflow = await page.locator('.p-detail').evaluate((d) => d.scrollWidth - d.clientWidth);
+  expect(rowOverflow).toBeLessThanOrEqual(0);
 });

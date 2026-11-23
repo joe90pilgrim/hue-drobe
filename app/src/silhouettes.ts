@@ -3,7 +3,7 @@
 import { GARMENTS, NECKLINES, type GarmentId, type Neckline, type SavedItem } from './wardrobe';
 import type { Outfit, OutfitLook } from './outfits';
 
-export type SilhouetteMode = 'hang' | 'flat' | 'shelf';
+export type SilhouetteMode = 'hang' | 'flat' | 'shelf' | 'ghost';
 
 interface Shape {
   hook?: string;
@@ -142,6 +142,18 @@ function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean):
   return parts;
 }
 
+/** V7-06: a suggestion, not a piece you own: a dashed grey outline, filled with the suggested colour at 40% (neutral grey when there is none). */
+function ghostParts(key: string, colour: string): string[] {
+  const sh = SHAPES[key];
+  const fill = HEX.test(colour) ? colour : '#9a9a9a';
+  const dash = 'stroke="#7a7a7a" stroke-width="1.6" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"';
+  const parts = [`<path d="${sh.body}" fill="${fill}" fill-opacity="0.4" ${dash} data-ghost="body"/>`];
+  if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${fill}" fill-opacity="0.4" ${dash}/>`);
+  if (sh.collar) parts.push(`<path d="${sh.collar}" fill="none" ${dash}/>`);
+  if (sh.detail) parts.push(`<path d="${sh.detail}" fill="none" stroke="#7a7a7a" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`);
+  return parts;
+}
+
 /** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
 /** The silhouette of a saved item, in its own colour. Shared by the Wardrobe and Packing screens. */
 export const itemSilhouette = (i: SavedItem, mode: SilhouetteMode): string =>
@@ -149,6 +161,7 @@ export const itemSilhouette = (i: SavedItem, mode: SilhouetteMode): string =>
 
 export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
   const key = silhouetteKey(garment, neckline);
+  if (mode === 'ghost') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SHAPES[key].box.join(' ')}" aria-hidden="true" focusable="false" data-shape="${key}" data-mode="ghost">${ghostParts(key, colour).join('')}</svg>`;
   const hang = mode === 'hang';
   const viewBox = hang ? '0 0 100 100' : SHAPES[key].box.join(' ');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${shapeParts(key, colour, sheer, hang).join('')}</svg>`;

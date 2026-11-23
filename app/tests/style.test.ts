@@ -6,8 +6,9 @@ const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8').r
 const hexes = [...css.matchAll(/#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b/g)].map((m) => m[1].toLowerCase());
 const full = (h: string) => (h.length === 3 ? [...h].map((c) => c + c).join('') : h);
 
-// The only allowed colour: --danger, used for Delete text.
-const ALLOWED_COLOURS = ['b42318'];
+// The allowed colours: --danger, used for Delete text, and (V7-06, from the V7 spec) the green of the "Gemini matched" banner and the
+// "N in your wardrobe" text. They sit on chrome only, never on or near a garment.
+const ALLOWED_COLOURS = ['b42318', '1f5a33', 'e8f1ea', 'b9d2bf'];
 
 describe('style.css colours', () => {
   it('has hex colours to check', () => expect(hexes.length).toBeGreaterThan(10));

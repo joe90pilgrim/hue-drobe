@@ -1,6 +1,7 @@
 import { GARMENTS, itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
 import { flatLayOf, itemSilhouette } from '../silhouettes';
+import { matchBanner, matchedLines, suggestedSection, suggestSheet, type SuggestStep } from './packing-suggest';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
   addOutfit,
@@ -111,17 +112,6 @@ export function renderPacking(el: HTMLElement): () => void {
     </li>`;
   };
 
-  /** A line from the packing template: plain text with a tick, which can be edited or removed. */
-  const templateRow = (e: PackEntry) => `
-    <li class="p-row${e.packed ? ' packed' : ''}">
-      <label class="p-check">
-        <input type="checkbox" data-kind="template" data-ref="${e.ref}"${e.packed ? ' checked' : ''}>
-        <span class="p-text"><span class="w-name">${esc(e.text ?? '')}</span><span class="w-sub">${e.group ? esc(e.group) : 'From your template'}</span></span>
-      </label>
-      <button type="button" class="secondary" data-act="edit-line" data-ref="${e.ref}" aria-label="Edit ${esc(e.text ?? '')}">Edit</button>
-      <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(e.text ?? '')}">Remove</button>
-    </li>`;
-
   /** An entry whose clothes item or outfit was deleted: a dashed tile. It stays until taken off the list. */
   const goneTile = (e: PackEntry, what: string) => `
     <li class="p-tile-li p-gone-li">
@@ -138,7 +128,6 @@ export function renderPacking(el: HTMLElement): () => void {
   let hasSeason = false;
 
   const detailHtml = (t: Trip) => {
-    const seasonNote = hasSeason ? ', and your colour season and palette' : '';
     const c = packedCount(t);
     const count = c.total ? `${c.packed} of ${c.total} packed` : 'Nothing on the list yet';
     const pct = c.total ? Math.round((c.packed / c.total) * 100) : 0;
@@ -151,8 +140,8 @@ export function renderPacking(el: HTMLElement): () => void {
       ? `${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
         ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${looks.length ? `<h3 class="p-group">Planned looks</h3><ul class="p-looks" aria-label="Planned looks">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
-        ${lines.length ? `<h3 class="p-group">Your template</h3><ul class="p-list" aria-label="Template lines">${lines.map(templateRow).join('')}</ul>` : ''}`
-      : '<p class="help">Tap Add items and outfits, or Make me a template, to build the list.</p>';
+        ${lines.length ? `${matchBanner(lines, items)}${suggestedSection(lines, items)}` : ''}`
+      : '<p class="help">Tap Add items and outfits, or Suggest a list, to build the list.</p>';
     return `
       <div class="p-summary">
         <div class="p-head">
@@ -166,10 +155,10 @@ export function renderPacking(el: HTMLElement): () => void {
         </div>
         <div class="p-actions">
           <button type="button" class="primary" data-act="add">Add items and outfits</button>
-          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Making a template…' : 'Make me a template'}</button>
+          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Asking Gemini…' : 'Suggest a list'}</button>
         </div>
       </div>
-      <p class="help" id="p-tpl-note">Sends the trip name and dates${seasonNote} to Gemini to suggest a list. It replaces the template lines on this trip and never touches clothes or outfits you added.</p>
+      <p class="help" id="p-tpl-note">Suggestions come from Gemini. Tap Suggest a list to see what is sent.</p>
       <p class="help" id="p-tpl-status" role="status">${templateError?.trip === t.id ? esc(templateError.message) : ''}</p>
       ${list}`;
   };
@@ -337,27 +326,46 @@ export function renderPacking(el: HTMLElement): () => void {
     sheet.querySelector<HTMLInputElement>('#p-l-text')?.focus();
   };
 
-  /** Asks the server for a template and swaps it in for the trip's template lines. A failure leaves the trip as it was. */
+  /** Which step the Suggest sheet is on. `suggestRun` changes whenever the sheet is cancelled or closed, so a late answer is dropped. */
+  let suggestRun = 0;
+  const showSuggest = (t: Trip, step: SuggestStep) => {
+    sheet.innerHTML = suggestSheet(t, hasSeason, items.length > 0, step);
+    if (!sheet.open) sheet.showModal();
+    sheet.querySelector<HTMLElement>('[data-act="suggest-ask"], [data-act="suggest-done"], [data-act="suggest-cancel"]')?.focus();
+  };
+
+  /** Asks the server for suggestions and swaps them in for the trip's suggested lines. A failure leaves the trip as it was. */
   const makeTemplate = async (t: Trip) => {
     if (making) return;
+    const run = ++suggestRun;
     making = t.id;
     templateError = null;
     draw();
+    showSuggest(t, { step: 'loading' });
     try {
       const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason(), await loadItems()));
       if (gone) return;
       trips = replaceTemplate(trips, t.id, lines);
       save();
+      if (run === suggestRun && sheet.open) {
+        const added = trips.find((x) => x.id === t.id)?.entries.filter((e) => e.kind === 'template') ?? [];
+        showSuggest(t, { step: 'done', added: added.length, matched: matchedLines(added, items).length });
+      }
     } catch (e) {
       if (gone) return;
       templateError = { trip: t.id, message: e instanceof TemplateError ? e.message : 'Could not make a template. Try again in a moment.' };
+      if (run === suggestRun && sheet.open) showSuggest(t, { step: 'error', message: templateError.message });
     } finally {
       making = null;
-      if (!gone) {
-        draw();
-        detail.querySelector<HTMLButtonElement>('[data-act="make-template"]')?.focus();
-      }
+      if (!gone) draw();
     }
+  };
+
+  /** Opens the Suggest sheet at its first step. Nothing is sent until Ask Gemini is pressed. */
+  const openSuggest = async (t: Trip) => {
+    // Read the quiz now, so the sheet describes exactly what the request will hold.
+    hasSeason = !!(await loadSeason());
+    if (!gone) showSuggest(t, { step: 'confirm' });
   };
 
   const askDelete = (t: Trip) => {
@@ -394,7 +402,7 @@ export function renderPacking(el: HTMLElement): () => void {
         openForm(t);
         break;
       case 'make-template':
-        void makeTemplate(t);
+        void openSuggest(t);
         break;
       case 'edit-line':
         openLineForm(t, b.dataset.ref!);
@@ -475,13 +483,32 @@ export function renderPacking(el: HTMLElement): () => void {
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
-    if (act === 'done' || act === 'close') sheet.close();
+    if (act === 'suggest-ask') {
+      const open = selectedTrip();
+      if (open) void makeTemplate(open);
+      return;
+    }
+    if (act === 'suggest-cancel' || act === 'suggest-done') {
+      suggestRun++;
+      sheet.close();
+      detail.querySelector<HTMLButtonElement>('[data-act="make-template"]')?.focus();
+      return;
+    }
+    if (act === 'done' || act === 'close') {
+      suggestRun++;
+      sheet.close();
+    }
     if (act === 'cancel-form') sheet.close();
     if (act === 'delete-trip') {
       const open = selectedTrip();
       sheet.close();
       if (open) askDelete(open);
     }
+  });
+
+  // Any way of closing the sheet (X, scrim, Escape) drops an answer still on its way, so it cannot land in a different sheet.
+  sheet.addEventListener('close', () => {
+    suggestRun++;
   });
 
   sheet.addEventListener('input', (e) => {

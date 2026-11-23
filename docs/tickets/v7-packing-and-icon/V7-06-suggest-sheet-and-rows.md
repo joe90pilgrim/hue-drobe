@@ -1,7 +1,8 @@
 # Ticket: "Suggest a list" sheet and Suggested rows (V7-06)
 
 ## Summary
-- **Status:** designed 23 Nov 2026.
+- **Status:** built 23 Nov 2026 on `feat/V7-02-packing-page-trip-cards`; awaiting Joe's visual sign-off.
+- **Note:** "Suggest a list" sheet (confirm, loading, error, done), dashed Suggested rows with ghost silhouettes, quantity chip and match banner built; Match and Review stay disabled until V7-07/V7-08. `npm run check` passes; the sheet reads the quiz when it opens so its text matches the request; style test allows the spec's three banner greens; Cancel while loading drops the answer but cannot unsend the request.
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. New sheet, a silhouette mode and copy changes.
 - **Depends on:** V7-03 (tiles and sections), V7-05 (new fields and the wardrobe request).

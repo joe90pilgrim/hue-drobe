@@ -29,6 +29,16 @@ describe('silhouettes', () => {
       }
     }
   });
+  it("ghost mode: a dashed #7a7a7a outline, the colour at 40%, neutral grey when there is no colour", () => {
+    const svg = silhouetteSvg({ garment: 'tee', colour: '#c0392b', mode: 'ghost' });
+    expect(svg).toContain('stroke="#7a7a7a"');
+    expect(svg).toContain('stroke-dasharray');
+    expect(svg).toContain('fill="#c0392b" fill-opacity="0.4"');
+    expect(svg).toContain(`viewBox="${SHAPES.tee.box.join(' ')}"`);
+    expect(svg).not.toContain('#8a8a8a'); // no hook
+    expect(svg).toContain('aria-hidden="true"');
+    expect(silhouetteSvg({ garment: 'boot', colour: '', mode: 'ghost' })).toContain('fill="#9a9a9a" fill-opacity="0.4"');
+  });
   it('hang has a hook and a square box; flat crops to the content box without a hook', () => {
     const hang = silhouetteSvg({ garment: 'tee', colour: '#808080', mode: 'hang' });
     const flat = silhouetteSvg({ garment: 'tee', colour: '#808080', mode: 'flat' });
