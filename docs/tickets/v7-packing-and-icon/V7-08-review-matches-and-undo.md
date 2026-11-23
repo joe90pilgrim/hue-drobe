@@ -1,7 +1,7 @@
 # Ticket: Review Gemini's matches in bulk, with Undo (V7-08)
 
 ## Summary
-- **Status:** designed 23 Nov 2026.
+- **Status:** built 23 Nov 2026; awaiting Joe's visual sign-off.
 - **Ceiling:** 90 minutes. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. One sheet and one snapshot-based undo, using functions from V7-07.
 - **Depends on:** V7-07.
@@ -37,7 +37,7 @@ Do NOT touch:
 - Joe's visual sign-off.
 
 **Decisions needed from Joe:**
-1. Undo window of 8 seconds. Recommendation: yes.
+1. Undo window of 8 seconds. Decided: yes, 8 seconds (23 Nov 2026). The spec's "until you leave the tab" is superseded.
 
 If a decision isn't made when this ticket starts, stop and ask rather than guess.
 
@@ -48,3 +48,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - No new dependency. If one seems needed, say why and stop.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
+
+## Note (23 Nov 2026)
+Built the Review sheet (`Match N`, tick per row), `matchMany`, the enabled Review buttons and the toast with an 8-second in-memory Undo, which also ends on the next edit or trip change. `npm run check` passes (vitest 233, e2e 93); not yet looked at on the phone, so Joe's visual sign-off is open.

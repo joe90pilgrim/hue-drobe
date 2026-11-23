@@ -60,11 +60,11 @@ export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
 export const suggestedSection = (lines: PackEntry[], items: SavedItem[]) =>
   lines.length ? `<h3 class="p-group">Suggested <span class="p-sug-count">${lines.length}</span></h3><ul class="p-list" aria-label="Suggestions">${lines.map((e) => suggestedRow(e, items)).join('')}</ul>` : '';
 
-/** The green banner above the rows when Gemini matched some of them. The Review button waits for V7-08. */
+/** The green banner above the rows when Gemini matched some of them. */
 export function matchBanner(lines: PackEntry[], items: SavedItem[]): string {
   const n = matchedLines(lines, items).length;
   if (!n) return '';
-  return `<div class="p-sug-banner" id="p-sug-banner"><span>Gemini matched ${n} ${n === 1 ? 'suggestion' : 'suggestions'} to clothes you own</span><button type="button" class="secondary" data-act="review-matches" disabled>Review</button></div>`;
+  return `<div class="p-sug-banner" id="p-sug-banner"><span>Gemini matched ${n} ${n === 1 ? 'suggestion' : 'suggestions'} to clothes you own</span><button type="button" class="secondary" data-act="review-matches">Review</button></div>`;
 }
 
 export type SuggestStep = { step: 'confirm' } | { step: 'loading' } | { step: 'error'; message: string } | { step: 'done'; added: number; matched: number };
@@ -99,7 +99,7 @@ export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s
     return `${head(`${s.added} ${s.added === 1 ? 'suggestion' : 'suggestions'} added`)}
       ${s.matched ? `<p class="help">Gemini matched ${s.matched} of them to clothes you own. Want to swap those in?</p>` : ''}
       <div class="sheet-actions">
-        ${s.matched ? '<button type="button" class="secondary" data-act="review-matches" disabled>Review matches</button>' : ''}
+        ${s.matched ? '<button type="button" class="secondary" data-act="review-matches">Review matches</button>' : ''}
         <button type="button" class="primary" data-act="suggest-done">See the list</button>
       </div>`;
   }

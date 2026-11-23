@@ -167,7 +167,7 @@ Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.
 | V7-05 | [Send the wardrobe list to Gemini, with structured suggestions](v7-packing-and-icon/V7-05-gemini-wardrobe-list.md) (built 23 Nov 2026; live Gemini try and deploy held until V7-06) | V6-01 | Sonnet, high |
 | V7-06 | ["Suggest a list" sheet and Suggested rows](v7-packing-and-icon/V7-06-suggest-sheet-and-rows.md) (designed) | V7-03, V7-05 | Sonnet, medium |
 | V7-07 | [Match a suggestion to a piece you own](v7-packing-and-icon/V7-07-match-sheet.md) (built 23 Nov 2026; threshold 10 agreed by Joe) | V7-06 | Sonnet, high |
-| V7-08 | [Review Gemini's matches in bulk, with Undo](v7-packing-and-icon/V7-08-review-matches-and-undo.md) (designed) | V7-07 | Sonnet, medium |
+| V7-08 | [Review Gemini's matches in bulk, with Undo](v7-packing-and-icon/V7-08-review-matches-and-undo.md) (built 23 Nov 2026, awaiting Joe's sign-off) | V7-07 | Sonnet, medium |
 
 ### Later: needs an architecture change first
 

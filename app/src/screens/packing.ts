@@ -2,7 +2,7 @@ import { GARMENTS, itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
 import { flatLayOf, itemSilhouette } from '../silhouettes';
 import { matchBanner, matchedLines, suggestedSection, suggestSheet, type SuggestStep } from './packing-suggest';
-import { matchChips, matchFoot, matchGrid, matchHint, matchSheet, type MatchView } from './packing-match';
+import { matchChips, matchFoot, matchGrid, matchHint, matchSheet, reviewFoot, reviewList, reviewRows, reviewSheet, type MatchView } from './packing-match';
 import { preselected, rankCandidates, slotOf as lineSlotOf } from '../match';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
@@ -17,6 +17,7 @@ import {
   loadTrips,
   matchesSearch,
   matchLine,
+  matchMany,
   newTrip,
   packedCount,
   peekItems,
@@ -77,17 +78,34 @@ export function renderPacking(el: HTMLElement): () => void {
   /** The Match sheet's state: the suggestion, how the pieces are filtered and which are chosen. Null when it is not open. */
   let matching: { ref: string; scope: 'slot' | 'all'; picked: string[] } | null = null;
   let toastTimer: ReturnType<typeof setTimeout> | undefined;
+  /** How long Undo stays on the toast after a bulk match (V7-08). */
+  const UNDO_MS = 8000;
+  /** The trip as it was just before the bulk match, and as the match left it. In memory only; null when there is nothing to undo. */
+  let undoMatch: { before: Trip; after: Trip } | null = null;
+  /** The Review sheet's state: the lines that are unticked. Null when it is not open. */
+  let reviewing: { off: Set<string> } | null = null;
 
   /** A short dark message at the foot of the page, for a few seconds. */
-  const showToast = (text: string) => {
-    toast.textContent = text;
+  const showToast = (text: string, undo = false) => {
+    if (!undo) undoMatch = null;
+    toast.innerHTML = undo ? `<span id="p-toast-text"></span><button type="button" class="p-toast-undo" data-act="undo-match">Undo</button>` : '<span id="p-toast-text"></span>';
+    toast.querySelector('#p-toast-text')!.textContent = text;
     toast.hidden = false;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (toast.hidden = true), 4000);
+    toastTimer = setTimeout(hideToast, undo ? UNDO_MS : 4000);
   };
+  function hideToast() {
+    clearTimeout(toastTimer);
+    toast.hidden = true;
+    undoMatch = null;
+  }
 
   const selectedTrip = () => trips.find((t) => t.id === selected);
-  const save = () => void saveTrips(trips);
+  /** Every save but the match itself ends the undo, so Undo never throws away a later edit. */
+  const save = () => {
+    if (undoMatch && trips.find((t) => t.id === undoMatch!.after.id) !== undoMatch.after) hideToast();
+    void saveTrips(trips);
+  };
 
   /** The pieces an outfit is made of, as the saved items that are still in the wardrobe. */
   const piecesOf = (o: Outfit): SavedItem[] => {
@@ -445,6 +463,61 @@ export function renderPacking(el: HTMLElement): () => void {
     (detail.querySelector<HTMLElement>(`.p-tile[data-ref="${ids[0]}"]`) ?? detail.querySelector<HTMLElement>('.p-sug [data-act="match-line"]'))?.focus();
   };
 
+  // --- Review matches in bulk, with Undo (V7-08) --------------------------------------------------------------------
+
+  const reviewRowsNow = (t: Trip) => reviewRows(t.entries.filter((e) => e.kind === 'template'), items);
+
+  const openReview = (t: Trip) => {
+    const rows = reviewRowsNow(t);
+    if (!rows.length) return;
+    reviewing = { off: new Set() };
+    sheet.innerHTML = reviewSheet(rows, reviewing.off);
+    if (!sheet.open) sheet.showModal();
+    sheet.querySelector<HTMLElement>('.p-review-row')?.focus();
+  };
+
+  const toggleReview = (t: Trip, ref: string) => {
+    if (!reviewing) return;
+    reviewing.off.has(ref) ? reviewing.off.delete(ref) : reviewing.off.add(ref);
+    const rows = reviewRowsNow(t);
+    sheet.querySelector<HTMLElement>('#p-review-list')!.innerHTML = reviewList(rows, reviewing.off);
+    sheet.querySelector<HTMLElement>('#p-review-foot')!.innerHTML = reviewFoot(rows.filter((r) => !reviewing!.off.has(r.line.ref)).length);
+    sheet.querySelector<HTMLElement>(`[data-review-line="${ref}"]`)?.focus();
+  };
+
+  /** Swaps in every ticked pair in one change, keeping the trip as it was so Undo can put it back. */
+  const applyReview = (t: Trip) => {
+    if (!reviewing) return;
+    const pairs = reviewRowsNow(t)
+      .filter((r) => !reviewing!.off.has(r.line.ref))
+      .map((r) => ({ line: r.line.ref, item: r.item.id }));
+    if (!pairs.length) return;
+    const after = matchMany(t, pairs);
+    if (after === t) return;
+    trips = trips.map((x) => (x.id === t.id ? after : x));
+    save();
+    reviewing = null;
+    sheet.close();
+    draw();
+    const left = after.entries.filter((e) => e.kind === 'template').length;
+    const n = pairs.length;
+    showToast(`Matched ${n} ${n === 1 ? 'suggestion' : 'suggestions'} to your clothes. ${left} ${left === 1 ? 'suggestion' : 'suggestions'} left.`, true);
+    undoMatch = { before: t, after };
+    detail.querySelector<HTMLElement>('.p-tile, [data-act="make-template"]')?.focus();
+  };
+
+  /** Puts the trip back exactly as it was before the bulk match. Only while the toast is up and the trip is untouched since. */
+  const undoReview = () => {
+    const u = undoMatch;
+    if (!u) return;
+    hideToast();
+    if (trips.find((t) => t.id === u.after.id) !== u.after) return;
+    trips = trips.map((t) => (t.id === u.after.id ? u.before : t));
+    save();
+    draw();
+    detail.querySelector<HTMLElement>('[data-act="review-matches"], [data-act="make-template"]')?.focus();
+  };
+
   const askDelete = (t: Trip) => {
     confirmDlg.innerHTML = `
       <h2 id="p-confirm-title">Delete ${esc(t.name)}?</h2>
@@ -463,6 +536,7 @@ export function renderPacking(el: HTMLElement): () => void {
   tripsEl.addEventListener('click', (e) => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('.p-trip')?.dataset.id;
     if (!id) return;
+    if (selected !== id) hideToast();
     selected = id;
     draw();
   });
@@ -483,6 +557,9 @@ export function renderPacking(el: HTMLElement): () => void {
         break;
       case 'match-line':
         openMatch(t, b.dataset.ref!);
+        break;
+      case 'review-matches':
+        openReview(t);
         break;
       case 'edit-line':
         openLineForm(t, b.dataset.ref!);
@@ -532,6 +609,8 @@ export function renderPacking(el: HTMLElement): () => void {
     if (e.target === sheet) return sheet.close(); // a tap on the scrim
     const target = e.target as HTMLElement;
     const t = selectedTrip();
+    const reviewRow = target.closest<HTMLElement>('[data-review-line]');
+    if (reviewRow && reviewing && t) return toggleReview(t, reviewRow.dataset.reviewLine!);
     const matchTile = target.closest<HTMLElement>('[data-match-item]');
     if (matchTile && matching) return pickMatch(matchTile.dataset.matchItem!);
     const scopeBtn = target.closest<HTMLElement>('[data-match-scope]');
@@ -572,6 +651,9 @@ export function renderPacking(el: HTMLElement): () => void {
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;
+    if (act === 'review-matches' && t) return openReview(t);
+    if (act === 'review-apply' && t) return applyReview(t);
+    if (act === 'review-later') return sheet.close();
     if (act === 'match-use' && t) return useMatch(t);
     if (act === 'match-later') return sheet.close();
     if (act === 'match-edit' && t && matching) {
@@ -612,6 +694,11 @@ export function renderPacking(el: HTMLElement): () => void {
   sheet.addEventListener('close', () => {
     suggestRun++;
     matching = null;
+    reviewing = null;
+  });
+
+  toast.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('[data-act="undo-match"]')) undoReview();
   });
 
   sheet.addEventListener('input', (e) => {

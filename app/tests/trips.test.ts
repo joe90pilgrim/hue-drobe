@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { inOutfitOnly, peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, matchLine, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
+import { inOutfitOnly, peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, matchLine, matchMany, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
 
 describe('picker search', () => {
   it('matches any part of a name, ignoring case and spaces at the ends', () => {
@@ -347,5 +347,39 @@ describe('matchLine (V7-07)', () => {
     const t = trip([sug()]);
     expect(matchLine(t, 'l1', [])).toBe(t);
     expect(matchLine(t, 'nope', ['a'])).toBe(t);
+  });
+});
+
+describe('matchMany (V7-08)', () => {
+  const sug = (ref: string, over: Record<string, unknown> = {}) => ({ kind: 'template' as const, ref, packed: false, text: `Line ${ref}`, ...over });
+  const trip = (entries: Trip['entries']): Trip => ({ ...newTrip('Prague', '2026-12-11', '2026-12-14', 1), id: 't', entries });
+  const own = (ref: string) => ({ kind: 'item' as const, ref, packed: false, own: true as const });
+
+  it('swaps in every ticked pair in one change', () => {
+    const out = matchMany(trip([sug('l1'), sug('l2'), sug('l3')]), [{ line: 'l1', item: 'a' }, { line: 'l2', item: 'b' }]);
+    expect(out.entries).toEqual([sug('l3'), own('a'), own('b')]);
+  });
+
+  it('leaves the lines that are not in the pairs as suggestions, in order', () => {
+    const t = trip([sug('l1'), sug('l2'), sug('l3')]);
+    const out = matchMany(t, [{ line: 'l2', item: 'b' }]);
+    expect(out.entries.map((e) => e.ref)).toEqual(['l1', 'l3', 'b']);
+  });
+
+  it('adds a piece picked by two lines once and removes both suggestions', () => {
+    const out = matchMany(trip([sug('l1'), sug('l2')]), [{ line: 'l1', item: 'a' }, { line: 'l2', item: 'a' }]);
+    expect(out.entries).toEqual([own('a')]);
+  });
+
+  it('changes nothing for an empty set', () => {
+    const t = trip([sug('l1')]);
+    expect(matchMany(t, [])).toBe(t);
+  });
+
+  it('does not change the trip it was given', () => {
+    const t = trip([sug('l1')]);
+    const before = JSON.stringify(t);
+    matchMany(t, [{ line: 'l1', item: 'a' }]);
+    expect(JSON.stringify(t)).toBe(before);
   });
 });

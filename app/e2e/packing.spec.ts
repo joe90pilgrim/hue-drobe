@@ -354,12 +354,12 @@ test("Suggest sheet: cancelling sends nothing, and suggested rows show ghost sil
   await page.getByRole('button', { name: 'Ask Gemini' }).click();
   await expect(page.getByRole('dialog', { name: '3 suggestions added' })).toBeVisible();
   await expect(page.getByText('Gemini matched 1 of them to clothes you own. Want to swap those in?')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Review matches' })).toBeDisabled(); // V7-08
+  await expect(page.getByRole('button', { name: 'Review matches' })).toBeEnabled(); // V7-08
   await page.getByRole('button', { name: 'See the list' }).click();
   expect(requests).toBe(1);
 
   await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 1 suggestion to clothes you own');
-  await expect(page.locator('.p-sug-banner button')).toBeDisabled();
+  await expect(page.locator('.p-sug-banner button')).toBeEnabled();
   const rose = page.locator('.p-sug', { hasText: 'Rose jumper' });
   await expect(rose.locator('svg[data-mode="ghost"] path[fill="#c9a0a0"][fill-opacity="0.4"]')).toHaveCount(1);
   await expect(rose.locator('.p-sug-match')).toHaveText('1 in your wardrobe'); // the unknown id is not counted
@@ -460,4 +460,98 @@ test('Match with nothing close chooses nothing, and the suggestion can stay', as
   await page.getByRole('dialog').getByRole('button', { name: 'Use Navy tee' }).click();
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
   await expect(page.locator('.p-sug')).toHaveCount(0);
+});
+
+// V7-08: review Gemini's matches in bulk, with Undo.
+test('Review matches: untick one, match the rest, then Undo puts the trip back line for line', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  const line = (ref: string, label: string, matches?: string[]) => ({ kind: 'template', ref, packed: false, text: label, label, group: 'Tops', type: 'tee', colour: '#212c5c', ...(matches && { matches }) });
+  await seedStore(page, {
+    wardrobe: [navyTee, navyTee2, trousers],
+    trips: [tripWith([line('l-1', 'Navy top', ['tee-1']), line('l-2', 'Dark top', ['tee-2']), line('l-3', 'Slim trousers', ['trousers-1']), line('l-4', 'Umbrella')])],
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  const names = () => page.locator('.p-sug .w-name').allTextContents();
+  const before = await names();
+  expect(before).toEqual(['Navy top', 'Dark top', 'Slim trousers', 'Umbrella']);
+  await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 3 suggestions');
+  await expect(page.locator('#p-toast')).toBeHidden();
+
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  const dlg = page.getByRole('dialog', { name: 'Review matches' });
+  await expect(dlg.locator('.p-review-row')).toHaveCount(3);
+  await expect(dlg.getByRole('button', { name: 'Match 3' })).toBeVisible();
+  const overflow = await page.locator('#p-sheet').evaluate((d) => d.scrollWidth - d.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+
+  await dlg.locator('[data-review-line="l-3"]').click(); // untick the trousers
+  await expect(dlg.getByRole('button', { name: 'Match 2' })).toBeVisible();
+  await dlg.getByRole('button', { name: 'Match 2' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('#p-toast')).toContainText('Matched 2 suggestions to your clothes. 2 suggestions left.');
+  await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
+  await expect(page.locator('.p-tile[data-ref="tee-2"]')).toHaveCount(1);
+  expect(await names()).toEqual(['Slim trousers', 'Umbrella']);
+  await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 1 suggestion');
+
+  await page.reload(); // saved like any edit
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  expect(await names()).toEqual(['Slim trousers', 'Umbrella']);
+
+  // Match again and take it back: the suggestions, their order and their matches return, and the pieces go.
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Match 1' }).click();
+  await expect(page.locator('#p-toast')).toContainText('Matched 1 suggestion to your clothes. 1 suggestion left.');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  await expect(page.locator('#p-toast')).toBeHidden();
+  expect(await names()).toEqual(['Slim trousers', 'Umbrella']);
+  await expect(page.locator('.p-tile[data-ref="trousers-1"]')).toHaveCount(0);
+  await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 1 suggestion');
+});
+
+test('Undo restores the whole trip, and goes after 8 seconds or the next edit', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  const line = (ref: string, label: string, matches?: string[]) => ({ kind: 'template', ref, packed: false, text: label, label, group: 'Tops', type: 'tee', colour: '#212c5c', ...(matches && { matches }) });
+  await seedStore(page, { wardrobe: [navyTee, navyTee2, trousers], trips: [tripWith([line('l-1', 'Navy top', ['tee-1']), line('l-2', 'Dark top', ['tee-2']), line('l-3', 'Slim trousers', ['trousers-1']), line('l-4', 'Umbrella')])] });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  const names = () => page.locator('.p-sug .w-name').allTextContents();
+
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('dialog').locator('[data-review-line="l-3"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Match 2' }).click();
+  expect(await names()).toEqual(['Slim trousers', 'Umbrella']);
+  await page.getByRole('button', { name: 'Undo' }).click();
+  expect(await names()).toEqual(['Navy top', 'Dark top', 'Slim trousers', 'Umbrella']);
+  await expect(page.locator('.p-tile')).toHaveCount(0);
+  await expect(page.locator('.p-count')).toHaveText('0 of 4 packed');
+
+  // The next edit ends the undo.
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('dialog').locator('[data-review-line="l-3"]').click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Match 2' }).click();
+  await page.locator('.p-tile[data-ref="tee-1"]').click();
+  await expect(page.locator('#p-toast')).toBeHidden();
+
+  // After 8 seconds there is no Undo.
+  await page.getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Match 1' }).click();
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+  await page.waitForTimeout(7000);
+  await expect(page.getByRole('button', { name: 'Undo' })).toBeVisible();
+  await expect(page.locator('#p-toast')).toBeHidden({ timeout: 2500 });
+});
+
+test('No banner and no toast when nothing is matched', async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  await seedStore(page, { wardrobe: [navyTee], trips: [tripWith([sugLine(), { kind: 'template', ref: 'l-2', packed: false, text: 'Umbrella' }])] });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await expect(page.locator('.p-sug')).toHaveCount(2);
+  await expect(page.locator('.p-sug-banner')).toHaveCount(0);
+  await expect(page.locator('#p-toast')).toBeHidden();
 });

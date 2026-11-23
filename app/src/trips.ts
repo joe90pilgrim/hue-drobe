@@ -276,6 +276,20 @@ export function matchLine(trip: Trip, lineId: string, itemIds: string[]): Trip {
   return { ...trip, entries: [...entries.map((e) => (e.kind === 'item' && ids.includes(e.ref) && !e.own ? { ...e, own: true as const } : e)), ...added] };
 }
 
+/** One line and the piece to swap in for it, as the Review sheet pairs them (V7-08). */
+export interface MatchPair {
+  line: string;
+  item: string;
+}
+
+/**
+ * Applies `matchLine` for each pair in one change (V7-08). A piece that two lines picked is added once and both suggestions
+ * go. Returns the trip as it was when there are no pairs or none of them changes anything.
+ */
+export function matchMany(trip: Trip, pairs: MatchPair[]): Trip {
+  return pairs.reduce((t, p) => matchLine(t, p.line, [p.item]), trip);
+}
+
 function newLineRef(): string {
   return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
