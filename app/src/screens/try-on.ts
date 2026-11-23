@@ -1,4 +1,4 @@
-import { createViewer } from '../viewer';
+import { createViewer, DEFAULT_HAIR_COLOUR } from '../viewer';
 import { kvGet, kvPut } from '../store';
 import {
   addFavourite,
@@ -55,6 +55,9 @@ interface Slot {
   options: string[]; // first option is the default
   garments: Record<string, string>; // option -> pack garment name
 }
+/** V5-04: the person's hair. Always on the avatar when their pack has it; the row only sets its colour, which is saved under `hair` in the same `colours` map as the garments. */
+const HAIR_SLOT = 'Hair';
+
 const SLOTS: Slot[] = [
   // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
   { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
@@ -79,6 +82,8 @@ const SLOTS: Slot[] = [
     options: ['None', GARMENTS.trainers.option, GARMENTS.oxfords.option, GARMENTS.monk_straps.option, GARMENTS.sandals.option, GARMENTS.ankle_boots.option],
     garments: { [GARMENTS.trainers.option]: 'trainers', [GARMENTS.oxfords.option]: 'oxfords', [GARMENTS.monk_straps.option]: 'monk_straps', [GARMENTS.sandals.option]: 'sandals', [GARMENTS.ankle_boots.option]: 'ankle_boots' },
   },
+  // V5-04: hair colour (plain colour, chosen by Joe 23 Nov 2026). Hidden when the pack has no hair. Not part of a saved outfit.
+  { name: HAIR_SLOT, options: [HAIR_SLOT], garments: { [HAIR_SLOT]: 'hair' } },
 ];
 
 /** The pack mesh behind each shoe option, to offer a shoe only when this person's pack has it. */
@@ -259,7 +264,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     return null;
   };
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
-  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : DEFAULT_COLOUR)).toLowerCase();
+  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : slot.name === HAIR_SLOT ? DEFAULT_HAIR_COLOUR : DEFAULT_COLOUR)).toLowerCase();
   const itemKey = (slot: Slot) =>
     `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
   const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
@@ -267,6 +272,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const nameOf = (slot: Slot) => {
     const g = garmentOf(slot) as GarmentId | undefined;
     if (!g) return 'Nothing';
+    if (slot.name === HAIR_SLOT) return colourName(colourOf(slot)); // "Dark brown"
     if (hasSheer(g)) return `${outfit[slot.name]}, ${sheer ? 'sheer' : 'opaque'}`;
     return hasNecklines(g) ? `${outfit[slot.name]}, ${NECKLINES[neckline].words}` : outfit[slot.name];
   };
@@ -282,7 +288,8 @@ export function renderTryOn(el: HTMLElement): () => void {
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
     el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
-    outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
+    el.querySelector<HTMLElement>(`[data-box="${HAIR_SLOT}"]`)!.hidden = !viewer.has('hair'); // a pack built before hair has none
+    outfitBtn.disabled = !SLOTS.some((s) => s.name !== HAIR_SLOT && garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
   /** Brings every control in the open panel up to date with the current outfit. */
@@ -291,6 +298,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s) return;
     const g = garmentOf(s) as GarmentId | undefined;
     const current = colourOf(s);
+    garmentGroup.closest<HTMLElement>('.field')!.hidden = s.name === HAIR_SLOT; // hair has one style each: nothing to choose, only the colour
     // A layer that never goes with what is worn (tights under trousers, a sweatshirt with a skirt) is greyed out, with a note saying why.
     let note: string | null = null;
     const cur = typeVariantOf(outfit[s.name]);
@@ -347,6 +355,7 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
+    if (slot.name === HAIR_SLOT) return; // the viewer always draws the hair
     const tucked = isTucked(outfit);
     const layered = layeredOk(viewer.layers(), outfit, neckline); // V3-05: the tee under a sweatshirt or shirt, which is then the version built over the tee
     if (slot.name === UNDER_SLOT) {
@@ -591,7 +600,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     const look: OutfitLook = {};
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
-      if (!g || s.name === UNDER_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
+      if (!g || s.name === UNDER_SLOT || s.name === HAIR_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
       const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
