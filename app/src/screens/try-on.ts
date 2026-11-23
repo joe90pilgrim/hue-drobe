@@ -59,8 +59,8 @@ interface Slot {
 }
 /** V5-04: the person's hair. Always on the avatar when their pack has it; the row only sets its colour, which is saved under `hair` in the same `colours` map as the garments. */
 const HAIR_SLOT = 'Hair';
-/** The slots whose control is a small pill on the stage, not a row in the list, so the list stays short enough for Save outfit to stay on screen (hair: V5-04; hat: V5-02). */
-const PILL_SLOTS: readonly string[] = [HAIR_SLOT, HAT_SLOT];
+/** The slots whose control is a small pill on the stage, not a row in the list (hair, V5-04: it has no garment to choose). */
+const PILL_SLOTS: readonly string[] = [HAIR_SLOT];
 const isPill = (name: string) => PILL_SLOTS.includes(name);
 
 const SLOTS: Slot[] = [
@@ -142,7 +142,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       <div class="stage" id="stage">
         <p class="stage-status" role="status"></p>
         ${PILL_SLOTS.map(
-          (n) => `<button type="button" class="wear-row stage-pill ${n === HAIR_SLOT ? 'hair-pill' : 'hat-pill'}" data-box="${n}" data-row="${n}" aria-haspopup="dialog" hidden>
+          (n) => `<button type="button" class="wear-row stage-pill hair-pill" data-box="${n}" data-row="${n}" aria-haspopup="dialog" hidden>
           <span class="wear-swatch" data-row-swatch="${n}"></span>
           <span class="wear-text"><span class="slot-label">${n}</span><span class="wear-name" data-slot="${n}"></span></span>
         </button>`,
@@ -151,6 +151,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       </div>
       <section class="panel" aria-labelledby="wearing-title">
         <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
+        <button type="button" class="primary outfit-save" id="save-outfit">Save outfit</button>
         ${SLOTS.filter((s) => !isPill(s.name)).map(
           (s) => `<div class="slot" data-box="${s.name}">
             <button type="button" class="wear-row" data-row="${s.name}" aria-haspopup="dialog">
@@ -160,7 +161,6 @@ export function renderTryOn(el: HTMLElement): () => void {
             </button>
           </div>`,
         ).join('')}
-        <button type="button" class="primary outfit-save" id="save-outfit">Save outfit</button>
       </section>
       <div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="editor-title" tabindex="-1" hidden>
         <div class="grab" aria-hidden="true"></div>
@@ -419,7 +419,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (laptop.matches) {
       tryOn.classList.remove('sheet-open');
       if (isPill(s.name)) {
-        outfitBtn.before(editor); // a pill is on the stage, so its panel goes at the foot of the list
+        outfitBtn.closest('.panel')!.append(editor); // a pill is on the stage, so its panel goes at the foot of the list
       } else {
         el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
         rowOf(s).hidden = true;
