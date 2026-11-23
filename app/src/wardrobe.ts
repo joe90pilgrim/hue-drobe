@@ -19,9 +19,11 @@ export const GARMENTS = {
   // V3-02: the pack's shift dress, a slot of its own that replaces the top and the bottom (see `keepLayers`). Women's packs only.
   dress: { label: 'dress', slot: 'Dress', option: 'Shift dress' },
   // V5-01 (Joe, 23 Nov 2026): shoes, a slot of their own. A person's pack has only the ones built for them (the manifest's `garments.shoes`):
-  // Joe trainers, Oxfords and sandals; B those and ankle boots. The saved item's colour is a tint over the shoe's texture, white meaning as made.
+  // Joe trainers, monk straps and sandals; B trainers, Oxfords, sandals and ankle boots. The saved item's colour is a tint over the shoe's texture, white meaning as made.
   trainers: { label: 'trainers', slot: 'Shoes', option: 'Trainers' },
   oxfords: { label: 'Oxfords', slot: 'Shoes', option: 'Oxfords' },
+  // Joe's formal shoe is the monk strap, not the Oxfords (his Oxfords left the sock showing through the toe cap; Joe's decision of 23 Nov 2026).
+  monk_straps: { label: 'monk straps', slot: 'Shoes', option: 'Monk straps' },
   sandals: { label: 'sandals', slot: 'Shoes', option: 'Sandals' },
   ankle_boots: { label: 'ankle boots', slot: 'Shoes', option: 'Ankle boots' },
 } as const;
@@ -34,7 +36,7 @@ export const isShoe = (garment: string): boolean => garment in GARMENTS && GARME
 /** The pack mesh a shoe is, with the body drawn while it is worn (the body with the feet hidden) and, for a dress, the body hidden under both. */
 export const bodyWithShoe = (shoe: string, dress = false) => (dress ? `body_dress_${shoe}` : `body_${shoe}`);
 /** Every shoe pack mesh the viewer may load: each shoe, the body worn with it, and the body worn with it and the dress. */
-export const SHOE_MESHES: readonly string[] = (['trainers', 'oxfords', 'sandals', 'ankle_boots'] as const).flatMap((s) => [s, bodyWithShoe(s), bodyWithShoe(s, true)]);
+export const SHOE_MESHES: readonly string[] = (['trainers', 'oxfords', 'monk_straps', 'sandals', 'ankle_boots'] as const).flatMap((s) => [s, bodyWithShoe(s), bodyWithShoe(s, true)]);
 
 /**
  * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between

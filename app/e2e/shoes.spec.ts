@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { addToWardrobe, card, closeSlot, expectColour, garment, inWardrobe, openSlot, setColour, signInAs, tryItOn } from './helpers';
 
-// V5-01: shoes are a slot of their own. Each person's pack has only the shoes built for them: Joe trainers, Oxfords and sandals; B those and ankle boots.
+// V5-01: shoes are a slot of their own. Each person's pack has only the shoes built for them: Joe trainers, monk straps and sandals; B trainers, Oxfords, sandals and ankle boots.
 // The placeholder pack has no shoes, so the tests that need them skip unless the machine has the private packs (npm run check:private).
 test.use({ serviceWorkers: 'block' });
 
@@ -20,7 +20,7 @@ test('a pack with no shoes shows no Shoes row', async ({ page }) => {
   await expect(page.locator('[data-box="Shoes"]')).toBeHidden();
 });
 
-test("Joe is offered trainers, Oxfords and sandals, never ankle boots, and a tinted pair is saved and comes back", async ({ page }) => {
+test("Joe is offered trainers, monk straps and sandals, never Oxfords or ankle boots, and a tinted pair is saved and comes back", async ({ page }) => {
   test.skip(!(await hasShoes(page, 'joe')), "needs Joe's private pack with shoes (python pack/build_pack.py --private)");
   await signInAs(page, 'joe');
   await page.goto('/#/try-on');
@@ -28,11 +28,12 @@ test("Joe is offered trainers, Oxfords and sandals, never ankle boots, and a tin
   await expect(shoes(page)).toHaveText('Nothing');
   await openSlot(page, 'Shoes');
   await expect(garment(page, 'Trainers')).toBeVisible();
-  await expect(garment(page, 'Oxfords')).toBeVisible();
+  await expect(garment(page, 'Monk straps')).toBeVisible();
   await expect(garment(page, 'Sandals')).toBeVisible();
+  await expect(garment(page, 'Oxfords')).toHaveCount(0);
   await expect(garment(page, 'Ankle boots')).toHaveCount(0);
-  await garment(page, 'Oxfords').click();
-  await expect(shoes(page)).toHaveText('Oxfords');
+  await garment(page, 'Monk straps').click();
+  await expect(shoes(page)).toHaveText('Monk straps');
   await expectColour(page, '#ffffff'); // as made
   await setColour(page, '#6b3f26');
   await addToWardrobe(page).click();
@@ -40,20 +41,21 @@ test("Joe is offered trainers, Oxfords and sandals, never ankle boots, and a tin
   await closeSlot(page);
 
   await page.reload();
-  await expect(shoes(page)).toHaveText('Oxfords');
+  await expect(shoes(page)).toHaveText('Monk straps');
   await page.getByRole('link', { name: 'Wardrobe' }).click();
-  await expect(card(page, 'Brown Oxfords')).toBeVisible();
-  await tryItOn(page, 'Brown Oxfords');
-  await expect(shoes(page)).toHaveText('Oxfords');
+  await expect(card(page, 'Brown monk straps')).toBeVisible();
+  await tryItOn(page, 'Brown monk straps');
+  await expect(shoes(page)).toHaveText('Monk straps');
 });
 
-test("B is offered ankle boots as well as the other three, and wears them", async ({ page }) => {
+test("B is offered ankle boots as well as trainers, Oxfords and sandals, never monk straps, and wears them", async ({ page }) => {
   test.skip(!(await hasShoes(page, 'b')), "needs B's private pack with shoes (python pack/build_pack.py --private)");
   await signInAs(page, 'b');
   await page.goto('/#/try-on');
   await expect(page.locator('.stage-status')).toBeHidden();
   await openSlot(page, 'Shoes');
   for (const s of ['Trainers', 'Oxfords', 'Sandals', 'Ankle boots']) await expect(garment(page, s)).toBeVisible();
+  await expect(garment(page, 'Monk straps')).toHaveCount(0);
   await garment(page, 'Ankle boots').click();
   await expect(shoes(page)).toHaveText('Ankle boots');
   await closeSlot(page);

@@ -20,6 +20,6 @@
   "clearance_cm": 0.2,
   "replaces": [],
   "inner_layers": [],
-  "approved": false,
+  "approved": true,
   "colour": "texture"
 }

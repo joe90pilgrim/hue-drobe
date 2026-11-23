@@ -91,7 +91,7 @@ export function silhouetteKey(garment: string, neckline?: string): string {
       return 'sneaker';
     case 'ankle_boots':
       return 'boot';
-    case 'oxfords':
+    case 'oxfords': case 'monk_straps':
       return 'oxford';
     case 'sandals':
       return 'sandal';

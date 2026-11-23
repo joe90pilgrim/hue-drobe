@@ -72,12 +72,12 @@ const SLOTS: Slot[] = [
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
   // V3-05: a tee under the sweatshirt or a shirt. Shown only when this person's pack lists a combination that passed on their body.
   { name: UNDER_SLOT, options: ['None', UNDER_OPTION], garments: { [UNDER_OPTION]: 'tee' } },
-  // V5-01: shoes. Each person's pack has only the ones built for them (Joe: trainers, Oxfords, sandals; B: those and ankle boots), and the row
+  // V5-01: shoes. Each person's pack has only the ones built for them (Joe: trainers, monk straps, sandals; B: trainers, Oxfords, sandals, ankle boots), and the row
   // is hidden when the pack has none. The colour is a tint over the shoe's texture; white (the default) is the shoe as made.
   {
     name: SHOES_SLOT,
-    options: ['None', GARMENTS.trainers.option, GARMENTS.oxfords.option, GARMENTS.sandals.option, GARMENTS.ankle_boots.option],
-    garments: { [GARMENTS.trainers.option]: 'trainers', [GARMENTS.oxfords.option]: 'oxfords', [GARMENTS.sandals.option]: 'sandals', [GARMENTS.ankle_boots.option]: 'ankle_boots' },
+    options: ['None', GARMENTS.trainers.option, GARMENTS.oxfords.option, GARMENTS.monk_straps.option, GARMENTS.sandals.option, GARMENTS.ankle_boots.option],
+    garments: { [GARMENTS.trainers.option]: 'trainers', [GARMENTS.oxfords.option]: 'oxfords', [GARMENTS.monk_straps.option]: 'monk_straps', [GARMENTS.sandals.option]: 'sandals', [GARMENTS.ankle_boots.option]: 'ankle_boots' },
   },
 ];
 

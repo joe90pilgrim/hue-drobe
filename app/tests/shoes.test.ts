@@ -5,9 +5,9 @@ import { autoOutfitName, cleanOutfits, newOutfit, resolveOutfit } from '../src/o
 import { silhouetteKey, SHAPES } from '../src/silhouettes';
 
 describe('shoes in the wardrobe', () => {
-  it('has four shoes, all in the Shoes slot, and no other garment is a shoe', () => {
+  it('has five shoes, all in the Shoes slot, and no other garment is a shoe', () => {
     const shoes = (Object.keys(GARMENTS) as (keyof typeof GARMENTS)[]).filter((g) => isShoe(g));
-    expect(shoes.sort()).toEqual(['ankle_boots', 'oxfords', 'sandals', 'trainers']);
+    expect(shoes.sort()).toEqual(['ankle_boots', 'monk_straps', 'oxfords', 'sandals', 'trainers']);
     for (const s of shoes) expect(GARMENTS[s].slot).toBe(SHOES_SLOT);
     expect(isShoe('tee')).toBe(false);
     expect(isShoe('cape')).toBe(false);
@@ -40,8 +40,8 @@ describe('shoes in the wardrobe', () => {
   it('names the body files: one per shoe, and one per shoe with the dress', () => {
     expect(bodyWithShoe('trainers')).toBe('body_trainers');
     expect(bodyWithShoe('trainers', true)).toBe('body_dress_trainers');
-    expect(SHOE_MESHES).toHaveLength(12);
-    expect(new Set(SHOE_MESHES).size).toBe(12);
+    expect(SHOE_MESHES).toHaveLength(15);
+    expect(new Set(SHOE_MESHES).size).toBe(15);
   });
 });
 
@@ -72,8 +72,8 @@ describe('shoes in an outfit', () => {
 });
 
 describe('shoes drawn flat', () => {
-  it('give each shoe a shape of its own', () => {
-    const keys = (['trainers', 'oxfords', 'sandals', 'ankle_boots'] as const).map((g) => silhouetteKey(g));
+  it('give each kind of shoe a shape of its own (the monk strap is drawn as a low lace-up)', () => {
+    const keys = (['trainers', 'oxfords', 'monk_straps', 'sandals', 'ankle_boots'] as const).map((g) => silhouetteKey(g));
     expect(new Set(keys).size).toBe(4);
     for (const k of keys) {
       expect(k).not.toBe('generic');

@@ -1,0 +1,25 @@
+{
+  "_note": "V5-01. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. Joe's formal shoe. Replaces the male Oxfords, which had 9 gap rays and the sock poking through the toe cap (more clearance removed the gap rays but not the white patches). Look approved by Joe, 23 Nov 2026.",
+  "id": "monk_straps",
+  "category": "shoes",
+  "pack_file": "monk_straps",
+  "layer": "outer",
+  "allowed_bodies": "male",
+  "source": {
+    "pack": "shoes02",
+    "asset": "mindfront_shoes_monk_strap_male"
+  },
+  "licence": "CC-BY",
+  "credit": "Mindfront, mindfront_shoes_monk_strap_male, MakeHuman community assets (shoes02)",
+  "sha256": "cd0d962441eaed2a77cebe37672ce25eef24101fbf38452847405f7668378971",
+  "delete_group": true,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": true,
+  "colour": "texture"
+}
