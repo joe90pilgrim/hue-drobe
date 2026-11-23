@@ -1,8 +1,9 @@
 // V3-15: one drawn silhouette per garment, filled with the item's colour. Pure drawing, no DOM, no store.
 // Mid-fidelity shapes from docs/decisions/2026-11-22-wardrobe-closet-redesign-spec.md. Joe signs off the look.
-import { GARMENTS, NECKLINES, type GarmentId, type Neckline } from './wardrobe';
+import { GARMENTS, NECKLINES, type GarmentId, type Neckline, type SavedItem } from './wardrobe';
+import type { Outfit, OutfitLook } from './outfits';
 
-export type SilhouetteMode = 'hang' | 'flat' | 'shelf';
+export type SilhouetteMode = 'hang' | 'flat' | 'shelf' | 'ghost';
 
 interface Shape {
   hook?: string;
@@ -141,9 +142,26 @@ function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean):
   return parts;
 }
 
+/** V7-06: a suggestion, not a piece you own: a dashed grey outline, filled with the suggested colour at 40% (neutral grey when there is none). */
+function ghostParts(key: string, colour: string): string[] {
+  const sh = SHAPES[key];
+  const fill = HEX.test(colour) ? colour : '#9a9a9a';
+  const dash = 'stroke="#7a7a7a" stroke-width="1.6" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"';
+  const parts = [`<path d="${sh.body}" fill="${fill}" fill-opacity="0.4" ${dash} data-ghost="body"/>`];
+  if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${fill}" fill-opacity="0.4" ${dash}/>`);
+  if (sh.collar) parts.push(`<path d="${sh.collar}" fill="none" ${dash}/>`);
+  if (sh.detail) parts.push(`<path d="${sh.detail}" fill="none" stroke="#7a7a7a" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`);
+  return parts;
+}
+
 /** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
+/** The silhouette of a saved item, in its own colour. Shared by the Wardrobe and Packing screens. */
+export const itemSilhouette = (i: SavedItem, mode: SilhouetteMode): string =>
+  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
+
 export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
   const key = silhouetteKey(garment, neckline);
+  if (mode === 'ghost') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SHAPES[key].box.join(' ')}" aria-hidden="true" focusable="false" data-shape="${key}" data-mode="ghost">${ghostParts(key, colour).join('')}</svg>`;
   const hang = mode === 'hang';
   const viewBox = hang ? '0 0 100 100' : SHAPES[key].box.join(' ');
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${shapeParts(key, colour, sheer, hang).join('')}</svg>`;
@@ -231,6 +249,23 @@ export function flatLaySvg(pieces: FlatPiece[]): string {
     return `<g data-slot="${pl.slot}" data-shape="${pl.key}" transform="${tf}">${shapeParts(pl.key, it.colour, !!it.sheer, false).join('')}</g>`;
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">${groups.join('')}</svg>`;
+}
+
+/**
+ * The flat-lay of an outfit (V3-17): the silhouettes of its pieces, stacked head to toe. A piece the outfit has but that was deleted
+ * is a dashed outline in its place; a piece the outfit never had is left out. An outfit with nothing in it shows a dashed top and bottom.
+ * Shared by the Wardrobe and Packing screens (V7-03).
+ */
+export function flatLayOf(o: Outfit, look: OutfitLook): string {
+  const piece = (slot: FlatSlot, id: string | undefined, item: SavedItem | undefined): FlatPiece[] =>
+    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
+  const pieces = [
+    ...piece('hat', o.hat, look.hat),
+    ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
+    ...piece('legs', o.legs, look.legs),
+    ...piece('shoes', o.shoes, look.shoes),
+  ];
+  return flatLaySvg(pieces.length ? pieces : [{ slot: 'top' }, { slot: 'bottom' }]);
 }
 
 // Shared by callers and the test, so adding a garment or neckline fails the test until it gets a shape.

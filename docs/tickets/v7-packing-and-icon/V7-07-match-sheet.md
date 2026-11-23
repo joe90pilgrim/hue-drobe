@@ -1,7 +1,7 @@
 # Ticket: Match a suggestion to a piece you own (V7-07)
 
 ## Summary
-- **Status:** designed 23 Nov 2026. Needs Joe's closeness threshold, measured in this ticket.
+- **Status:** built 23 Nov 2026. Closeness threshold 10, agreed by Joe.
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · High. Ranking logic with edge cases, measured with numbers.
 - **Depends on:** V7-06.
@@ -49,3 +49,7 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - No new dependency. If one seems needed, say why and stop.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
+
+## Note (23 Nov 2026)
+Built: `app/src/match.ts`, `matchLine` in `trips.ts`, the Match sheet (`packing-match.ts`), the enabled Match button (off for lines that are not clothes) and a toast; 14 new Vitest tests, 9 for `matchLine`, 4 new e2e tests. The app does not read `spike/tolerances.json`, so the threshold is a constant in `match.ts` (`MATCH_CLOSE_DELTA_E`).
+Measured with `rankCandidates` on the spec's demo pairs, using stand-in hexes (the mock-up's real colours are not in the repo). CIEDE2000: charcoal jeans to Charcoal trousers 1.7, navy trousers to Blue trousers 7.7 and to Charcoal trousers 10.7, slate blue shirt to Blue sweatshirt 14.6, charcoal jeans to Blue trousers 15.9, thermal navy top to Blue sweatshirt 16.2; every different hue is 33 or more (taupe, rose, red, green). Threshold 10, so only clear matches are chosen for you; everything else is still listed nearest first. **Joe agreed 10 (23 Nov 2026).**

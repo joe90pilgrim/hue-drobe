@@ -1,7 +1,9 @@
 # Ticket: Add items and outfits sheet as tiles (V7-04)
 
 ## Summary
-- **Status:** designed 23 Nov 2026.
+- **Status:** built 23 Nov 2026; awaiting Joe's visual sign-off.
+- **Note:** Add sheet is now Clothes/Outfits tabs, search, garment chips, a 3-column tile grid (2-column flat-lays for outfits) and a sticky "Done · N on the list" footer; `inOutfitOnly` added with tests.
+- **Note:** An "In an outfit" tap sets `own: true` (decision 1 taken as recommended). `npm run check` passes (84 e2e, new 412 px test). The top-right Done from the spec is not built, so there is one Done button.
 - **Ceiling:** 90 minutes. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. One sheet, the same data calls as today.
 - **Depends on:** V7-03 (tile styles and silhouettes in the packing block).

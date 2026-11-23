@@ -254,7 +254,7 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     }
   }
 
-  /** POST /api/packing-template (V6-01): { name, starts, ends, season? } in, { items: [{ label, quantity?, group? }] } out. Nothing is kept or logged. */
+  /** POST /api/packing-template (V6-01, V7-05): { name, starts, ends, season?, wardrobe? } in, { items: [{ label, quantity?, group?, colour?, type?, matches? }] } out. Nothing is kept or logged. */
   async function handlePacking(req, send) {
     if (!pack) return send(404, {}, 'Not found');
     const site = req.headers['sec-fetch-site'];
@@ -267,7 +267,7 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     try {
       clean = cleanPackingRequest(JSON.parse(text));
     } catch {}
-    if (!clean) return send(400, {}, 'Send a trip name, its dates (up to 90 days) and, optionally, a season with its palette');
+    if (!clean) return send(400, {}, 'Send a trip name, its dates (up to 90 days) and, optionally, a season with its palette and a wardrobe list (up to 150 pieces)');
     try {
       return json(send, 200, await pack(clean));
     } catch (e) {

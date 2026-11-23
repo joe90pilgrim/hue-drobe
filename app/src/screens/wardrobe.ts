@@ -8,10 +8,9 @@ import {
   saveOutfits,
   wearOutfit,
   type Outfit,
-  type OutfitLook,
 } from '../outfits';
 import { createPhotoAdd } from './wardrobe-photo';
-import { flatLaySvg, silhouetteSvg, type FlatPiece } from '../silhouettes';
+import { flatLayOf as flatLay, itemSilhouette as silhouetteOf } from '../silhouettes';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -29,26 +28,7 @@ const GROUPS: readonly { slot: 'Hat' | 'Top' | 'Dress' | 'Bottom' | 'Legs' | 'Sh
 ];
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
 
-const silhouetteOf = (i: SavedItem, mode: 'hang' | 'shelf' | 'flat') =>
-  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
-
 type Selection = { kind: 'item' | 'outfit'; id: string } | null;
-
-/**
- * The flat-lay of an outfit (V3-17): the silhouettes of its pieces, stacked head to toe. A piece the outfit has but that was deleted
- * is a dashed outline in its place; a piece the outfit never had is left out. An outfit with nothing in it shows a dashed top and bottom.
- */
-const flatLay = (o: Outfit, look: OutfitLook) => {
-  const piece = (slot: FlatPiece['slot'], id: string | undefined, item: SavedItem | undefined): FlatPiece[] =>
-    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
-  const pieces = [
-    ...piece('hat', o.hat, look.hat),
-    ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
-    ...piece('legs', o.legs, look.legs),
-    ...piece('shoes', o.shoes, look.shoes),
-  ];
-  return flatLaySvg(pieces.length ? pieces : [{ slot: 'top' }, { slot: 'bottom' }]);
-};
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `

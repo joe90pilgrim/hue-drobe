@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, silhouetteKey, silhouetteSvg } from '../src/silhouettes';
+import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, flatLayLayout, flatLaySvg, flatLayOf, silhouetteKey, silhouetteSvg, itemSilhouette } from '../src/silhouettes';
 
 describe('silhouettes', () => {
   it('draws every garment id with a shape of its own', () => {
@@ -28,6 +28,16 @@ describe('silhouettes', () => {
         expect(svg.replace(/<[^>]*>/g, '')).toBe('');
       }
     }
+  });
+  it("ghost mode: a dashed #7a7a7a outline, the colour at 40%, neutral grey when there is no colour", () => {
+    const svg = silhouetteSvg({ garment: 'tee', colour: '#c0392b', mode: 'ghost' });
+    expect(svg).toContain('stroke="#7a7a7a"');
+    expect(svg).toContain('stroke-dasharray');
+    expect(svg).toContain('fill="#c0392b" fill-opacity="0.4"');
+    expect(svg).toContain(`viewBox="${SHAPES.tee.box.join(' ')}"`);
+    expect(svg).not.toContain('#8a8a8a'); // no hook
+    expect(svg).toContain('aria-hidden="true"');
+    expect(silhouetteSvg({ garment: 'boot', colour: '', mode: 'ghost' })).toContain('fill="#9a9a9a" fill-opacity="0.4"');
   });
   it('hang has a hook and a square box; flat crops to the content box without a hook', () => {
     const hang = silhouetteSvg({ garment: 'tee', colour: '#808080', mode: 'hang' });
@@ -96,5 +106,33 @@ describe('flat-lay', () => {
     expect(svg.match(/class="o-gap"/g)).toHaveLength(1);
     expect(svg).toContain('aria-hidden="true"');
     expect(svg).not.toContain('<text');
+  });
+});
+
+describe('itemSilhouette', () => {
+  it('draws a saved item in its own colour, the same as silhouetteSvg', () => {
+    const item = { v: 2, id: 'x', garment: 'tee', colour: '#1f2a5a', name: 'Navy tee', savedAt: 1 } as never;
+    expect(itemSilhouette(item, 'flat')).toBe(silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat' }));
+  });
+});
+
+describe('flatLayOf', () => {
+  const item = (id: string, garment: string, colour: string) => ({ v: 2, id, garment, colour, name: id, savedAt: 1 }) as never;
+  const outfit = (o: object) => ({ v: 1, id: 'o', name: 'Look', savedAt: 1, ...o }) as never;
+  const slots = (svg: string) => [...svg.matchAll(/data-slot="(\w+)"/g)].map((m) => m[1]);
+
+  it('stacks a top above a bottom', () => {
+    const svg = flatLayOf(outfit({ top: 't', bottom: 'b' }), { top: item('t', 'tee', '#1f2a5a'), bottom: item('b', 'trousers', '#c8c8c8') });
+    expect(slots(svg)).toEqual(['top', 'bottom']);
+    expect(svg).not.toContain('o-gap');
+  });
+  it('draws a dress alone, ignoring a top and bottom', () => {
+    const svg = flatLayOf(outfit({ dress: 'd', top: 't' }), { dress: item('d', 'dress', '#aa3355'), top: item('t', 'tee', '#1f2a5a') });
+    expect(slots(svg)).toEqual(['dress']);
+  });
+  it('keeps a deleted piece as a dashed outline in its place', () => {
+    const svg = flatLayOf(outfit({ top: 't', bottom: 'b' }), { bottom: item('b', 'trousers', '#c8c8c8') });
+    expect(slots(svg)).toEqual(['top', 'bottom']);
+    expect(svg.match(/class="o-gap"/g)).toHaveLength(1);
   });
 });
