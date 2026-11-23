@@ -54,8 +54,12 @@ For every candidate on every body, record:
 If a decision isn't made when this ticket starts, stop and ask rather than guess.
 
 ## Decisions for Joe afterwards (from the write-up, not made by the spike)
-- Per category and per body: which item, or none.
-- **Does each person get their own garment library?** Today the wardrobe offers every garment to everyone (V4-01 found skirts and dresses offered to Joe, whose pack has neither). A per-person library changes the data model and the garment library scope, so it is Joe's decision. The write-up gives the shared-versus-separate numbers to decide it on.
+Lettered as in the write-up. The tickets that need each one are V5-01 to V5-04 (updated 23 Nov 2026); each stops until its decisions are made.
+- **(a) Open.** Per category and per body: which item, or none. Asked again in V5-01, V5-02, V5-03 and V5-04.
+- **(b) Decided 22 Nov 2026 (Joe):** a mix of shared and per-person. Garments are shared by default; a garment type is restricted to one person (or kept for both) case by case, when it is added or amended, and the ticket for that type says which. There is no category rule. The app should offer each person only the garments in their own pack (this also fixes skirts and dresses being offered to Joe, whose pack has neither, found in V4-01). **The V2-06 data model is to be checked for saved outfits and sync before the ticket for that filter is written; that ticket does not exist yet, and V5-01, V5-02 and V5-04 depend on it for any item limited to one person.**
+- **(c) Open.** A hat over hair: accept the leftover hair tips, hide the hair under any hat, or limit hats to the styles that leave none. Asked in V5-02.
+- **(d) Open.** Is the pack json enough for items whose header says AGPL3 (`dressupdoc_sandals1`, `punkduck_alpha7_long`, `jujube_newsboy_cap`)? V3-07a took the json as the authority. Asked in V5-01 and V5-04.
+- **(e) Open.** Hair that matches neither Joe nor B: the nearest style recoloured, or modelled. Asked in V5-04.
 
 ## Acceptance criteria
 - [x] A write-up in `docs/decisions/` (dated the day it is done), with, for each of shoes, hats, jewellery and hair, a table of every candidate on Joe and on B against the six points above. Every number comes from a committed script and every look claim has a render path.

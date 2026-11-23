@@ -17,3 +17,7 @@ The ticket said the list is stored with the other data, so it follows the same k
 
 - Destination, weather, and suggested items (V6-02).
 - An outfit and its pieces are separate entries: ticking the outfit does not tick its pieces, and the other way round.
+
+## Amendment, 23 Nov 2026 (V4-04): outfits bring their garments
+
+The earlier rule that an outfit and its pieces are separate entries is replaced. Adding an outfit puts it on the trip as a non-tickable "planned look" and adds each of its garments as an item entry. A garment already on the list is not duplicated. Entries gain two optional fields inside the existing `trips` key (no sync or server change): `via` (ids of the outfits that brought the item in) and `own` (added by hand). Removing an outfit removes only the garments no other outfit or hand-add still needs. The packed count counts garments only. Trips saved earlier are backfilled once on load (`backfillOutfitPieces`); a ticked old outfit brings its garments in as packed.

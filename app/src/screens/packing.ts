@@ -1,6 +1,8 @@
 import { itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
 import {
+  addOutfit,
+  backfillOutfitPieces,
   datesError,
   deleteTrip,
   formatDates,
@@ -9,6 +11,8 @@ import {
   matchesSearch,
   newTrip,
   packedCount,
+  removeEntry,
+  removeOutfit,
   saveTrips,
   setPacked,
   todayIso,
@@ -71,8 +75,17 @@ export function renderPacking(el: HTMLElement): () => void {
     }
     const outfit = outfits.find((o) => o.id === e.ref);
     if (!outfit) return goneRow(e, 'Outfit');
-    return checkRow(e, esc(outfit.name), piecesText(outfit), piecesOf(outfit).map((i) => i.colour));
+    return lookRow(esc(outfit.name), piecesText(outfit), piecesOf(outfit).map((i) => i.colour));
   };
+
+  /** A planned look: shown on the trip but not ticked. Its garments are the rows that are ticked. */
+  const lookRow = (name: string, sub: string, colours: string[]) => `
+    <li class="p-row p-look">
+      <span class="p-check">
+        ${swatches(colours)}
+        <span class="p-text"><span class="w-name">${name}</span><span class="w-sub">Planned look${sub ? `: ${sub}` : ''}</span></span>
+      </span>
+    </li>`;
 
   const checkRow = (e: PackEntry, name: string, sub: string, colours: string[]) => `
     <li class="p-row${e.packed ? ' packed' : ''}">
@@ -129,12 +142,15 @@ export function renderPacking(el: HTMLElement): () => void {
 
   // --- Dialogs: the trip form, the add-to-list picker and the delete question ----------------------------------------
 
-  const pick = (kind: PackEntry['kind'], id: string, name: string, sub: string, on: boolean, colours: string[]) => `
+  const pick = (kind: PackEntry['kind'], id: string, name: string, sub: string, on: boolean, colours: string[], viaOutfit = false) => `
     <button type="button" class="p-pick${on ? ' on' : ''}" data-kind="${kind}" data-id="${id}" aria-pressed="${on}">
       ${swatches(colours)}
       <span class="p-text"><span class="w-name">${esc(name)}</span><span class="w-sub">${sub}</span></span>
-      <span class="p-pick-mark">${on ? 'On the list' : 'Add'}</span>
+      <span class="p-pick-mark">${on ? 'On the list' : viaOutfit ? 'In an outfit' : 'Add'}</span>
     </button>`;
+
+  /** True when the item was added by hand, as opposed to only being there for an outfit. */
+  const ownEntry = (t: Trip, id: string) => !!t.entries.find((e) => e.kind === 'item' && e.ref === id)?.own;
 
   /** The picker's search text. Cleared each time the picker opens. */
   let pickQuery = '';
@@ -148,7 +164,7 @@ export function renderPacking(el: HTMLElement): () => void {
     const shownItems = items.filter((i) => matchesSearch(pickQuery, [i.name, itemKind(i)]));
     const shownOutfits = outfits.filter((o) => matchesSearch(pickQuery, [o.name, ...piecesOf(o).map((i) => i.name)]));
     clothesEl.innerHTML = shownItems.length
-      ? `<div class="p-picks">${shownItems.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), hasEntry(t, 'item', i.id), [i.colour])).join('')}</div>`
+      ? `<div class="p-picks">${shownItems.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), ownEntry(t, i.id), [i.colour], hasEntry(t, 'item', i.id))).join('')}</div>`
       : `<p class="help">${items.length === 0 ? 'No saved clothes yet.' : 'No clothes match your search.'}</p>`;
     looksEl.innerHTML = shownOutfits.length
       ? `<div class="p-picks">${shownOutfits.map((o) => pick('outfit', o.id, o.name, piecesText(o), hasEntry(t, 'outfit', o.id), piecesOf(o).map((i) => i.colour))).join('')}</div>`
@@ -162,7 +178,7 @@ export function renderPacking(el: HTMLElement): () => void {
     sheet.innerHTML = `
       <div class="grab" aria-hidden="true"></div>
       <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
-      <p class="help">Tap to add a piece or an outfit, or to take it off. Packing ticks happen on the list.</p>
+      <p class="help">Tap to add a piece or an outfit, or to take it off. An outfit adds its pieces too. Packing ticks happen on the list.</p>
       <label class="field-label" for="p-pick-search">Search</label>
       <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
       <h3 class="p-group">Clothes</h3>
@@ -233,7 +249,7 @@ export function renderPacking(el: HTMLElement): () => void {
         askDelete(t);
         break;
       case 'take-off':
-        trips = toggleEntry(trips, t.id, b.dataset.kind as PackEntry['kind'], b.dataset.ref!);
+        trips = b.dataset.kind === 'outfit' ? removeOutfit(trips, t.id, b.dataset.ref!) : removeEntry(trips, t.id, 'item', b.dataset.ref!);
         save();
         draw();
         break;
@@ -261,7 +277,12 @@ export function renderPacking(el: HTMLElement): () => void {
     if (pickBtn && t) {
       const kind = pickBtn.dataset.kind as PackEntry['kind'];
       const id = pickBtn.dataset.id!;
-      trips = toggleEntry(trips, t.id, kind, id);
+      if (kind === 'item') trips = toggleEntry(trips, t.id, id);
+      else if (hasEntry(t, 'outfit', id)) trips = removeOutfit(trips, t.id, id);
+      else {
+        const outfit = outfits.find((o) => o.id === id);
+        trips = addOutfit(trips, t.id, id, outfit ? piecesOf(outfit).map((i) => i.id) : []);
+      }
       save();
       draw();
       drawPicks();
@@ -319,9 +340,14 @@ export function renderPacking(el: HTMLElement): () => void {
 
   Promise.all([loadTrips(), loadItems(), loadOutfits()]).then(([loadedTrips, loadedItems, loadedOutfits]) => {
     if (gone) return;
-    trips = loadedTrips;
     items = loadedItems;
     outfits = loadedOutfits;
+    // Trips saved before V4-04 hold outfits with no garments; add them once (no change, no save, after that).
+    trips = backfillOutfitPieces(loadedTrips, (id) => {
+      const o = outfits.find((x) => x.id === id);
+      return o ? piecesOf(o).map((i) => i.id) : [];
+    });
+    if (trips !== loadedTrips) save();
     draw();
   });
   draw();

@@ -131,12 +131,20 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V5-00 | [Spike: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (separate options for Joe and B) | V2-09, V3-06, V3-07a | Sonnet, high |
-| V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) | V3-06, V5-05 | Sonnet, high |
-| V5-02 | [Hats](v5-finishing-the-look/V5-02-hats.md) (outline) | V5-00 | Sonnet, high (tentative) |
-| V5-03 | [Jewellery: necklaces, rings, watches](v5-finishing-the-look/V5-03-jewellery.md) (outline) | V5-00 | Sonnet, high (tentative) |
-| V5-04 | [Hair styles](v5-finishing-the-look/V5-04-hair.md) | V5-05 | Sonnet, medium |
-| V5-05 | [Shrink textures at build time](v5-finishing-the-look/V5-05-texture-shrink.md) | V3-06 | Sonnet, low |
+| V5-00 | [Spike: where shoes, hats, jewellery and hair come from](v5-finishing-the-look/V5-00-asset-sources.md) (done 22 Nov 2026) | V2-09, V3-06, V3-07a | Sonnet, high |
+| V5-01 | [Shoes: boots, sandals, trainers](v5-finishing-the-look/V5-01-shoes.md) (waits for Joe's decisions) | V3-07, V5-00, V5-05, V3-10, per-person garment filter | Sonnet, high |
+| V5-02 | [Hats](v5-finishing-the-look/V5-02-hats.md) (waits for Joe's decisions) | V3-07, V5-00, V5-04, V3-10 (beanie, trilby), per-person garment filter if any hat is limited to one person | Sonnet, high |
+| V5-03 | [Jewellery: a necklace, if wanted](v5-finishing-the-look/V5-03-jewellery.md) (Joe decides whether it runs) | V3-07, V5-00 | Sonnet, medium (proposed) |
+| V5-04 | [Hair styles](v5-finishing-the-look/V5-04-hair.md) (waits for Joe's decisions) | V3-07, V5-00, V5-05, V3-10, per-person garment filter | Sonnet, high (proposed) |
+| V5-05 | [Shrink textures at build time](v5-finishing-the-look/V5-05-texture-shrink.md) | V3-07 | Sonnet, low |
+
+Notes on version 5, after V5-00 (23 Nov 2026):
+- **Order.** V5-05 first (one hair file is over the pack limit on its own). V5-01 and V5-04 next, in either order. V5-02 after V5-04, because hats are judged over hair. V5-03 only if Joe decides it is worth it.
+- **Credits.** Nearly everything usable is CC-BY (Shoes 02 and 03, Hair 02 and 03, the beanie and trilby), so the first one to ship re-opens V3-10 (parked). Only the cap, the Hair 01 bob and the necklace are CC0.
+- **Per-person garment filter.** Decision V5-00 (b): each person is offered only the garments in their own pack. There is no ticket for it yet. Joe writes it, after the V2-06 data model is checked for saved outfits and sync. Any shoe, hat or hair style limited to one person needs it.
+- **New slots.** Shoes, hats and a necklace each add a slot to saved items and outfits, which changes the data model. Joe agrees the shape first.
+- **Open decisions** (V5-00 (a), (c), (d), (e)) are listed in `decisions-needed.md`. Each ticket stops until they are made.
+- **Bodies.** Joe's and B's real bodies only, as in CLAUDE.md. No synthetic bodies in version 5 builds or acceptance numbers.
 
 ### Version 6: Style assistant
 
