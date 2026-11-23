@@ -36,15 +36,16 @@ const screens: Record<Route, { label: string; icon: string; render: (el: HTMLEle
 const icon = (paths: string) =>
   `<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
 
-// The logo: a small colour wheel (six wedges) with a centre dot. The only coloured thing in the interface.
-const WHEEL = ['#e5484d', '#f59e0b', '#f5d90a', '#30a46c', '#3e63dd', '#8e4ec6'];
-const wheelPoints = [[23, 12], [17.5, 21.53], [6.5, 21.53], [1, 12], [6.5, 2.47], [17.5, 2.47]];
-const logo = `<svg class="logo" width="28" height="28" viewBox="0 0 24 24" aria-hidden="true">${WHEEL.map((c, i) => {
-  const [x1, y1] = wheelPoints[i];
-  const [x2, y2] = wheelPoints[(i + 1) % 6];
-  return `<path d="M12 12 L${x1} ${y1} A11 11 0 0 1 ${x2} ${y2} Z" fill="${c}"/>`;
-}).join('')}<circle cx="12" cy="12" r="4" fill="#fff"/><circle cx="12" cy="12" r="1.8" fill="#161616"/></svg>`;
-const brand = `${logo}<span class="wordmark">Hue-drobe</span>`;
+// The logo: the tee-and-hook mark from public/icon.svg without the dark tile, hook in ink, cropped to the artwork.
+// Keep it in step with icon.svg (the tee path, hook path, wheel colours and transform). Each use needs its own clip id.
+const WHEEL = ['#FF1F8E', '#FF8C1A', '#8CFF1A', '#19FF8C', '#1A8CFF', '#8C1AFF'];
+const wheelWedges = WHEEL.map((c, i) => {
+  const pt = (k: number) => [256 + 200 * Math.cos((k * Math.PI) / 3 - Math.PI / 3), 300 + 200 * Math.sin((k * Math.PI) / 3 - Math.PI / 3)].map((v) => v.toFixed(1));
+  const [x1, y1] = pt(i), [x2, y2] = pt(i + 1);
+  return `<path d="M256 300 L${x1} ${y1} A200 200 0 0 1 ${x2} ${y2} Z" fill="${c}" stroke="${c}" stroke-width="1"/>`;
+}).join('');
+const logo = (id: string) => `<svg class="logo" width="28" height="28" viewBox="76 76 360 360" aria-hidden="true"><defs><clipPath id="${id}"><path d="M226 166 Q186 178 140 211 L96 272 L136 296 L172 262 L172 400 L340 400 L340 262 L376 296 L416 272 L372 211 Q326 178 286 166 Q256 190 226 166 Z"/></clipPath></defs><g transform="translate(256 256) scale(1.08) translate(-256 -256) translate(0 21)"><path d="M226 166 Q256 148 286 166 Q256 190 226 166 Z" fill="#2E2E36"/><path d="M256 206 V150 C256 130 286 126 286 100 C286 80 270 70 254 76 C242 80 238 90 240 100" fill="none" stroke="#16161A" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/><g clip-path="url(#${id})">${wheelWedges}</g></g></svg>`;
+const brand = (id: string) => `${logo(id)}<span class="wordmark">Hue-drobe</span>`;
 
 const menuIcon = icon('<path d="M4 7h16M4 12h16M4 17h16"/>');
 const backupIcon = icon('<path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 19h14"/>');
@@ -53,12 +54,12 @@ const app = document.getElementById('app')!;
 app.innerHTML = `
   <div class="shell">
     <header class="topbar">
-      <div class="brand">${brand}</div>
+      <div class="brand">${brand("logo-tee-top")}</div>
       <button type="button" class="menu-btn" id="menu-btn" aria-label="Menu" aria-haspopup="dialog">${menuIcon}</button>
     </header>
     <main class="main" id="main"></main>
     <nav class="nav" aria-label="Main">
-      <div class="brand side-brand">${brand}</div>
+      <div class="brand side-brand">${brand("logo-tee-side")}</div>
       ${(Object.keys(screens) as Route[])
         .map((r) => `<a class="nav-item" href="#/${r}" data-route="${r}"><span class="nav-icon">${icon(screens[r].icon)}</span><span class="nav-label">${screens[r].label}</span></a>`)
         .join('')}

@@ -52,3 +52,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - No new dependency. If one seems needed, say why and stop.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
+
+## Note (23 Nov 2026)
+Built: `icon.svg`, Chromium-rendered icons (192, 512, 180) via `npm run icons`, tee-and-hook header mark, icon size test. Safe zone measured 0.389 (limit 0.40); `npm run check` passed (182 Vitest, 83 e2e). Waiting on Joe's Pixel 8 home-screen sign-off.
