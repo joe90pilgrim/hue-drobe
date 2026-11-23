@@ -1,4 +1,4 @@
-import { createViewer } from '../viewer';
+import { createViewer, DEFAULT_HAIR_COLOUR } from '../viewer';
 import { kvGet, kvPut } from '../store';
 import {
   addFavourite,
@@ -55,6 +55,9 @@ interface Slot {
   options: string[]; // first option is the default
   garments: Record<string, string>; // option -> pack garment name
 }
+/** V5-04: the person's hair. Always on the avatar when their pack has it; the row only sets its colour, which is saved under `hair` in the same `colours` map as the garments. */
+const HAIR_SLOT = 'Hair';
+
 const SLOTS: Slot[] = [
   // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
   { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
@@ -79,6 +82,8 @@ const SLOTS: Slot[] = [
     options: ['None', GARMENTS.trainers.option, GARMENTS.oxfords.option, GARMENTS.monk_straps.option, GARMENTS.sandals.option, GARMENTS.ankle_boots.option],
     garments: { [GARMENTS.trainers.option]: 'trainers', [GARMENTS.oxfords.option]: 'oxfords', [GARMENTS.monk_straps.option]: 'monk_straps', [GARMENTS.sandals.option]: 'sandals', [GARMENTS.ankle_boots.option]: 'ankle_boots' },
   },
+  // V5-04: hair colour (plain colour, chosen by Joe 23 Nov 2026). Hidden when the pack has no hair. Not part of a saved outfit.
+  { name: HAIR_SLOT, options: [HAIR_SLOT], garments: { [HAIR_SLOT]: 'hair' } },
 ];
 
 /** The pack mesh behind each shoe option, to offer a shoe only when this person's pack has it. */
@@ -125,11 +130,15 @@ export function renderTryOn(el: HTMLElement): () => void {
     <div class="try-on">
       <div class="stage" id="stage">
         <p class="stage-status" role="status"></p>
+        <button type="button" class="wear-row hair-pill" data-box="${HAIR_SLOT}" data-row="${HAIR_SLOT}" aria-haspopup="dialog" hidden>
+          <span class="wear-swatch" data-row-swatch="${HAIR_SLOT}"></span>
+          <span class="wear-text"><span class="slot-label">${HAIR_SLOT}</span><span class="wear-name" data-slot="${HAIR_SLOT}"></span></span>
+        </button>
         <span class="stage-hint" hidden>${matchMedia('(pointer: coarse)').matches ? 'Drag to turn · pinch to zoom' : 'Drag to turn · scroll to zoom'}</span>
       </div>
       <section class="panel" aria-labelledby="wearing-title">
         <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
-        ${SLOTS.map(
+        ${SLOTS.filter((s) => s.name !== HAIR_SLOT).map(
           (s) => `<div class="slot" data-box="${s.name}">
             <button type="button" class="wear-row" data-row="${s.name}" aria-haspopup="dialog">
               <span class="wear-swatch" data-row-swatch="${s.name}"></span>
@@ -259,7 +268,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     return null;
   };
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
-  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : DEFAULT_COLOUR)).toLowerCase();
+  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : slot.name === HAIR_SLOT ? DEFAULT_HAIR_COLOUR : DEFAULT_COLOUR)).toLowerCase();
   const itemKey = (slot: Slot) =>
     `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
   const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
@@ -267,6 +276,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const nameOf = (slot: Slot) => {
     const g = garmentOf(slot) as GarmentId | undefined;
     if (!g) return 'Nothing';
+    if (slot.name === HAIR_SLOT) return colourName(colourOf(slot)); // "Dark brown"
     if (hasSheer(g)) return `${outfit[slot.name]}, ${sheer ? 'sheer' : 'opaque'}`;
     return hasNecklines(g) ? `${outfit[slot.name]}, ${NECKLINES[neckline].words}` : outfit[slot.name];
   };
@@ -282,7 +292,8 @@ export function renderTryOn(el: HTMLElement): () => void {
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
     el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
-    outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
+    el.querySelector<HTMLElement>(`[data-box="${HAIR_SLOT}"]`)!.hidden = !viewer.has('hair'); // a pack built before hair has none
+    outfitBtn.disabled = !SLOTS.some((s) => s.name !== HAIR_SLOT && garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
   /** Brings every control in the open panel up to date with the current outfit. */
@@ -291,6 +302,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s) return;
     const g = garmentOf(s) as GarmentId | undefined;
     const current = colourOf(s);
+    garmentGroup.closest<HTMLElement>('.field')!.hidden = s.name === HAIR_SLOT; // hair has one style each: nothing to choose, only the colour
     // A layer that never goes with what is worn (tights under trousers, a sweatshirt with a skirt) is greyed out, with a note saying why.
     let note: string | null = null;
     const cur = typeVariantOf(outfit[s.name]);
@@ -347,6 +359,7 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
+    if (slot.name === HAIR_SLOT) return; // the viewer always draws the hair
     const tucked = isTucked(outfit);
     const layered = layeredOk(viewer.layers(), outfit, neckline); // V3-05: the tee under a sweatshirt or shirt, which is then the version built over the tee
     if (slot.name === UNDER_SLOT) {
@@ -383,15 +396,19 @@ export function renderTryOn(el: HTMLElement): () => void {
   // --- The panel for one slot: a bottom sheet under the stage on a phone, in place of the row on a laptop. ---
   const place = () => {
     const s = editing;
-    for (const slot of SLOTS) rowOf(slot).hidden = false;
+    for (const slot of SLOTS) if (slot.name !== HAIR_SLOT) rowOf(slot).hidden = false; // the hair pill is shown or hidden by renderRows, by whether the pack has hair
     if (!s) {
       tryOn.classList.remove('sheet-open');
       return;
     }
     if (laptop.matches) {
       tryOn.classList.remove('sheet-open');
-      el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
-      rowOf(s).hidden = true;
+      if (s.name === HAIR_SLOT) {
+        outfitBtn.before(editor); // the hair control is a pill on the stage, so its panel goes at the foot of the list
+      } else {
+        el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
+        rowOf(s).hidden = true;
+      }
     } else {
       tryOn.classList.add('sheet-open');
       stage.after(editor);
@@ -458,7 +475,11 @@ export function renderTryOn(el: HTMLElement): () => void {
   const onLayout = () => place();
   laptop.addEventListener('change', onLayout);
 
-  for (const s of SLOTS) rowOf(s).addEventListener('click', () => openEditor(s, rowOf(s)));
+  for (const s of SLOTS)
+    rowOf(s).addEventListener('click', () => {
+      if (s.name === HAIR_SLOT && editing && editing !== s) return requestClose(); // the pill is on the stage, so while another panel is open a tap on it just closes that panel
+      openEditor(s, rowOf(s));
+    });
   editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
   backBtn.addEventListener('click', () => showChooser(false));
   chooseBtn.addEventListener('click', () => showChooser(true));
@@ -471,6 +492,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let down: { x: number; y: number } | null = null;
   stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   stage.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('.hair-pill')) return; // the hair pill is inside the stage: it opens its own panel, it does not close one
     if (!tryOn.classList.contains('sheet-open')) return;
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
     requestClose();
@@ -591,7 +613,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     const look: OutfitLook = {};
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
-      if (!g || s.name === UNDER_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
+      if (!g || s.name === UNDER_SLOT || s.name === HAIR_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
       const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
       items = r.list;
       if (s.name === 'Top') look.top = r.item;

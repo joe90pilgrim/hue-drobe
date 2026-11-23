@@ -7,12 +7,14 @@ import { SHOE_MESHES, parseLayerCombos, parseUnderFiles, type LayerCombos } from
 /** V3-05: the sweatshirt and shirts as worn over the tee. A pack has only the ones that passed on that body (the manifest lists them). */
 const OVER_TEE = ['sweatshirt_over_tee', 'shirt_short_over_tee', 'shirt_mid_over_tee', 'shirt_long_over_tee'];
 /** Files of the avatar pack that the viewer loads, from the signed-in person's pack. The dev server serves packs from private/pack/<person>/. */
-const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb', ...OVER_TEE.map((n) => n + '.glb'), ...SHOE_MESHES.map((n) => n + '.glb')];
+const PACK_FILES = ['body.glb', 'tee.glb', 'tee_v.glb', 'tee_scoop.glb', 'trousers.glb', 'shorts.glb', 'tights.glb', 'sweatshirt.glb', 'shirt_short.glb', 'shirt_mid.glb', 'shirt_long.glb', 'skirt.glb', 'tee_tucked.glb', 'tee_v_tucked.glb', 'tee_scoop_tucked.glb', 'dress.glb', 'body_dress.glb', 'hair.glb', ...OVER_TEE.map((n) => n + '.glb'), ...SHOE_MESHES.map((n) => n + '.glb')];
 /** Only a woman's pack has these (V3-01b: the skirt and the tees cut at its waistband). A man's pack lacks them, and that is not an error.
  * V3-02: so do `dress` and `body_dress` (the body with the parts under the dress removed, drawn in place of `body` while the dress is worn). */
 // The shirts (V3-03) are optional too, so a pack built before them still opens: the Dress screen offers a shirt only when its mesh loaded.
-const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', ...OVER_TEE, ...SHOE_MESHES]);
+const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked', 'dress', 'body_dress', 'hair', ...OVER_TEE, ...SHOE_MESHES]);
 // V5-01: the shoes, and the body with the feet hidden under each (and, for the dress, under both), are optional too: a person's pack has only the shoes built for them.
+/** V5-04: hair is drawn on every avatar that has it, in this dark brown until the person picks another (Joe, 23 Nov 2026: dark brown). */
+export const DEFAULT_HAIR_COLOUR = '#3b2a1f';
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
@@ -183,7 +185,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     gltf.scene.visible = wanted.get(name) ?? !name.startsWith('body_'); // a body with parts hidden (under the dress or a shoe) only shows while that is worn
     garments.set(name, gltf.scene);
     syncUnder();
-    const colour = colours.get(groupOf(name));
+    const colour = colours.get(groupOf(name)) ?? (name === 'hair' ? DEFAULT_HAIR_COLOUR : undefined);
     if (colour) paint(gltf.scene, colour);
     if (sheers.get(name)) sheerness(gltf.scene, true);
     scene.add(gltf.scene);
