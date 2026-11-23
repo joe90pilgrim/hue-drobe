@@ -334,7 +334,7 @@ export function renderPacking(el: HTMLElement): () => void {
     templateError = null;
     draw();
     try {
-      const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason()));
+      const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason(), await loadItems()));
       if (gone) return;
       trips = replaceTemplate(trips, t.id, lines);
       save();

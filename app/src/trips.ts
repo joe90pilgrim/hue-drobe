@@ -1,13 +1,15 @@
 // Packing lists (V4-03): a trip has a name and dates, and holds saved clothes and saved outfits to tick off as packed.
 // Stored on the device with the other data, and synced like it (see backup.ts and deploy/datastore.mjs).
 import { kvGet, kvPut } from './store';
-import { cleanName, type SavedItem } from './wardrobe';
+import { GARMENTS, cleanName, type GarmentId, type SavedItem } from './wardrobe';
 
 /**
  * One thing on a list: a saved item or a saved outfit, by id. Items are packed and ticked off. An outfit is a "planned
  * look": it is never ticked, and its garments are the item entries that name it in `via` (V4-04). Both extra fields are
  * optional, so lists saved before V4-04 still load. A `template` line (V6-01) is plain text from Gemini's packing template,
- * not a wardrobe item: `ref` is its own id, `text` is the line and `group` an optional heading such as "Tops".
+ * not a wardrobe item: `ref` is its own id, `text` is the line and `group` an optional heading such as "Tops". From V7-05 a
+ * template line may also keep what Gemini said about it (`label`, `quantity`, `colour`, `type`, `matches`); lines saved
+ * before then have only `text` and `group`, and load as they were.
  */
 export interface PackEntry {
   kind: 'item' | 'outfit' | 'template';
@@ -17,6 +19,16 @@ export interface PackEntry {
   text?: string;
   /** Template lines only: an optional group such as "Tops" or "Documents". */
   group?: string;
+  /** Template lines only (V7-05): the suggestion's name without the quantity, such as "Socks". */
+  label?: string;
+  /** Template lines only (V7-05): how many, when more than one. */
+  quantity?: number;
+  /** Template lines only (V7-05): the colour of the suggested piece, lower-case `#rrggbb`. */
+  colour?: string;
+  /** Template lines only (V7-05): the garment the suggestion is, one of the saved-item garment ids. */
+  type?: GarmentId;
+  /** Template lines only (V7-05): ids of wardrobe items Gemini judged to fit this line. They may since have been deleted. */
+  matches?: string[];
   /** Item entries only: ids of the outfits that brought this item onto the list. */
   via?: string[];
   /** Item entries only: true when the item was also added by hand. */
@@ -42,6 +54,7 @@ export const TRIPS_KEY = 'trips';
 const FALLBACK_NAME = 'Trip';
 export const TEMPLATE_TEXT_MAX = 60;
 const TEMPLATE_GROUP_MAX = 24;
+const HEX = /^#[0-9a-f]{6}$/i;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -106,20 +119,37 @@ export function cleanTrips(value: unknown): Trip[] {
 /** Template text: spaces tidied, cut to length. Empty when there is nothing left. */
 const cleanLine = (s: unknown, max: number) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, max).trim() : '');
 
+type TemplateExtras = Pick<PackEntry, 'label' | 'quantity' | 'colour' | 'type' | 'matches'>;
+
+/** The V7-05 fields of a template line, each kept only when valid, so a bad one is dropped and the line stays. */
+function templateExtras(raw: { label?: unknown; quantity?: unknown; colour?: unknown; type?: unknown; matches?: unknown }): TemplateExtras {
+  const out: TemplateExtras = {};
+  const label = cleanLine(raw.label, TEMPLATE_TEXT_MAX);
+  if (label) out.label = label;
+  if (typeof raw.quantity === 'number' && Number.isInteger(raw.quantity) && raw.quantity > 1 && raw.quantity < 100) out.quantity = raw.quantity;
+  if (typeof raw.colour === 'string' && HEX.test(raw.colour)) out.colour = raw.colour.toLowerCase();
+  if (typeof raw.type === 'string' && Object.prototype.hasOwnProperty.call(GARMENTS, raw.type)) out.type = raw.type as GarmentId;
+  if (Array.isArray(raw.matches)) {
+    const ids = [...new Set(raw.matches.filter((m): m is string => typeof m === 'string' && !!m))];
+    if (ids.length) out.matches = ids;
+  }
+  return out;
+}
+
 /** Keeps the entries that name an item or an outfit, or hold a template line, once each. */
 function cleanEntries(value: unknown): PackEntry[] {
   if (!Array.isArray(value)) return [];
   const out: PackEntry[] = [];
   for (const raw of value) {
     if (!raw || typeof raw !== 'object') continue;
-    const { kind, ref, packed, via, own, text, group } = raw as Record<string, unknown>;
+    const { kind, ref, packed, via, own, text, group, label, quantity, colour, type, matches } = raw as Record<string, unknown>;
     if ((kind !== 'item' && kind !== 'outfit' && kind !== 'template') || typeof ref !== 'string' || !ref) continue;
     if (out.some((e) => e.kind === kind && e.ref === ref)) continue;
     if (kind === 'template') {
       const line = cleanLine(text, TEMPLATE_TEXT_MAX);
       if (!line) continue;
       const g = cleanLine(group, TEMPLATE_GROUP_MAX);
-      out.push(g ? { kind, ref, packed: packed === true, text: line, group: g } : { kind, ref, packed: packed === true, text: line });
+      out.push({ kind, ref, packed: packed === true, text: line, ...(g && { group: g }), ...templateExtras({ label, quantity, colour, type, matches }) });
       continue;
     }
     if (kind === 'outfit') {
@@ -185,11 +215,14 @@ export function removeEntry(list: Trip[], id: string, kind: PackEntry['kind'], r
   return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.filter((e) => !(e.kind === kind && e.ref === ref)) }));
 }
 
-/** A line of a packing template, as the server sends it. */
+/** A line of a packing template, as the server sends it. The last three are V7-05: the answer may leave any of them out. */
 export interface TemplateLine {
   label: string;
   quantity?: number;
   group?: string;
+  colour?: string;
+  type?: GarmentId;
+  matches?: string[];
 }
 
 /** The text a template line shows: the label, with the quantity in front when there is more than one. */
@@ -206,7 +239,7 @@ export function replaceTemplate(list: Trip[], id: string, lines: TemplateLine[],
       const text = templateText(l);
       if (!text) continue;
       const group = cleanLine(l.group, TEMPLATE_GROUP_MAX);
-      fresh.push(group ? { kind: 'template', ref: newRef(), packed: false, text, group } : { kind: 'template', ref: newRef(), packed: false, text });
+      fresh.push({ kind: 'template', ref: newRef(), packed: false, text, ...(group && { group }), ...templateExtras(l) });
     }
     return { ...t, entries: [...t.entries.filter((e) => e.kind !== 'template'), ...fresh] };
   });

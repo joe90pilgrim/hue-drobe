@@ -207,10 +207,10 @@ test('Make me a template adds ticked-off-able lines, sends the palette only afte
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
   await expect(page.getByText(/Sends the trip name and dates to Gemini/)).toBeVisible();
 
-  // No quiz yet: only the name and dates leave the phone.
+  // No quiz yet: the name, the dates and the wardrobe list (id, garment, name, colour; V7-05) leave the phone, and nothing else.
   await page.getByRole('button', { name: 'Make me a template' }).click();
   await expect(page.locator('input[data-kind="template"]')).toHaveCount(3);
-  expect(bodies[0]).toEqual({ name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16' });
+  expect(bodies[0]).toEqual({ name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16', wardrobe: [{ id: 'tee-1', garment: 'tee', name: 'Navy tee', colour: '#1f2a5a' }] });
   await expect(page.locator('.p-count')).toHaveText('0 of 4 packed');
   await expect(page.getByText('3 × Socks')).toBeVisible();
 
@@ -234,7 +234,7 @@ test('Make me a template adds ticked-off-able lines, sends the palette only afte
   await expect(page.getByText('Linen shirt')).toBeVisible();
   await expect(page.getByText('Passport and visa')).toHaveCount(0);
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toBeVisible();
-  expect(Object.keys(bodies[1]).sort()).toEqual(['ends', 'name', 'season', 'starts']);
+  expect(Object.keys(bodies[1]).sort()).toEqual(['ends', 'name', 'season', 'starts', 'wardrobe']);
   const season = bodies[1].season as { name: string; palette: string[] };
   expect(season.name).toMatch(/Spring|Summer|Autumn|Winter/);
   expect(season.palette.length).toBeGreaterThan(0);

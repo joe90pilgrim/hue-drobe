@@ -1,7 +1,7 @@
 # Ticket: Send the wardrobe list to Gemini, with structured suggestions (V7-05)
 
 ## Summary
-- **Status:** designed 23 Nov 2026. Needs Joe's data-model decision before it starts.
+- **Status:** done 23 Nov 2026 (decisions approved by Joe at the start). Needs Joe to redeploy and try one live request.
 - **Ceiling:** 2.5 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · High. Server and app contract, validation, a privacy amendment and tests on both sides.
 - **Depends on:** V6-01 (the Gemini packing template, done).
@@ -53,3 +53,6 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - No new dependency. If one seems needed, say why and stop.
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
+
+## Note (23 Nov 2026)
+Server and app now send the wardrobe list (id, garment, name, colour; up to 150 pieces, 32 KB) and keep `colour`, `type` and `matches` on trip template lines; `node --test deploy/packing.test.mjs`, the packing Playwright spec and the full `npm run check` pass, and the V4-00 decision has the amendment. One edit outside the target files: `app/src/screens/packing.ts` passes `loadItems()` to the request builder, so the old privacy sentence is now wrong until V7-06; do not deploy before then. Not yet tried against live Gemini: Joe redeploys with `node deploy/deploy.mjs` and tries one request.

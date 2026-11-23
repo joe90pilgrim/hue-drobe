@@ -180,8 +180,8 @@ describe('template lines (V6-01)', () => {
     const t = trip();
     let list = replaceTemplate([t], t.id, lines, refs());
     expect(list[0].entries).toEqual([
-      { kind: 'template', ref: 'r1', packed: false, text: '3 × Socks', group: 'Clothes' },
-      { kind: 'template', ref: 'r2', packed: false, text: 'Passport' },
+      { kind: 'template', ref: 'r1', packed: false, text: '3 × Socks', group: 'Clothes', label: 'Socks', quantity: 3 },
+      { kind: 'template', ref: 'r2', packed: false, text: 'Passport', label: 'Passport' },
     ]);
     list = setPacked(list, t.id, 'template', 'r1', true);
     expect(packedCount(list[0])).toEqual({ packed: 1, total: 2 });
@@ -236,6 +236,39 @@ describe('template lines (V6-01)', () => {
     ]);
     const plain = { ...base, entries: [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, { kind: 'outfit', ref: 'o-1', packed: false }] };
     expect(cleanTrips([plain])[0].entries).toEqual(plain.entries);
+  });
+
+  it('keeps colour, type and matches on a line, and a trip saved before V7-05 loads unchanged', () => {
+    const t = trip();
+    const list = replaceTemplate(
+      [t],
+      t.id,
+      [{ label: 'Wool jumper', quantity: 2, group: 'Layers', colour: '#8C4A2F', type: 'sweatshirt', matches: ['a1', 'a2', 'a1'] }, { label: 'Passport', group: 'Documents' }],
+      refs(),
+    );
+    expect(list[0].entries).toEqual([
+      { kind: 'template', ref: 'r1', packed: false, text: '2 × Wool jumper', group: 'Layers', label: 'Wool jumper', quantity: 2, colour: '#8c4a2f', type: 'sweatshirt', matches: ['a1', 'a2'] },
+      { kind: 'template', ref: 'r2', packed: false, text: 'Passport', group: 'Documents', label: 'Passport' },
+    ]);
+    // It survives a save and load untouched.
+    const saved = JSON.parse(JSON.stringify(list));
+    expect(cleanTrips(saved)[0].entries).toEqual(list[0].entries);
+    // Editing the text keeps what Gemini said about the line.
+    expect(editTemplateLine(list, t.id, 'r1', 'Two jumpers')[0].entries[0]).toMatchObject({ text: 'Two jumpers', colour: '#8c4a2f', matches: ['a1', 'a2'] });
+    // Ticking keeps it too.
+    expect(setPacked(list, t.id, 'template', 'r1', true)[0].entries[0]).toMatchObject({ packed: true, type: 'sweatshirt', matches: ['a1', 'a2'] });
+  });
+
+  it('drops a bad colour, type, quantity or matches on load, and keeps the line', () => {
+    const base = { v: 1, id: 't', name: 'Lisbon', starts: '2026-12-14', ends: '2026-12-16', savedAt: 1 };
+    const line = (o: object) => ({ kind: 'template', ref: 'a', packed: false, text: 'Jumper', ...o });
+    const load = (o: object) => cleanTrips([{ ...base, entries: [line(o)] }])[0].entries[0];
+    expect(load({ colour: 'red', type: 'cape', quantity: 1, matches: [] })).toEqual({ kind: 'template', ref: 'a', packed: false, text: 'Jumper' });
+    expect(load({ colour: '#fff', type: 'constructor', quantity: 2.5, matches: 'a1' })).toEqual({ kind: 'template', ref: 'a', packed: false, text: 'Jumper' });
+    expect(load({ matches: [1, '', null, 'a1'], quantity: 100, label: '   ' })).toEqual({ kind: 'template', ref: 'a', packed: false, text: 'Jumper', matches: ['a1'] });
+    // Item and outfit entries never pick the template fields up.
+    const out = cleanTrips([{ ...base, entries: [{ kind: 'item', ref: 'tee-1', packed: false, own: true, colour: '#ffffff', matches: ['a1'] }] }]);
+    expect(out[0].entries).toEqual([{ kind: 'item', ref: 'tee-1', packed: false, own: true }]);
   });
 });
 
