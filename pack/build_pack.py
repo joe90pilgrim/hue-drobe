@@ -54,6 +54,11 @@ OVER_TEE = ("sweatshirt_over_tee", "shirt_short_over_tee", "shirt_mid_over_tee",
 LAYER_TEES = {"tee": "crew", "tee_v": "v", "tee_scoop": "scoop"}  # the report's tee names -> the app's neckline names
 PACK_FILES.update({k: "{n}_" + k + ".glb" for k in OVER_TEE})
 PACK_FILES.update({"dress": "{n}_dress.glb", "body_dress": "{n}_body_dress.glb"})  # V3-06: the pack dress, and the body with its hidden parts removed (worn instead of body.glb)
+# V5-01: the shoes (Joe: trainers, Oxfords, sandals; B: those and ankle boots) and, for each, the body with the feet hidden (worn instead of body.glb).
+# A person's pack has only the shoes the build made for their sex, so every one of these is optional.
+SHOES = ("trainers", "oxfords", "monk_straps", "sandals", "ankle_boots")
+SHOE_FILES = tuple(k for sh in SHOES for k in (sh, "body_" + sh, "body_dress_" + sh))  # the last: the body with the feet and the dress hidden (B only)
+PACK_FILES.update({k: "{n}_" + k + ".glb" for k in SHOE_FILES})
 
 
 def arg(flag, default=None):
@@ -159,7 +164,7 @@ def render_templates(name, out, metas):
         top, bottom = r["top_z_m"], r["bottom_z_m"]
         prefix = folder / meta["pack_file"]
         cmd = [BLENDER, "--background", "--python", str(RENDER_SCRIPT), "--", str(folder), str(prefix), ",".join(shown), "", "",
-               f"{(top + bottom) / 2:.3f}", f"{top - bottom + 0.15:.3f}"]
+               f"{(top + bottom) / 2:.3f}", f"{0.62 if meta['category'] == 'shoes' else top - bottom + 0.15:.3f}"]  # shoes: both feet in the frame (V5-01)
         with open(out / f"{name}_render_{meta['pack_file']}.log", "w") as log:
             subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, cwd=ROOT)
         done.append(f"{prefix}_front.png, _q34.png, _back.png")
@@ -238,13 +243,18 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
     pass_file = build_dir / f"{name}_layers_pass.json"
     passing = json.load(open(pass_file))["passing"] if pass_file.exists() and not body_only else {}
     combos = {k[: -len("_over_tee")]: [LAYER_TEES[t] for t in passing[k]] for k in OVER_TEE if passing.get(k)}
+    _rep = build_dir / f"{name}_report.json"
+    built_shoes = {k: v for k, v in json.load(open(_rep)).get("pack_items", {}).items()} if _rep.exists() and not body_only else {}
     for key, pattern in PACK_FILES.items():
         if body_only and key != "body":
             continue
         if key in OVER_TEE and not passing.get(key):
             continue
+        shoe_of = next((sh for sh in SHOES if key == sh or key.endswith("_" + sh)), None)
+        if key in SHOE_FILES and (body_only or built_shoes.get(shoe_of, {}).get("status") != "ok" or (key.startswith("body_") and not built_shoes[shoe_of].get("delete_group"))):  # V5-01: only a shoe this build made for this body; a file left in the build folder by an earlier build is not packed
+            continue
         src = build_dir / pattern.format(n=name)
-        if key in WOMENS_ONLY and not src.exists():  # a man's pack has no skirt; for a woman the checks have already failed without it
+        if (key in WOMENS_ONLY or key in SHOE_FILES) and not src.exists():  # a man's pack has no skirt or ankle boots; for a woman the checks have already failed without them
             continue
         dst = pack_dir / f"{key}.glb"
         shutil.copyfile(src, dst)
@@ -281,6 +291,7 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
                      **({"skirt": {"fit": "A-line midi, cloth-draped on this body", "tops": "tucked",
                                    "tucked_tops": {"crew": "tee_tucked.glb", "v": "tee_v_tucked.glb", "scoop": "tee_scoop_tucked.glb"}}}
                         if "skirt.glb" in files else {}),
+                     **({"shoes": {sh: {"file": sh + ".glb", **({"body_while_worn": "body_" + sh + ".glb"} if "body_" + sh + ".glb" in files else {}), **({"body_while_worn_with_dress": "body_dress_" + sh + ".glb"} if "body_dress_" + sh + ".glb" in files else {})} for sh in SHOES if sh + ".glb" in files}} if any(sh + ".glb" in files for sh in SHOES) else {}),
                      "inner_layers_drawn": under},
         "garment_colour_srgb": person_cfg(name)["colour_srgb"],
         "fit_config": person_cfg(name),

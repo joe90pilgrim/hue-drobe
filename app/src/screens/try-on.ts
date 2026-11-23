@@ -13,6 +13,10 @@ import {
   DRESS_OPTION,
   DRESS_SLOT,
   GARMENTS,
+  SHOES_AS_MADE,
+  SHOES_SLOT,
+  SHOE_MESHES,
+  bodyWithShoe,
   MID_TOPS,
   NECKLINES,
   NECKLINE_KEY,
@@ -68,7 +72,17 @@ const SLOTS: Slot[] = [
   { name: 'Legs', options: ['None', 'Tights'], garments: { Tights: 'tights' } },
   // V3-05: a tee under the sweatshirt or a shirt. Shown only when this person's pack lists a combination that passed on their body.
   { name: UNDER_SLOT, options: ['None', UNDER_OPTION], garments: { [UNDER_OPTION]: 'tee' } },
+  // V5-01: shoes. Each person's pack has only the ones built for them (Joe: trainers, monk straps, sandals; B: trainers, Oxfords, sandals, ankle boots), and the row
+  // is hidden when the pack has none. The colour is a tint over the shoe's texture; white (the default) is the shoe as made.
+  {
+    name: SHOES_SLOT,
+    options: ['None', GARMENTS.trainers.option, GARMENTS.oxfords.option, GARMENTS.monk_straps.option, GARMENTS.sandals.option, GARMENTS.ankle_boots.option],
+    garments: { [GARMENTS.trainers.option]: 'trainers', [GARMENTS.oxfords.option]: 'oxfords', [GARMENTS.monk_straps.option]: 'monk_straps', [GARMENTS.sandals.option]: 'sandals', [GARMENTS.ankle_boots.option]: 'ankle_boots' },
+  },
 ];
+
+/** The pack mesh behind each shoe option, to offer a shoe only when this person's pack has it. */
+const SHOE_OF: Record<string, string> = Object.fromEntries(SLOTS.find((s) => s.name === SHOES_SLOT)!.options.filter((o) => o !== 'None').map((o) => [o, SLOTS.find((s) => s.name === SHOES_SLOT)!.garments[o]]));
 
 /** The pack mesh behind each shirt option (V3-03), to offer a shirt only when this person's pack has it. */
 const SHIRT_MESH: Record<string, string> = Object.fromEntries(
@@ -230,6 +244,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const offered = (opt: string) =>
     (opt !== TUCKS_INTO || viewer.has('skirt')) &&
     (opt !== DRESS_OPTION || viewer.has('dress')) &&
+    (!(opt in SHOE_OF) || viewer.has(SHOE_OF[opt])) &&
     !(opt.startsWith('Shirt') && !viewer.has(SHIRT_MESH[opt] ?? ''));
   /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
   const blockedNote = (slot: string, opt: string): string | null => {
@@ -244,7 +259,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     return null;
   };
   const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
-  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || DEFAULT_COLOUR).toLowerCase();
+  const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : DEFAULT_COLOUR)).toLowerCase();
   const itemKey = (slot: Slot) =>
     `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
   const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
@@ -265,6 +280,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.style.background = g ? colourOf(s) : '';
     }
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
     outfitBtn.disabled = !SLOTS.some((s) => garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
@@ -351,8 +367,13 @@ export function renderTryOn(el: HTMLElement): () => void {
     }
     SLOTS.forEach(apply);
     const dressOn = outfit[DRESS_SLOT] === DRESS_OPTION && viewer.has('dress') && viewer.has('body_dress');
-    viewer.setGarment('body', !dressOn); // while the dress is worn, the body with the parts under it removed is drawn instead
-    viewer.setGarment('body_dress', dressOn);
+    // While the dress or a shoe is worn, the body with the parts under it removed is drawn instead (V5-01: one file per shoe, and per shoe with the dress).
+    const shoe = SHOE_OF[outfit[SHOES_SLOT]];
+    const shoeBody = shoe && viewer.has(bodyWithShoe(shoe)) ? shoe : undefined;
+    const bodyName = shoeBody
+      ? dressOn && viewer.has(bodyWithShoe(shoeBody, true)) ? bodyWithShoe(shoeBody, true) : dressOn ? 'body_dress' : bodyWithShoe(shoeBody)
+      : dressOn ? 'body_dress' : 'body';
+    for (const b of ['body', 'body_dress', ...SHOE_MESHES.filter((m) => m.startsWith('body_'))]) viewer.setGarment(b, b === bodyName);
     viewer.setSheer('tights', sheer);
     renderRows();
     syncEditor();
@@ -555,6 +576,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const dropMissingSkirt = () => {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
     if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
+    if (loadedSaved && packReady && outfit[SHOES_SLOT] !== 'None' && !viewer.has(SHOE_OF[outfit[SHOES_SLOT]] ?? '')) outfit[SHOES_SLOT] = 'None'; // a shoe this person's pack lacks is not worn
   };
   void viewer.ready.then(() => {
     packReady = true;
@@ -575,9 +597,10 @@ export function renderTryOn(el: HTMLElement): () => void {
       if (s.name === 'Top') look.top = r.item;
       else if (s.name === DRESS_SLOT) look.dress = r.item;
       else if (s.name === 'Legs') look.legs = r.item;
+      else if (s.name === SHOES_SLOT) look.shoes = r.item;
       else look.bottom = r.item;
     }
-    if (!look.top && !look.bottom && !look.legs && !look.dress) return;
+    if (!look.top && !look.bottom && !look.legs && !look.dress && !look.shoes) return;
     await saveItems(items);
     await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
     outfitBtn.textContent = 'Outfit saved';

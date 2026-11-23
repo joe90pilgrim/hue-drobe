@@ -1,0 +1,27 @@
+{
+  "_note": "V5-01. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. B's ankle boots, tucked into the trousers (inner_layers trousers hides the covered trouser faces). Toigo's female cut left her toes outside (3 gap rays, toes on show); this cut covers them, 0 gap rays. Look approved by Joe, 23 Nov 2026.",
+  "id": "ankle_boots",
+  "category": "shoes",
+  "pack_file": "ankle_boots",
+  "layer": "outer",
+  "allowed_bodies": "female",
+  "source": {
+    "pack": "shoes01",
+    "asset": "toigo_ankle_boots_male"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "0143dbcfdac444a42af339bcc65352af8ad6d8d2519457aa1aff89a639dd554a",
+  "delete_group": true,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.2,
+  "replaces": [],
+  "inner_layers": [
+    "trousers"
+  ],
+  "approved": true,
+  "colour": "texture"
+}

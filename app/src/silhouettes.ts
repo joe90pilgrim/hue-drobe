@@ -67,6 +67,15 @@ export const SHAPES: Record<string, Shape> = {
     box: [16, 6, 82, 60], xfill: '#2b2b2b', body: 'M26 8 L50 8 L52 40 Q78 42 92 50 L92 54 L22 54 Z',
     extra: 'M20 54 L94 54 L94 60 Q94 64 88 64 L24 64 Q20 64 20 60 Z', detail: 'M26 18 L50 18',
   },
+  // V5-01: the two shoes that are not a trainer or a boot (a low lace-up, and a strappy sandal).
+  oxford: {
+    box: [4, 26, 94, 32], xfill: '#2b2b2b', body: 'M8 46 L8 38 Q24 36 34 30 L52 32 Q64 40 80 42 Q94 44 94 46 Z',
+    extra: 'M6 46 L96 46 L96 50 Q96 54 90 54 L12 54 Q6 54 6 50 Z', detail: 'M36 31 L42 36 M43 31 L49 37',
+  },
+  sandal: {
+    box: [4, 30, 94, 30], xfill: '#2b2b2b', body: 'M8 52 Q8 46 20 46 L82 46 Q94 46 94 52 Z',
+    extra: 'M6 52 L96 52 L96 56 Q96 60 90 60 L12 60 Q6 60 6 56 Z', detail: 'M30 46 L34 34 Q48 30 62 34 L66 46 M48 32 L48 46',
+  },
   // Any garment id without a shape: a plain rounded block, so nothing shows blank.
   generic: { hook: HOOK_TOP, box: [18, 14, 64, 80], body: 'M26 24 Q26 14 36 14 L64 14 Q74 14 74 24 L74 84 Q74 94 64 94 L36 94 Q26 94 26 84 Z', detail: 'M32 22 L68 22' },
 };
@@ -78,6 +87,14 @@ export function silhouetteKey(garment: string, neckline?: string): string {
       return neckline === 'v' ? 'tee_v' : neckline === 'scoop' ? 'tee_scoop' : 'tee';
     case 'sweatshirt':
       return 'sweat';
+    case 'trainers':
+      return 'sneaker';
+    case 'ankle_boots':
+      return 'boot';
+    case 'oxfords': case 'monk_straps':
+      return 'oxford';
+    case 'sandals':
+      return 'sandal';
     case 'beanie': case 'cap': case 'sneaker': case 'boot': // V5 shelf shapes
     case 'shirt_short': case 'shirt_mid': case 'shirt_long': case 'trousers': case 'shorts': case 'skirt': case 'tights': case 'dress':
       return garment;

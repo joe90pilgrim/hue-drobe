@@ -351,9 +351,10 @@ def find_templates(root=TEMPLATES_DIR):
                 metas.append(load_meta(os.path.join(cdir, tid)))
     seen = {}
     for m in metas:
-        if m["pack_file"] in seen:
-            raise MetaError(f"templates {seen[m['pack_file']]} and {m['id']} both write {m['pack_file']}.glb")
-        seen[m["pack_file"]] = m["id"]
+        for other in seen.get(m["pack_file"], []):  # V5-01: a male and a female template may share a pack_file (Joe's and B's Oxfords): they are never built for one body
+            if "both" in (other["allowed_bodies"], m["allowed_bodies"]) or other["allowed_bodies"] == m["allowed_bodies"]:
+                raise MetaError(f"templates {other['id']} and {m['id']} both write {m['pack_file']}.glb")
+        seen.setdefault(m["pack_file"], []).append(m)
     return sorted(metas, key=lambda m: (LAYERS.index(m["layer"]), m["id"]))
 
 
@@ -419,6 +420,25 @@ def run():
         bpy.context.view_layer.objects.active = ob
         bpy.ops.export_scene.gltf(filepath=path, export_format="GLB", use_selection=True)
         return os.path.getsize(path)
+
+    def alpha_clip(mesh):
+        """Makes the exporter write alphaMode MASK (alpha clip) for a textured item whose alpha comes from its texture. The exporter reads
+        the node tree: a texture alpha straight into the Principled alpha becomes BLEND, which draws overlapping triangles in arbitrary
+        order, so inner surfaces show through the outer one (V5-01: the patchy shoes). A Round node in between makes it MASK: cut-out
+        straps (sandals) stay cut out, and an opaque texture is drawn opaque. Returns the number of alpha links changed."""
+        changed = 0
+        for mat in mesh.materials:
+            if mat is None or not mat.use_nodes:
+                continue
+            nt = mat.node_tree
+            for bsdf in [n for n in nt.nodes if n.type == "BSDF_PRINCIPLED"]:
+                for link in list(bsdf.inputs["Alpha"].links):
+                    rnd = nt.nodes.new("ShaderNodeMath")
+                    rnd.operation = "ROUND"
+                    nt.links.new(link.from_socket, rnd.inputs[0])
+                    nt.links.new(rnd.outputs[0], bsdf.inputs["Alpha"])
+                    changed += 1
+        return changed
 
     def import_glb(path):
         """The GLB's mesh as one object in world space (other imported objects removed)."""
@@ -825,6 +845,8 @@ def run():
                 wm.materials.append(m_)
                 while wm.uv_layers:
                     wm.uv_layers.remove(wm.uv_layers[0])
+            elif meta["category"] == "shoes":
+                R["alpha_links_clipped"] = alpha_clip(wm)
             R["glb_kb"] = round(export_glb(iob, glb) / 1024)
             R["texture_kept"] = keep_texture
             item_bm = mesh_checks.load_glb(glb)
@@ -907,6 +929,52 @@ def run():
             R["status"] = "failed: " + repr(e)
             R["traceback"] = traceback.format_exc()
         print("TEMPLATE", name, tid, R.get("status"), json.dumps(R.get("body_as_drawn", {})), flush=True)
+
+    # V5-01 (Joe, 23 Nov 2026: every shoe with the dress). The dress is fitted after the shoes (layer full), so each shoe's body file knows
+    # nothing of it. The body drawn with both is the dress's body less the faces the shoe's body does not have: a face stays only if both
+    # hide nothing there. Faces are matched by their vertex positions, which are the same floats in both exports (the body is one mesh, only
+    # faces are removed). The "body as drawn" check then runs on the combined body against the dress and the shoe together.
+    dress_r = report["pack_items"].get("dress", {})
+    if HIDE and dress_r.get("status") == "ok" and dress_r.get("delete_group"):
+        def face_keys(ob):
+            me = ob.data
+            return {tuple(sorted(tuple(round(c * 1e5) for c in me.vertices[v].co) for v in p.vertices)) for p in me.polygons}
+        dress_body = os.path.join(out_dir, f"{name}_body_dress.glb")
+        dress_bm = mesh_checks.load_glb(os.path.join(out_dir, f"{name}_dress.glb"))
+        for meta in metas:
+            pf = meta["pack_file"]
+            r = report["pack_items"].get(pf)
+            if meta["category"] != "shoes" or not r or r.get("status") != "ok" or not r.get("delete_group"):
+                continue
+            try:
+                shoe_ob = import_glb(os.path.join(out_dir, f"{name}_body_{pf}.glb"))
+                keep = face_keys(shoe_ob)
+                bpy.data.objects.remove(shoe_ob)
+                ob_ = import_glb(dress_body)
+                bm_ = bmesh.new()
+                bm_.from_mesh(ob_.data)
+                bm_.faces.ensure_lookup_table()
+                drop = [f for f in bm_.faces if tuple(sorted(tuple(round(c * 1e5) for c in v.co) for v in f.verts)) not in keep]
+                bmesh.ops.delete(bm_, geom=drop, context="FACES")
+                bmesh.ops.delete(bm_, geom=[v for v in bm_.verts if not v.link_faces], context="VERTS")
+                bm_.to_mesh(ob_.data)
+                faces_left = len(bm_.faces)
+                bm_.free()
+                out_glb = os.path.join(out_dir, f"{name}_body_dress_{pf}.glb")
+                export_glb(ob_, out_glb)
+                bpy.data.objects.remove(ob_)
+                shoe_bm = mesh_checks.load_glb(os.path.join(out_dir, f"{name}_{pf}.glb"))
+                item_j = joined(dress_bm, shoe_bm)
+                t1 = time.time()
+                bad = mesh_checks.body_as_drawn(full_bm, mesh_checks.load_glb(out_glb), item_j, floor, tol)
+                bad["seconds"] = round(time.time() - t1, 1)
+                item_j.free()
+                shoe_bm.free()
+                r["with_dress"] = {"body_glb": os.path.basename(out_glb), "body_glb_kb": round(os.path.getsize(out_glb) / 1024), "faces_in_body": faces_left,
+                                   "faces_removed_by_the_shoe": len(drop), "body_as_drawn": bad}
+            except Exception as e:  # noqa: BLE001  recorded; the pack leaves the file out when the shoe's own entry is not ok
+                r["with_dress"] = {"status": "failed: " + repr(e), "traceback": traceback.format_exc()}
+            print("TEMPLATE with dress", name, pf, json.dumps((r.get("with_dress") or {}).get("body_as_drawn", r.get("with_dress", {}).get("status"))), flush=True)
 
     json.dump(report, open(report_path, "w"), indent=2)
     print("TEMPLATES DONE", name, "%.0f s" % (time.time() - T0))

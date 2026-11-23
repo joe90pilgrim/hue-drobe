@@ -19,11 +19,12 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
  * The filter chips and the closet's bays, in closet order (V3-16). A garment's group is its slot, so a new garment type sorts itself
  * into Tops or Bottoms. `storage` is how the group is kept: things that hang go on a `rail`; hats and shoes (V5) will sit on a `shelf`.
  */
-const GROUPS: readonly { slot: 'Top' | 'Dress' | 'Bottom' | 'Legs'; label: string; storage: 'rail' | 'shelf' }[] = [
+const GROUPS: readonly { slot: 'Top' | 'Dress' | 'Bottom' | 'Legs' | 'Shoes'; label: string; storage: 'rail' | 'shelf' }[] = [
   { slot: 'Top', label: 'Tops', storage: 'rail' },
   { slot: 'Dress', label: 'Dresses', storage: 'rail' },
   { slot: 'Bottom', label: 'Bottoms', storage: 'rail' },
   { slot: 'Legs', label: 'Tights', storage: 'rail' },
+  { slot: 'Shoes', label: 'Shoes', storage: 'shelf' },
 ];
 type Filter = 'all' | (typeof GROUPS)[number]['slot'];
 
@@ -42,6 +43,7 @@ const flatLay = (o: Outfit, look: OutfitLook) => {
   const pieces = [
     ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
     ...piece('legs', o.legs, look.legs),
+    ...piece('shoes', o.shoes, look.shoes),
   ];
   return flatLaySvg(pieces.length ? pieces : [{ slot: 'top' }, { slot: 'bottom' }]);
 };
@@ -107,6 +109,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     if (o.top) parts.push(look.top ? look.top.name : 'top deleted');
     if (o.bottom) parts.push(look.bottom ? look.bottom.name : 'bottom deleted');
     if (o.legs) parts.push(look.legs ? look.legs.name : 'tights deleted');
+    if (o.shoes) parts.push(look.shoes ? look.shoes.name : 'shoes deleted');
     return parts.map(esc).join(', ');
   };
 
@@ -116,8 +119,8 @@ export function renderWardrobe(el: HTMLElement): () => void {
    */
   const subOf = (o: Outfit) => {
     const look = resolveOutfit(o, items);
-    const count = [o.dress, o.top, o.bottom, o.legs].filter(Boolean).length;
-    const gone = (o.dress && !look.dress) || (o.top && !look.top) || (o.bottom && !look.bottom) || (o.legs && !look.legs);
+    const count = [o.dress, o.top, o.bottom, o.legs, o.shoes].filter(Boolean).length;
+    const gone = (o.dress && !look.dress) || (o.top && !look.top) || (o.bottom && !look.bottom) || (o.legs && !look.legs) || (o.shoes && !look.shoes);
     return !gone && o.name === autoOutfitName(look) ? `${count} item${count === 1 ? '' : 's'}` : piecesOf(o);
   };
 
