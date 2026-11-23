@@ -31,8 +31,9 @@ test('makes a trip, adds clothes and an outfit, ticks them off, and keeps the li
   await page.getByRole('button', { name: 'Add items and outfits' }).click();
   await page.locator('.p-pick[data-kind="item"][data-id="tee-1"]').click();
   await expect(page.locator('.p-pick[data-kind="item"][data-id="tee-1"]')).toContainText('On the list');
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
   await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: /^Done/ }).click();
   await expect(page.getByRole('dialog')).toBeHidden();
 
   // The outfit brings its two garments (the tee is on the list once, not twice); the outfit itself is a planned look.
@@ -89,8 +90,9 @@ test('removing an outfit takes off only the garments it brought in, and old trip
   await page.getByRole('button', { name: /Old trip/ }).click();
   await expect(page.locator('.p-count')).toHaveText('2 of 2 packed');
   await page.getByRole('button', { name: 'Add items and outfits' }).click();
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
   await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click();
-  await page.getByRole('button', { name: 'Done' }).click();
+  await page.getByRole('button', { name: /^Done/ }).click();
   await expect(page.locator('.p-count')).toHaveText('1 of 1 packed');
   await expect(page.locator('.p-packed-btn')).toHaveText('Packed 1'); // the tee was packed, so it sits in the closed Packed section
   await page.locator('.p-packed-btn').click();
@@ -113,17 +115,55 @@ test('the add picker filters clothes and outfits by a search, and keeps the sear
   await search.fill('trou');
   await expect(page.locator('.p-pick[data-kind="item"][data-id="trousers-1"]')).toBeVisible();
   await expect(page.locator('.p-pick[data-kind="item"][data-id="tee-1"]')).toHaveCount(0);
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
   await expect(page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]')).toHaveCount(1); // its piece is trousers
+  await page.getByRole('tab', { name: /^Clothes/ }).click();
 
   await search.fill('zzz');
-  await expect(page.getByText('No clothes match your search.')).toBeVisible();
-  await expect(page.getByText('No outfits match your search.')).toBeVisible();
+  await expect(page.getByText('Nothing matches')).toBeVisible();
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
+  await expect(page.getByText('Nothing matches')).toBeVisible();
+  await page.getByRole('tab', { name: /^Clothes/ }).click();
 
   await search.fill('navy');
   await page.locator('.p-pick[data-kind="item"][data-id="tee-1"]').click();
   await expect(search).toHaveValue('navy'); // ticking does not clear the search
   await expect(page.locator('.p-pick[data-kind="item"][data-id="trousers-1"]')).toHaveCount(0);
   await expect(page.locator('.p-pick[data-kind="item"][data-id="tee-1"]')).toContainText('On the list');
+});
+
+test("the add sheet: tapping an In an outfit tile makes it the trip's own, the footer counts entries, and nothing overflows at 412 px", async ({ page }) => {
+  await page.setViewportSize({ width: 412, height: 800 });
+  await page.goto('/#/packing');
+  await seedStore(page, {
+    wardrobe: [tee, trousers],
+    outfits: [outfit],
+    trips: [{ v: 1, id: 't-1', name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16', entries: [], savedAt: 1 }],
+  });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await page.getByRole('button', { name: 'Add items and outfits' }).click();
+  await expect(page.getByRole('button', { name: 'Done · 0 on the list' })).toBeVisible();
+
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
+  await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click();
+  await page.getByRole('tab', { name: /^Clothes/ }).click();
+  await expect(page.locator('.p-pick[data-id="tee-1"]')).toContainText('In an outfit');
+  await expect(page.getByRole('button', { name: 'Done · 3 on the list' })).toBeVisible();
+
+  await page.locator('.p-pick[data-id="tee-1"]').click(); // makes it the trip's own
+  await expect(page.locator('.p-pick[data-id="tee-1"]')).toContainText('On the list');
+  const overflow = await page.locator('#p-sheet').evaluate((d) => d.scrollWidth - d.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.getByRole('button', { name: /^Done/ }).click();
+
+  await page.getByRole('button', { name: 'Add items and outfits' }).click();
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
+  await page.locator('.p-pick[data-kind="outfit"][data-id="o-1"]').click(); // take the outfit off again
+  await page.getByRole('tab', { name: /^Clothes/ }).click();
+  await expect(page.locator('.p-pick[data-id="tee-1"]')).toContainText('On the list'); // the tee stays
+  await expect(page.locator('.p-pick[data-id="trousers-1"]')).toContainText('Add');
+  await expect(page.getByRole('button', { name: 'Done · 1 on the list' })).toBeVisible();
 });
 
 test('an entry whose clothes were deleted shows as removed, can be taken off, and a trip can be deleted', async ({ page }) => {

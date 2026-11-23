@@ -152,6 +152,12 @@ export function deleteTrip(list: Trip[], id: string): Trip[] {
 
 export const hasEntry = (trip: Trip, kind: PackEntry['kind'], ref: string) => trip.entries.some((e) => e.kind === kind && e.ref === ref);
 
+/** True when an item is on the list only because an outfit holds it (it is not hand-added). */
+export const inOutfitOnly = (trip: Trip, ref: string) => {
+  const e = trip.entries.find((x) => x.kind === 'item' && x.ref === ref);
+  return !!e && !e.own;
+};
+
 /** Items and template lines are tickable; outfits are planned looks and are not. */
 const isItem = (e: PackEntry) => e.kind !== 'outfit';
 

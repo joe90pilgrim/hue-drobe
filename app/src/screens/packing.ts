@@ -1,4 +1,4 @@
-import { itemKind, loadItems, type SavedItem } from '../wardrobe';
+import { GARMENTS, itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
 import { flatLayOf, itemSilhouette } from '../silhouettes';
 import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
@@ -10,6 +10,7 @@ import {
   editTemplateLine,
   formatDates,
   hasEntry,
+  inOutfitOnly,
   loadTrips,
   matchesSearch,
   newTrip,
@@ -29,10 +30,6 @@ import {
 } from '../trips';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-
-/** One small square per colour, beside the name. Decorative: the name and pieces say what it is. */
-const swatches = (colours: string[]) =>
-  `<span class="p-swatches" aria-hidden="true">${colours.map((c) => `<span class="p-swatch" style="background:${c}"></span>`).join('')}</span>`;
 
 /** Packing lists (V4-03). A trip has a name and dates; its list holds saved clothes and saved outfits to tick off. */
 export function renderPacking(el: HTMLElement): () => void {
@@ -74,9 +71,6 @@ export function renderPacking(el: HTMLElement): () => void {
     const look = resolveOutfit(o, items);
     return [look.hat, look.dress, look.top, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i);
   };
-
-  /** What an outfit is made of, as words: "Navy tee, Brown trousers". */
-  const piecesText = (o: Outfit) => piecesOf(o).map((i) => esc(i.name)).join(', ');
 
   // --- The list of trips and the chosen trip's checklist -------------------------------------------------------------
 
@@ -203,50 +197,91 @@ export function renderPacking(el: HTMLElement): () => void {
 
   // --- Dialogs: the trip form, the add-to-list picker and the delete question ----------------------------------------
 
-  const pick = (kind: PackEntry['kind'], id: string, name: string, sub: string, on: boolean, colours: string[], viaOutfit = false) => `
-    <button type="button" class="p-pick${on ? ' on' : ''}" data-kind="${kind}" data-id="${id}" aria-pressed="${on}">
-      ${swatches(colours)}
-      <span class="p-text"><span class="w-name">${esc(name)}</span><span class="w-sub">${sub}</span></span>
-      <span class="p-pick-mark">${on ? 'On the list' : viaOutfit ? 'In an outfit' : 'Add'}</span>
-    </button>`;
-
   /** True when the item was added by hand, as opposed to only being there for an outfit. */
   const ownEntry = (t: Trip, id: string) => !!t.entries.find((e) => e.kind === 'item' && e.ref === id)?.own;
 
-  /** The picker's search text. Cleared each time the picker opens. */
+  const TICK = '<svg viewBox="0 0 24 24"><path d="M6.5 12.5l3.7 3.7 7.3-7.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+  /** One tile in the add sheet: art, name, state line and a tick badge. `state` is 'on' (own), 'via' (an outfit holds it) or 'off'. */
+  const pickTile = (kind: PackEntry['kind'], id: string, art: string, name: string, state: 'on' | 'via' | 'off', artClass = 'p-tile-art') => {
+    const mark = state === 'on' ? 'On the list' : state === 'via' ? 'In an outfit' : 'Add';
+    return `
+    <button type="button" class="p-pick${state === 'on' ? ' on' : state === 'via' ? ' via' : ''}" data-kind="${kind}" data-id="${id}" aria-pressed="${state === 'on'}" aria-label="${esc(`${name}, ${mark}`)}">
+      <span class="p-tile-ring" aria-hidden="true">${state === 'off' ? '' : TICK}</span>
+      <span class="${artClass}" aria-hidden="true">${art}</span>
+      <span class="w-name p-tile-name">${esc(name)}</span>
+      <span class="w-sub p-pick-mark">${mark}</span>
+    </button>`;
+  };
+
+  /** The picker's tab, filter and search text. Reset each time the picker opens. */
+  let pickTab: 'clothes' | 'outfits' = 'clothes';
+  let pickFilter = 'all';
   let pickQuery = '';
 
-  /** Redraws the two lists in the picker. The search box is not rebuilt, so its text and focus stay put. */
+  const slotOf = (i: SavedItem) => GARMENTS[i.garment].slot;
+  const SLOTS: { slot: string; label: string }[] = [
+    { slot: 'Top', label: 'Tops' },
+    { slot: 'Dress', label: 'Dresses' },
+    { slot: 'Bottom', label: 'Bottoms' },
+    { slot: 'Legs', label: 'Tights' },
+    { slot: 'Shoes', label: 'Shoes' },
+    { slot: 'Hat', label: 'Hats' },
+  ];
+
+  /** Redraws everything in the sheet except the search box, so its text and focus stay put. */
   const drawPicks = () => {
     const t = selectedTrip();
-    const clothesEl = sheet.querySelector<HTMLElement>('#p-pick-clothes');
-    const looksEl = sheet.querySelector<HTMLElement>('#p-pick-looks');
-    if (!t || !clothesEl || !looksEl) return;
-    const shownItems = items.filter((i) => matchesSearch(pickQuery, [i.name, itemKind(i)]));
-    const shownOutfits = outfits.filter((o) => matchesSearch(pickQuery, [o.name, ...piecesOf(o).map((i) => i.name)]));
-    clothesEl.innerHTML = shownItems.length
-      ? `<div class="p-picks">${shownItems.map((i) => pick('item', i.id, i.name, esc(itemKind(i)), ownEntry(t, i.id), [i.colour], hasEntry(t, 'item', i.id))).join('')}</div>`
-      : `<p class="help">${items.length === 0 ? 'No saved clothes yet.' : 'No clothes match your search.'}</p>`;
-    looksEl.innerHTML = shownOutfits.length
-      ? `<div class="p-picks">${shownOutfits.map((o) => pick('outfit', o.id, o.name, piecesText(o), hasEntry(t, 'outfit', o.id), piecesOf(o).map((i) => i.colour))).join('')}</div>`
-      : `<p class="help">${outfits.length === 0 ? 'No saved outfits yet.' : 'No outfits match your search.'}</p>`;
+    const grid = sheet.querySelector<HTMLElement>('#p-pick-grid');
+    if (!t || !grid) return;
+    const clothes = pickTab === 'clothes';
+    const tabC = sheet.querySelector<HTMLElement>('#p-tab-clothes')!;
+    const tabO = sheet.querySelector<HTMLElement>('#p-tab-outfits')!;
+    tabC.textContent = `Clothes · ${items.length}`;
+    tabO.textContent = `Outfits · ${outfits.length}`;
+    tabC.setAttribute('aria-selected', String(clothes));
+    tabO.setAttribute('aria-selected', String(!clothes));
+    const chips = sheet.querySelector<HTMLElement>('#p-pick-chips')!;
+    chips.hidden = !clothes;
+    const count = (f: string) => (f === 'all' ? items.length : items.filter((i) => slotOf(i) === f).length);
+    chips.innerHTML = [{ slot: 'all', label: 'All' }, ...SLOTS.filter((g) => count(g.slot) > 0)]
+      .map((g) => `<button type="button" class="chip-btn" data-filter="${g.slot}" aria-pressed="${pickFilter === g.slot}">${g.label}${g.slot === 'all' ? '' : ` · ${count(g.slot)}`}</button>`)
+      .join('');
+    if (clothes) {
+      const shown = items.filter((i) => (pickFilter === 'all' || slotOf(i) === pickFilter) && matchesSearch(pickQuery, [i.name, itemKind(i)]));
+      grid.className = 'p-grid p-grid-3';
+      grid.innerHTML = shown.length
+        ? shown.map((i) => pickTile('item', i.id, itemSilhouette(i, 'flat'), i.name, ownEntry(t, i.id) ? 'on' : inOutfitOnly(t, i.id) ? 'via' : 'off')).join('')
+        : `<p class="help p-grid-empty">${items.length === 0 ? 'No saved clothes yet.' : 'Nothing matches'}</p>`;
+    } else {
+      const shown = outfits.filter((o) => matchesSearch(pickQuery, [o.name, ...piecesOf(o).map((i) => i.name)]));
+      grid.className = 'p-grid p-grid-2';
+      grid.innerHTML = shown.length
+        ? shown.map((o) => pickTile('outfit', o.id, flatLayOf(o, resolveOutfit(o, items)), o.name, hasEntry(t, 'outfit', o.id) ? 'on' : 'off', 'o-flat p-pick-flat')).join('')
+        : `<p class="help p-grid-empty">${outfits.length === 0 ? 'No saved outfits yet.' : 'Nothing matches'}</p>`;
+    }
+    const done = sheet.querySelector<HTMLElement>('#p-pick-done');
+    if (done) done.textContent = `Done · ${t.entries.length} on the list`;
   };
 
   const openPicker = () => {
     const t = selectedTrip();
     if (!t) return;
     pickQuery = '';
+    pickTab = 'clothes';
+    pickFilter = 'all';
     sheet.innerHTML = `
       <div class="grab" aria-hidden="true"></div>
       <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
-      <p class="help">Tap to add a piece or an outfit, or to take it off. An outfit adds its pieces too. Packing ticks happen on the list.</p>
+      <div class="seg w-tabs p-pick-tabs" role="tablist" aria-label="Add from">
+        <button type="button" role="tab" id="p-tab-clothes" data-tab="clothes" aria-selected="true"></button>
+        <button type="button" role="tab" id="p-tab-outfits" data-tab="outfits" aria-selected="false"></button>
+      </div>
       <label class="field-label" for="p-pick-search">Search</label>
       <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
-      <h3 class="p-group">Clothes</h3>
-      <div id="p-pick-clothes"></div>
-      <h3 class="p-group">Outfits</h3>
-      <div id="p-pick-looks"></div>
-      <div class="sheet-actions"><button type="button" class="primary" data-act="done">Done</button></div>`;
+      <div class="w-chips" id="p-pick-chips" role="group" aria-label="Show"></div>
+      <div id="p-pick-grid" role="tabpanel"></div>
+      <div class="p-pick-foot"><button type="button" class="primary" id="p-pick-done" data-act="done">Done</button></div>`;
     if (!sheet.open) sheet.showModal();
     drawPicks();
   };
@@ -414,6 +449,20 @@ export function renderPacking(el: HTMLElement): () => void {
       draw();
       drawPicks();
       sheet.querySelector<HTMLElement>(`.p-pick[data-kind="${kind}"][data-id="${id}"]`)?.focus();
+      return;
+    }
+    const tab = target.closest<HTMLElement>('[data-tab]')?.dataset.tab;
+    if (tab) {
+      pickTab = tab as 'clothes' | 'outfits';
+      drawPicks();
+      sheet.querySelector<HTMLElement>(`[data-tab="${tab}"]`)?.focus();
+      return;
+    }
+    const filterBtn = target.closest<HTMLElement>('#p-pick-chips [data-filter]');
+    if (filterBtn) {
+      pickFilter = filterBtn.dataset.filter!;
+      drawPicks();
+      sheet.querySelector<HTMLElement>(`#p-pick-chips [data-filter="${pickFilter}"]`)?.focus();
       return;
     }
     const act = target.closest<HTMLElement>('[data-act]')?.dataset.act;

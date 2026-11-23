@@ -420,11 +420,11 @@ button { font-family: inherit; }
 .p-detail > .p-group { margin: 6px 0 -4px; }
 .p-tray { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
 .p-tile-li { display: flex; min-width: 0; }
-.p-tile { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-height: 132px; padding: 10px 8px 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: center; }
+.p-tile, .p-pick { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; width: 100%; min-height: 132px; padding: 10px 8px 8px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: center; }
 .p-tile-art { display: flex; align-items: center; justify-content: center; width: 72px; height: 64px; }
 .p-tile-art svg { display: block; width: 100%; height: 100%; }
 .p-tile-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; font-size: 13px; line-height: 1.25; }
-.p-tile .w-sub { font-size: 12px; }
+.p-tile .w-sub, .p-pick .w-sub { font-size: 12px; }
 .p-tile-ring { position: absolute; top: 8px; right: 8px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid #b4b4b4; border-radius: 50%; background: var(--surface); }
 .p-tile.packed .p-tile-ring { border-color: var(--ink); background: var(--ink); color: #fff; }
 .p-tile-ring svg { width: 16px; height: 16px; }
@@ -465,11 +465,23 @@ button { font-family: inherit; }
 .p-sheet h2 { margin: 0; }
 .p-sheet .help { margin: 0; }
 .p-group { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-.p-picks { display: flex; flex-direction: column; gap: 8px; }
-.p-pick { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 8px 14px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; text-align: left; }
-.p-pick.on { border: 2px solid var(--ink); padding: 7px 13px; background: var(--sunken); }
-.p-pick-mark { flex: 0 0 auto; font-size: 13px; font-weight: 600; color: var(--muted); }
+/* V7-04: the add sheet as tabs, chips and a tile grid with a sticky footer */
+.p-pick-tabs { flex: 0 0 auto; width: 100%; }
+#p-pick-chips { flex: 0 0 auto; }
+.p-grid { display: grid; gap: 8px; }
+.p-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.p-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.p-grid-empty { grid-column: 1 / -1; padding: 24px 0; text-align: center; }
+.p-pick.on { border: 2px solid var(--ink); padding: 9px 7px 7px; }
+.p-pick.via { border-color: #b4b4b4; }
+.p-pick.on .p-tile-ring { border-color: var(--ink); background: var(--ink); color: #fff; }
+.p-pick.via .p-tile-ring { border-color: #b4b4b4; background: #b4b4b4; color: #fff; }
+.p-pick-mark { font-weight: 600; color: var(--muted); }
 .p-pick.on .p-pick-mark { color: var(--ink); }
+.p-pick-flat { width: 100%; height: 120px; padding: 4px; box-sizing: border-box; }
+.p-grid-2 .p-pick { min-height: 190px; }
+.p-pick-foot { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom)); margin: 0 -16px calc(-16px - env(safe-area-inset-bottom)); padding: 12px 16px calc(16px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
+.p-pick-foot .primary { width: 100%; height: 50px; }
 .p-pick:focus-visible, .p-row button:focus-visible, .p-check input:focus-visible, .p-form button:focus-visible, .p-form input:focus-visible, .p-sheet button:focus-visible, .p-trip:focus-visible, .p-delete:focus-visible, .p-detail .primary:focus-visible, .p-detail .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .p-form { display: flex; flex-direction: column; gap: 8px; }
 .p-form .sheet-actions { margin-top: 8px; }

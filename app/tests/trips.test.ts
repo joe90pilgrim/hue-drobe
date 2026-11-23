@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
+import { inOutfitOnly, peekItems, addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip, type Trip } from '../src/trips';
 
 describe('picker search', () => {
   it('matches any part of a name, ignoring case and spaces at the ends', () => {
@@ -237,6 +237,14 @@ describe('template lines (V6-01)', () => {
     const plain = { ...base, entries: [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, { kind: 'outfit', ref: 'o-1', packed: false }] };
     expect(cleanTrips([plain])[0].entries).toEqual(plain.entries);
   });
+});
+
+describe('inOutfitOnly (V7-04)', () => {
+  const trip = (entries: Trip['entries']): Trip => ({ ...newTrip('T', '2026-12-01', '2026-12-02'), entries });
+  it('is false for an own item', () => expect(inOutfitOnly(trip([{ kind: 'item', ref: 'a', packed: false, own: true }]), 'a')).toBe(false));
+  it('is true for an item only an outfit holds', () => expect(inOutfitOnly(trip([{ kind: 'item', ref: 'a', packed: false, via: ['o'] }]), 'a')).toBe(true));
+  it('is false for an item both own and in an outfit', () => expect(inOutfitOnly(trip([{ kind: 'item', ref: 'a', packed: false, own: true, via: ['o'] }]), 'a')).toBe(false));
+  it('is false for an item not on the list', () => expect(inOutfitOnly(trip([]), 'a')).toBe(false));
 });
 
 describe('peekItems', () => {
