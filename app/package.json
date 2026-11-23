@@ -14,7 +14,9 @@
     "check:assets": "node scripts/check-assets.mjs",
     "check:deploy": "node --test ../deploy/server.test.mjs ../deploy/sync.test.mjs ../deploy/identify.test.mjs",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm run test && npm run check:assets && npm run check:deploy && npm run test:e2e"
+    "check": "node scripts/check.mjs",
+    "check:private": "node scripts/check.mjs --private",
+    "make:test-pack": "node scripts/make-test-pack.mjs"
   },
   "dependencies": {
     "three": "0.170.0"

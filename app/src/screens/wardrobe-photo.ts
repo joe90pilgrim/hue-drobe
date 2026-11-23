@@ -142,7 +142,7 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
   });
 
   sheet.addEventListener('click', async (e) => {
-    if (e.target === sheet) return sheet.close(); // a tap on the scrim
+    if (e.target === sheet) return closeSheet(); // a tap on the scrim
     const t = e.target as HTMLElement;
     const g = t.closest<HTMLElement>('[data-garment]')?.dataset.garment;
     const n = t.closest<HTMLElement>('[data-neck]')?.dataset.neck;
@@ -161,24 +161,40 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
       sheerField.querySelector<HTMLElement>(`[data-sheer="${s}"]`)?.focus();
     }
     const act = t.closest<HTMLElement>('[data-act]')?.dataset.act;
-    if (act === 'cancel') sheet.close();
+    if (act === 'cancel') closeSheet();
     if (act === 'crop-use') void useCrop();
     if (act === 'add') {
       addBtn.disabled = true;
       const items = await loadItems();
       const r = ensureItem(items, garment, colour, Date.now(), neckline, sheer); // one item per garment, colour and variant
       if (r.list !== items) await saveItems(r.list);
-      sheet.close();
+      closeSheet();
       onAdded(r.list, r.item);
     }
   });
-  sheet.addEventListener('close', () => {
+  const resetSheet = () => {
     job++; // forget any answer still on its way
     form.hidden = true;
     cropPane.hidden = true;
     actions.hidden = false;
     addBtn.disabled = true;
     releaseShot();
+  };
+  // The dialog's `close` event arrives some time after close(). When our own code closes the sheet it resets at once and the event
+  // is skipped, so a late event cannot cancel a screenshot pasted or dropped in between (T-01). Escape still resets through the event.
+  let resetDone = false;
+  const closeSheet = () => {
+    if (!sheet.open) return;
+    resetDone = true;
+    resetSheet();
+    sheet.close();
+  };
+  sheet.addEventListener('close', () => {
+    if (resetDone) {
+      resetDone = false;
+      return;
+    }
+    resetSheet();
   });
 
   const apply = (s: Suggestion | null, message: string) => {
@@ -392,7 +408,7 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
       document.removeEventListener('dragover', onDragOver);
       document.removeEventListener('drop', onDrop);
       job++;
-      if (sheet.open) sheet.close();
+      closeSheet();
     },
   };
 }
