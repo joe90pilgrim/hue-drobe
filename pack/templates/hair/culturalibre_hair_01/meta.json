@@ -1,0 +1,25 @@
+{
+  "_note": "V5-04. Used straight from the archived pack (assets/packs/MANIFEST.md), no source file here; sha256 is the pack's own .mhclo. B's hair: long, straight, centre parted, no fringe, below the shoulders. Chosen from the pack thumbnails and picked by Joe from renders on 23 Nov 2026. The item's own header says AGPL3; the pack json says CC0, which Joe accepted in V5-00 (d) (see assets/packs/CREDITS.md). Not approved: the hair check has no limits yet.",
+  "id": "culturalibre_hair_01",
+  "category": "hair",
+  "pack_file": "culturalibre_hair_01",
+  "layer": "base",
+  "allowed_bodies": "female",
+  "source": {
+    "pack": "hair01",
+    "asset": "culturalibre_hair_01"
+  },
+  "licence": "CC0",
+  "credit": null,
+  "sha256": "2644c85c6bcf5cdcd9abbe288ad44807b791c1386f8c59614c38b18d241d34c9",
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.1,
+  "replaces": [],
+  "inner_layers": [],
+  "approved": false,
+  "colour": "texture"
+}
