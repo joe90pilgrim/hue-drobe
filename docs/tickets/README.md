@@ -150,8 +150,8 @@ Notes on version 5, after V5-00 (23 Nov 2026):
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V6-01 | [Ask Gemini for advice](v6-style-assistant/V6-01-gemini-advice.md) (outline) | V4-00, V2-05 | Sonnet, medium (tentative) |
-| V6-02 | [Suggested packing list](v6-style-assistant/V6-02-suggested-packing.md) (outline) | V4-03, V6-01 | Sonnet, medium (tentative) |
+| V6-01 | [Gemini packing-list template](v6-style-assistant/V6-01-gemini-packing-template.md) (built; merges the old advice ticket and V6-02) | V4-00, V2-05 | Sonnet, medium (tentative) |
+| V6-02 | [Suggested packing list](v6-style-assistant/V6-02-suggested-packing.md) (merged into V6-01) | V4-03, V6-01 | Sonnet, medium (tentative) |
 
 ### Later: needs an architecture change first
 

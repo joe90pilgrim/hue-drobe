@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addOutfit, backfillOutfitPieces, cleanTrips, removeEntry, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip } from '../src/trips';
+import { addOutfit, backfillOutfitPieces, cleanTrips, editTemplateLine, removeEntry, replaceTemplate, templateText, removeOutfit, datesError, deleteTrip, formatDates, hasEntry, isDay, matchesSearch, newTrip, packedCount, setPacked, todayIso, toggleEntry, updateTrip } from '../src/trips';
 
 describe('picker search', () => {
   it('matches any part of a name, ignoring case and spaces at the ends', () => {
@@ -159,5 +159,82 @@ describe('trips', () => {
     ]);
     expect(out.map((t) => t.id)).toEqual(['c', good.id]);
     expect(out[0]).toMatchObject({ name: 'Trip', savedAt: 0, entries: [{ kind: 'item', ref: 'x', packed: false, own: true }] });
+  });
+});
+
+describe('template lines (V6-01)', () => {
+  const lines = [{ label: 'Socks', quantity: 3, group: 'Clothes' }, { label: 'Passport' }];
+  const refs = () => {
+    let n = 0;
+    return () => `r${++n}`;
+  };
+  const trip = () => newTrip('Lisbon', '2026-12-14', '2026-12-16', 1);
+
+  it('shows the quantity only when there is more than one', () => {
+    expect(templateText({ label: 'Socks', quantity: 3 })).toBe('3 × Socks');
+    expect(templateText({ label: 'Passport', quantity: 1 })).toBe('Passport');
+    expect(templateText({ label: '  Rain   jacket ' })).toBe('Rain jacket');
+  });
+
+  it('adds template lines, each with its own tick, and counts them as packable', () => {
+    const t = trip();
+    let list = replaceTemplate([t], t.id, lines, refs());
+    expect(list[0].entries).toEqual([
+      { kind: 'template', ref: 'r1', packed: false, text: '3 × Socks', group: 'Clothes' },
+      { kind: 'template', ref: 'r2', packed: false, text: 'Passport' },
+    ]);
+    list = setPacked(list, t.id, 'template', 'r1', true);
+    expect(packedCount(list[0])).toEqual({ packed: 1, total: 2 });
+  });
+
+  it('replaces the template lines only: items, outfits and their ticks stay', () => {
+    const t = trip();
+    let list = toggleEntry([t], t.id, 'tee-1');
+    list = addOutfit(list, t.id, 'o-1', ['tee-1', 'trousers-1']);
+    list = setPacked(list, t.id, 'item', 'tee-1', true);
+    list = replaceTemplate(list, t.id, lines, refs());
+    list = setPacked(list, t.id, 'template', 'r1', true);
+    list = replaceTemplate(list, t.id, [{ label: 'Umbrella' }], refs());
+    const kinds = list[0].entries.map((e) => `${e.kind}:${e.ref}:${e.packed}`);
+    expect(kinds).toEqual(['item:tee-1:true', 'outfit:o-1:false', 'item:trousers-1:false', 'template:r1:false']);
+    expect(list[0].entries.find((e) => e.kind === 'template')?.text).toBe('Umbrella');
+    // Only that trip changes.
+    const other = trip();
+    expect(replaceTemplate([t, other], t.id, lines, refs())[1]).toBe(other);
+  });
+
+  it('edits a line, ignores blank text, and removes a line on its own', () => {
+    const t = trip();
+    let list = replaceTemplate([t], t.id, lines, refs());
+    list = editTemplateLine(list, t.id, 'r2', '  Passport and visa ');
+    expect(list[0].entries[1].text).toBe('Passport and visa');
+    expect(editTemplateLine(list, t.id, 'r2', '   ')).toBe(list);
+    list = removeEntry(list, t.id, 'template', 'r1');
+    expect(list[0].entries.map((e) => e.ref)).toEqual(['r2']);
+  });
+
+  it('cleans template entries on load, and leaves trips without them unchanged', () => {
+    const base = { v: 1, id: 't', name: 'Lisbon', starts: '2026-12-14', ends: '2026-12-16', savedAt: 1 };
+    const out = cleanTrips([
+      {
+        ...base,
+        entries: [
+          { kind: 'template', ref: 'a', packed: true, text: '  3 ×   Socks ', group: ' Clothes ' },
+          { kind: 'template', ref: 'a', text: 'duplicate' },
+          { kind: 'template', ref: 'b', text: '   ' },
+          { kind: 'template', ref: 'c' },
+          { kind: 'template', text: 'no ref' },
+          { kind: 'template', ref: 'd', packed: 'yes', text: 'x'.repeat(100), group: 7 },
+          { kind: 'item', ref: 'tee-1', packed: false, own: true },
+        ],
+      },
+    ]);
+    expect(out[0].entries).toEqual([
+      { kind: 'template', ref: 'a', packed: true, text: '3 × Socks', group: 'Clothes' },
+      { kind: 'template', ref: 'd', packed: false, text: 'x'.repeat(60) },
+      { kind: 'item', ref: 'tee-1', packed: false, own: true },
+    ]);
+    const plain = { ...base, entries: [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, { kind: 'outfit', ref: 'o-1', packed: false }] };
+    expect(cleanTrips([plain])[0].entries).toEqual(plain.entries);
   });
 });

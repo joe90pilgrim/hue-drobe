@@ -3,13 +3,13 @@ import { kvGet, kvPut } from '../store';
 import { addFavourite, hasFavourite, loadFavourites, removeFavourite, saveFavourites, type Favourite } from '../favourites';
 
 /** The saved result: the answers that produced it, so the season can always be re-run from them. */
-const KEY = 'colourQuiz';
+export const QUIZ_KEY = 'colourQuiz';
 type Answers = Record<string, string>; // question id -> answer id
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
 /** True when every question has a valid answer, so the saved result can be scored. */
-function isComplete(a: unknown): a is Answers {
+export function isComplete(a: unknown): a is Answers {
   if (!a || typeof a !== 'object') return false;
   const answers = a as Answers;
   return quiz.questions.every((q) => q.answers.some((o) => o.id === answers[q.id]));
@@ -144,7 +144,7 @@ export function renderQuiz(el: HTMLElement): () => void {
     const answers = { ...draft };
     saved = answers;
     showResult(answers);
-    await kvPut(KEY, { answers, finishedAt: new Date().toISOString() });
+    await kvPut(QUIZ_KEY, { answers, finishedAt: new Date().toISOString() });
   }
 
   // One listener on the card, which stays in place while its contents change.
@@ -189,7 +189,7 @@ export function renderQuiz(el: HTMLElement): () => void {
     syncFavButtons();
   });
 
-  kvGet<{ answers?: unknown } | null>(KEY, null).then((v) => {
+  kvGet<{ answers?: unknown } | null>(QUIZ_KEY, null).then((v) => {
     if (gone) return;
     const a = v?.answers;
     if (isComplete(a)) {

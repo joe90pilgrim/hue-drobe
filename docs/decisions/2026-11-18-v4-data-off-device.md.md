@@ -16,6 +16,8 @@ We will use the **Gemini API** for image-to-garment matching and style assistant
    - *Amended 22 Nov 2026 (V4-02, Joe's decision):* a cropped retailer product image that shows a model wearing the garment may be sent. The person chooses the crop on the device. Private photos of people are still never sent.
 3. **Lightweight metadata only:** Text context sent for styling advice (V6) is limited to seasonal colour palettes and saved garment lists.
 
+   - *Amended 23 Nov 2026 (V6-01, Joe's decision):* for packing templates the trip name, the trip's start and end dates, and the season name with its palette (only if the colour quiz is complete) may be sent. The app says on the screen that the trip name is sent to Gemini. No destination field is added; wardrobe contents are still not sent.
+
 ## Consequences
 - `V4-01` can proceed using a server-side/API call to Gemini Flash for fast, accurate garment category, neckline, and colour extraction.
 - The PWA remains lightweight on mobile devices without downloading multi-megabyte client-side ML weights.

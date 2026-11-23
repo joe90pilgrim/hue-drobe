@@ -6,12 +6,17 @@ import { cleanName } from './wardrobe';
 /**
  * One thing on a list: a saved item or a saved outfit, by id. Items are packed and ticked off. An outfit is a "planned
  * look": it is never ticked, and its garments are the item entries that name it in `via` (V4-04). Both extra fields are
- * optional, so lists saved before V4-04 still load.
+ * optional, so lists saved before V4-04 still load. A `template` line (V6-01) is plain text from Gemini's packing template,
+ * not a wardrobe item: `ref` is its own id, `text` is the line and `group` an optional heading such as "Tops".
  */
 export interface PackEntry {
-  kind: 'item' | 'outfit';
+  kind: 'item' | 'outfit' | 'template';
   ref: string;
   packed: boolean;
+  /** Template lines only: the line itself, such as "3 × Socks". */
+  text?: string;
+  /** Template lines only: an optional group such as "Tops" or "Documents". */
+  group?: string;
   /** Item entries only: ids of the outfits that brought this item onto the list. */
   via?: string[];
   /** Item entries only: true when the item was also added by hand. */
@@ -35,6 +40,8 @@ export interface Trip {
 
 export const TRIPS_KEY = 'trips';
 const FALLBACK_NAME = 'Trip';
+export const TEMPLATE_TEXT_MAX = 60;
+const TEMPLATE_GROUP_MAX = 24;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -96,15 +103,25 @@ export function cleanTrips(value: unknown): Trip[] {
   return out.sort((a, b) => a.savedAt - b.savedAt);
 }
 
-/** Keeps the entries that name an item or an outfit, once each. */
+/** Template text: spaces tidied, cut to length. Empty when there is nothing left. */
+const cleanLine = (s: unknown, max: number) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, max).trim() : '');
+
+/** Keeps the entries that name an item or an outfit, or hold a template line, once each. */
 function cleanEntries(value: unknown): PackEntry[] {
   if (!Array.isArray(value)) return [];
   const out: PackEntry[] = [];
   for (const raw of value) {
     if (!raw || typeof raw !== 'object') continue;
-    const { kind, ref, packed, via, own } = raw as Record<string, unknown>;
-    if ((kind !== 'item' && kind !== 'outfit') || typeof ref !== 'string' || !ref) continue;
+    const { kind, ref, packed, via, own, text, group } = raw as Record<string, unknown>;
+    if ((kind !== 'item' && kind !== 'outfit' && kind !== 'template') || typeof ref !== 'string' || !ref) continue;
     if (out.some((e) => e.kind === kind && e.ref === ref)) continue;
+    if (kind === 'template') {
+      const line = cleanLine(text, TEMPLATE_TEXT_MAX);
+      if (!line) continue;
+      const g = cleanLine(group, TEMPLATE_GROUP_MAX);
+      out.push(g ? { kind, ref, packed: packed === true, text: line, group: g } : { kind, ref, packed: packed === true, text: line });
+      continue;
+    }
     if (kind === 'outfit') {
       out.push({ kind, ref, packed: packed === true }); // an old tick is read by the backfill, then cleared
       continue;
@@ -135,8 +152,8 @@ export function deleteTrip(list: Trip[], id: string): Trip[] {
 
 export const hasEntry = (trip: Trip, kind: PackEntry['kind'], ref: string) => trip.entries.some((e) => e.kind === kind && e.ref === ref);
 
-/** Items on a list are tickable; outfits are planned looks and are not. */
-const isItem = (e: PackEntry) => e.kind === 'item';
+/** Items and template lines are tickable; outfits are planned looks and are not. */
+const isItem = (e: PackEntry) => e.kind !== 'outfit';
 
 /**
  * Hand-adds an item (not packed yet), or takes the hand-add off when it was already hand-added. An item that an outfit
@@ -160,6 +177,44 @@ function withoutOwn(e: PackEntry): PackEntry {
 /** Takes one entry off the list whatever else needs it. Used for entries whose item was deleted from the wardrobe. */
 export function removeEntry(list: Trip[], id: string, kind: PackEntry['kind'], ref: string): Trip[] {
   return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.filter((e) => !(e.kind === kind && e.ref === ref)) }));
+}
+
+/** A line of a packing template, as the server sends it. */
+export interface TemplateLine {
+  label: string;
+  quantity?: number;
+  group?: string;
+}
+
+/** The text a template line shows: the label, with the quantity in front when there is more than one. */
+export const templateText = (l: TemplateLine) => cleanLine(l.quantity && l.quantity > 1 ? `${l.quantity} × ${l.label}` : l.label, TEMPLATE_TEXT_MAX);
+
+/**
+ * Replaces the trip's template lines with these, and nothing else: items, outfits and the ticks on them stay as they are.
+ * The new lines come after the others, in the order given.
+ */
+export function replaceTemplate(list: Trip[], id: string, lines: TemplateLine[], newRef: () => string = newLineRef): Trip[] {
+  return mapTrip(list, id, (t) => {
+    const fresh: PackEntry[] = [];
+    for (const l of lines) {
+      const text = templateText(l);
+      if (!text) continue;
+      const group = cleanLine(l.group, TEMPLATE_GROUP_MAX);
+      fresh.push(group ? { kind: 'template', ref: newRef(), packed: false, text, group } : { kind: 'template', ref: newRef(), packed: false, text });
+    }
+    return { ...t, entries: [...t.entries.filter((e) => e.kind !== 'template'), ...fresh] };
+  });
+}
+
+/** Changes the text of one template line. Blank text leaves it as it was (use `removeEntry` to delete the line). */
+export function editTemplateLine(list: Trip[], id: string, ref: string, text: string): Trip[] {
+  const line = cleanLine(text, TEMPLATE_TEXT_MAX);
+  if (!line) return list;
+  return mapTrip(list, id, (t) => ({ ...t, entries: t.entries.map((e) => (e.kind === 'template' && e.ref === ref ? { ...e, text: line } : e)) }));
+}
+
+function newLineRef(): string {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 /** Adds the outfit as a planned look and each of its items as an entry, once each. Items already there just record the outfit. */

@@ -11,7 +11,7 @@
 //   LOCAL_PERSON   local trial only: act as this person without IAP. Refused on Cloud Run (K_SERVICE set).
 //                  Synced data then goes to data.json next to this file.
 //   FIRESTORE_PROJECT  project whose Firestore holds synced data (V2-06b; deploy.mjs sets it). Without it, no sync.
-//   GEMINI_API_KEY  key for the photo-to-garment call (V4-01; deploy.mjs sets it from private/gemini-key.txt). Without it, /api/identify is 404.
+//   GEMINI_API_KEY  key for the photo-to-garment call (V4-01) and the packing template (V6-01); deploy.mjs sets it from private/gemini-key.txt. Without it, /api/identify and /api/packing-template are 404.
 //   GEMINI_MODEL    Gemini model to use (default in identify.mjs)
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
@@ -21,6 +21,7 @@ import { extname, join, normalize, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { MAX_VALUE_BYTES, SYNC_KEYS, createFileStore, createFirestoreStore } from './datastore.mjs';
 import { MAX_BODY_BYTES, cleanRequest, createIdentifier } from './identify.mjs';
+import { MAX_BODY_BYTES as MAX_PACKING_BYTES, cleanRequest as cleanPackingRequest, createPacker } from './packing.mjs';
 
 const TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -173,8 +174,9 @@ function readBody(req, limit) {
 /**
  * `store` (deploy/datastore.mjs) holds synced data; without one, /api/data is 404 and the app keeps data on the device only.
  * `identify` (deploy/identify.mjs) reads a garment photo; without one, /api/identify is 404.
+ * `pack` (deploy/packing.mjs) makes a packing template from a trip; without one, /api/packing-template is 404.
  */
-export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson, store, identify }) {
+export function createApp({ audience, allowed, root, keys = createKeyStore(), localPerson, store, identify, pack }) {
   if (!localPerson && !audience) throw new Error('IAP_AUDIENCE is not set');
   if (!(allowed instanceof Map) || allowed.size === 0) throw new Error('ALLOWED_USERS is not set');
   if (localPerson && ![...allowed.values()].includes(localPerson)) throw new Error(`LOCAL_PERSON "${localPerson}" is not in ALLOWED_USERS`);
@@ -252,6 +254,29 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     }
   }
 
+  /** POST /api/packing-template (V6-01): { name, starts, ends, season? } in, { items: [{ label, quantity?, group? }] } out. Nothing is kept or logged. */
+  async function handlePacking(req, send) {
+    if (!pack) return send(404, {}, 'Not found');
+    const site = req.headers['sec-fetch-site'];
+    if (site !== undefined && site !== 'same-origin') return send(403, {}, 'Not allowed');
+    if (req.method !== 'POST') return send(405, { Allow: 'POST' });
+    if (!String(req.headers['content-type'] ?? '').startsWith('application/json')) return send(415, {}, 'JSON only');
+    const text = await readBody(req, MAX_PACKING_BYTES);
+    if (text === null) return send(413, {}, 'Too large');
+    let clean = null;
+    try {
+      clean = cleanPackingRequest(JSON.parse(text));
+    } catch {}
+    if (!clean) return send(400, {}, 'Send a trip name, its dates (up to 90 days) and, optionally, a season with its palette');
+    try {
+      return json(send, 200, await pack(clean));
+    } catch (e) {
+      // Log what went wrong, never the trip name, the dates or the answer.
+      console.error(JSON.stringify({ severity: 'ERROR', message: 'packing template failed', error: e.message, cause: e.cause }));
+      return send(e.status ?? 502, {}, e.status ? e.message : 'Try again later');
+    }
+  }
+
   return async function handle(req, res) {
     const send = (code, headers, body) => {
       res.writeHead(code, { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', ...headers });
@@ -275,6 +300,7 @@ export function createApp({ audience, allowed, root, keys = createKeyStore(), lo
     }
 
     if (urlPath === '/api/identify') return handleIdentify(req, send);
+    if (urlPath === '/api/packing-template') return handlePacking(req, send);
 
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(405, { Allow: 'GET, HEAD' });
 
@@ -334,6 +360,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
         ? createFirestoreStore({ project: process.env.FIRESTORE_PROJECT })
         : undefined,
     identify: process.env.GEMINI_API_KEY ? createIdentifier({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || undefined }) : undefined,
+    pack: process.env.GEMINI_API_KEY ? createPacker({ apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || undefined }) : undefined,
   });
   const port = Number(process.env.PORT ?? 8080);
   createServer(app).listen(port, () => console.log(`Serving ${root} on port ${port}${localPerson ? ` as ${localPerson} (local trial, no sign-in)` : ''}`));

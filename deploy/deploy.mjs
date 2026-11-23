@@ -51,6 +51,7 @@ mkdirSync(out + '/public', { recursive: true });
 cpSync(here('./server.mjs'), out + '/server.mjs');
 cpSync(here('./datastore.mjs'), out + '/datastore.mjs');
 cpSync(here('./identify.mjs'), out + '/identify.mjs');
+cpSync(here('./packing.mjs'), out + '/packing.mjs');
 cpSync(here('./Dockerfile'), out + '/Dockerfile');
 cpSync(here('../app/dist'), out + '/public', { recursive: true });
 for (const person of people) {

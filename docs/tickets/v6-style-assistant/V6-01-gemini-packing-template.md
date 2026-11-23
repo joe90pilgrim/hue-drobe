@@ -3,7 +3,7 @@
 *Replaces V6-01 (Ask Gemini for advice) and V6-02 (Suggested packing list), merged on 23 Nov 2026.*
 
 ## Summary
-- **Status:** outline with the shape agreed; open decisions below must be answered before it starts.
+- **Status:** built 23 Nov 2026 on branch `feat/V6-01-gemini-packing-template`; decisions answered (see the note at the end).
 - **Ceiling:** 3 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet, high. Multi-file: a new Cloud Run route, a client module, a change to the trips model and the Packing screen. Copies the V4-01 Gemini pattern, so no architecture work.
 - **Depends on:** V4-01 (Gemini route, built), V4-03 (built), V4-04 (outfit pieces in the packing list, must be merged first).
@@ -71,3 +71,7 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - **Git:** follow the Git section of `CLAUDE.md`. V4-04 must be merged first; branch from an up-to-date `origin/master`, never from another feature branch. Never push or open a pull request unless Joe asks.
 - **Key and privacy:** the Gemini key is in `private/gemini-key.txt`; never print it or commit it. Add no analytics and send nothing beyond what decision 1 allows.
 - **Done check:** run `npm --prefix app run typecheck`, `npx vitest related` on the changed files, the server tests for `deploy/packing.test.mjs`, and `npx playwright test e2e/packing.spec.ts`. Run the full `npm run check` once before the final commit, with nothing else loading the machine. Then add a two-line note to this ticket and stop. Ideas go in `docs/tickets/backlog.md`.
+
+## Note (23 Nov 2026)
+Built: `POST /api/packing-template` (`deploy/packing.mjs`) and a "Make me a template" button on a trip, with template lines you can tick, edit and remove. Joe's decisions: trip name, dates, season and palette may be sent (V4-00 amended, note on the screen); no spending cap for now; no destination field and no linking of lines to garments; a re-run replaces only the template lines.
+**The server needs redeploying** (`node deploy/deploy.mjs`, which now also copies `packing.mjs`); until then the button says templates are not switched on.

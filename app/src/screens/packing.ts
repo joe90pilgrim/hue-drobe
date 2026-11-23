@@ -1,10 +1,12 @@
 import { itemKind, loadItems, type SavedItem } from '../wardrobe';
 import { loadOutfits, resolveOutfit, type Outfit } from '../outfits';
+import { TemplateError, buildTemplateRequest, fetchTemplate, loadSeason } from '../packing-template';
 import {
   addOutfit,
   backfillOutfitPieces,
   datesError,
   deleteTrip,
+  editTemplateLine,
   formatDates,
   hasEntry,
   loadTrips,
@@ -13,8 +15,10 @@ import {
   packedCount,
   removeEntry,
   removeOutfit,
+  replaceTemplate,
   saveTrips,
   setPacked,
+  TEMPLATE_TEXT_MAX,
   todayIso,
   toggleEntry,
   updateTrip,
@@ -51,6 +55,11 @@ export function renderPacking(el: HTMLElement): () => void {
   let selected: string | null = null;
   /** The trip the form is editing, or null for a new trip. */
   let editing: string | null = null;
+  /** The template line the edit form is changing. */
+  let editingLine: string | null = null;
+  /** The trip a template is being made for, and the last failure (with its trip), shown in place of the lines. */
+  let making: string | null = null;
+  let templateError: { trip: string; message: string } | null = null;
   let gone = false;
 
   const selectedTrip = () => trips.find((t) => t.id === selected);
@@ -73,6 +82,7 @@ export function renderPacking(el: HTMLElement): () => void {
       if (!item) return goneRow(e, 'Clothes item');
       return checkRow(e, esc(item.name), esc(itemKind(item)), [item.colour]);
     }
+    if (e.kind === 'template') return templateRow(e);
     const outfit = outfits.find((o) => o.id === e.ref);
     if (!outfit) return goneRow(e, 'Outfit');
     return lookRow(esc(outfit.name), piecesText(outfit), piecesOf(outfit).map((i) => i.colour));
@@ -96,6 +106,17 @@ export function renderPacking(el: HTMLElement): () => void {
       </label>
     </li>`;
 
+  /** A line from the packing template: plain text with a tick, which can be edited or removed. */
+  const templateRow = (e: PackEntry) => `
+    <li class="p-row${e.packed ? ' packed' : ''}">
+      <label class="p-check">
+        <input type="checkbox" data-kind="template" data-ref="${e.ref}"${e.packed ? ' checked' : ''}>
+        <span class="p-text"><span class="w-name">${esc(e.text ?? '')}</span><span class="w-sub">${e.group ? esc(e.group) : 'From your template'}</span></span>
+      </label>
+      <button type="button" class="secondary" data-act="edit-line" data-ref="${e.ref}" aria-label="Edit ${esc(e.text ?? '')}">Edit</button>
+      <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(e.text ?? '')}">Remove</button>
+    </li>`;
+
   /** An entry whose clothes item or outfit was deleted. It stays until taken off the list. */
   const goneRow = (e: PackEntry, what: string) => `
     <li class="p-row p-gone">
@@ -103,12 +124,16 @@ export function renderPacking(el: HTMLElement): () => void {
       <button type="button" class="secondary" data-act="take-off" data-kind="${e.kind}" data-ref="${e.ref}">Take off</button>
     </li>`;
 
+  /** Whether the colour quiz was finished, read when the screen opens, so the note says what is sent. */
+  let hasSeason = false;
+
   const detailHtml = (t: Trip) => {
+    const seasonNote = hasSeason ? ', and your colour season and palette' : '';
     const c = packedCount(t);
     const count = c.total ? `${c.packed} of ${c.total} packed` : 'Nothing on the list yet';
     const list = t.entries.length
       ? `<ul class="p-list" aria-label="Packing list">${t.entries.map(rowHtml).join('')}</ul>`
-      : '<p class="help">Tap Add items and outfits to build the list.</p>';
+      : '<p class="help">Tap Add items and outfits, or Make me a template, to build the list.</p>';
     return `
       <div class="p-head">
         <h2 id="p-title">${esc(t.name)}</h2>
@@ -116,6 +141,9 @@ export function renderPacking(el: HTMLElement): () => void {
         <p class="p-count" id="p-count">${count}</p>
       </div>
       <button type="button" class="primary" data-act="add">Add items and outfits</button>
+      <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Making a template…' : 'Make me a template'}</button>
+      <p class="help" id="p-tpl-note">Sends the trip name and dates${seasonNote} to Gemini to suggest a list. It replaces the template lines on this trip and never touches clothes or outfits you added.</p>
+      <p class="help" id="p-tpl-status" role="status">${templateError?.trip === t.id ? esc(templateError.message) : ''}</p>
       ${list}
       <div class="d-pair">
         <button type="button" class="secondary" data-act="edit">Edit trip</button>
@@ -211,6 +239,48 @@ export function renderPacking(el: HTMLElement): () => void {
     sheet.querySelector<HTMLInputElement>('#p-f-name')?.focus();
   };
 
+  const openLineForm = (t: Trip, ref: string) => {
+    const line = t.entries.find((e) => e.kind === 'template' && e.ref === ref);
+    if (!line) return;
+    editingLine = ref;
+    sheet.innerHTML = `
+      <form class="p-form" id="p-line-form" novalidate>
+        <h2 id="p-sheet-title">Edit line</h2>
+        <label class="field-label" for="p-l-text">Text</label>
+        <input id="p-l-text" class="w-name-input" maxlength="${TEMPLATE_TEXT_MAX}" autocomplete="off" value="${esc(line.text ?? '')}">
+        <p class="help" id="p-l-error" role="status"></p>
+        <div class="sheet-actions">
+          <button type="submit" class="primary">Save line</button>
+          <button type="button" class="secondary" data-act="cancel-form">Cancel</button>
+        </div>
+      </form>`;
+    if (!sheet.open) sheet.showModal();
+    sheet.querySelector<HTMLInputElement>('#p-l-text')?.focus();
+  };
+
+  /** Asks the server for a template and swaps it in for the trip's template lines. A failure leaves the trip as it was. */
+  const makeTemplate = async (t: Trip) => {
+    if (making) return;
+    making = t.id;
+    templateError = null;
+    draw();
+    try {
+      const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason()));
+      if (gone) return;
+      trips = replaceTemplate(trips, t.id, lines);
+      save();
+    } catch (e) {
+      if (gone) return;
+      templateError = { trip: t.id, message: e instanceof TemplateError ? e.message : 'Could not make a template. Try again in a moment.' };
+    } finally {
+      making = null;
+      if (!gone) {
+        draw();
+        detail.querySelector<HTMLButtonElement>('[data-act="make-template"]')?.focus();
+      }
+    }
+  };
+
   const askDelete = (t: Trip) => {
     confirmDlg.innerHTML = `
       <h2 id="p-confirm-title">Delete ${esc(t.name)}?</h2>
@@ -247,6 +317,17 @@ export function renderPacking(el: HTMLElement): () => void {
         break;
       case 'delete':
         askDelete(t);
+        break;
+      case 'make-template':
+        void makeTemplate(t);
+        break;
+      case 'edit-line':
+        openLineForm(t, b.dataset.ref!);
+        break;
+      case 'remove-line':
+        trips = removeEntry(trips, t.id, 'template', b.dataset.ref!);
+        save();
+        draw();
         break;
       case 'take-off':
         trips = b.dataset.kind === 'outfit' ? removeOutfit(trips, t.id, b.dataset.ref!) : removeEntry(trips, t.id, 'item', b.dataset.ref!);
@@ -303,6 +384,23 @@ export function renderPacking(el: HTMLElement): () => void {
 
   sheet.addEventListener('submit', (e) => {
     e.preventDefault();
+    if ((e.target as HTMLElement).id === 'p-line-form') {
+      const text = sheet.querySelector<HTMLInputElement>('#p-l-text')?.value ?? '';
+      const t = selectedTrip();
+      if (!text.trim()) {
+        const msg = sheet.querySelector<HTMLElement>('#p-l-error');
+        if (msg) msg.textContent = 'Enter some text, or remove the line instead.';
+        return;
+      }
+      if (t && editingLine) {
+        trips = editTemplateLine(trips, t.id, editingLine, text);
+        save();
+      }
+      editingLine = null;
+      sheet.close();
+      draw();
+      return;
+    }
     const name = (sheet.querySelector<HTMLInputElement>('#p-f-name')?.value ?? '').trim();
     const starts = sheet.querySelector<HTMLInputElement>('#p-f-start')?.value ?? '';
     const ends = sheet.querySelector<HTMLInputElement>('#p-f-end')?.value ?? '';
@@ -336,6 +434,11 @@ export function renderPacking(el: HTMLElement): () => void {
       confirmDlg.close();
       draw();
     }
+  });
+
+  loadSeason().then((s) => {
+    hasSeason = !!s;
+    if (!gone) draw();
   });
 
   Promise.all([loadTrips(), loadItems(), loadOutfits()]).then(([loadedTrips, loadedItems, loadedOutfits]) => {
