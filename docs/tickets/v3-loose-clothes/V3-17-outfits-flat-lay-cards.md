@@ -1,7 +1,7 @@
 # Ticket: Outfits tab flat-lay cards (V3-17)
 
 ## Summary
-- **Status:** ready once V3-16 is done.
+- **Status:** done. Joe signed off the look on 23 Nov 2026.
 - **Ceiling:** 90 minutes. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. Layout maths for the stack, a screen change, and one e2e check to rewrite.
 - **Depends on:** V3-15, V3-16 (same screen file and stylesheet).
@@ -55,4 +55,4 @@ If a decision isn't made when this ticket starts, stop and ask rather than guess
 - Stop at the ceiling, or after three failed attempts at the same problem, and report what was done, what's left and why.
 - When done: commit, add a two-line note to this ticket saying what was done, and stop. Don't start the next ticket. Ideas go in `docs/tickets/backlog.md`.
 
-**Note (22 Nov 2026):** Outfit cards and their detail art are now a flat-lay of the garment silhouettes (`flatLayLayout` and `flatLaySvg` in `silhouettes.ts`); deleted pieces are dashed `.o-gap` outlines. Decision 1 taken (second line says "N items" while the name is automatic), decision 2 taken (under tee to backlog). `npm run check` passes apart from one flaky screenshot spec that passes alone; Joe's visual sign-off and the 412 px card-height check are still to do.
+**Note (22 Nov 2026):** Outfit cards and their detail art are now a flat-lay of the garment silhouettes (`flatLayLayout` and `flatLaySvg` in `silhouettes.ts`); deleted pieces are dashed `.o-gap` outlines. Decision 1 taken (second line says "N items" while the name is automatic), decision 2 taken (under tee to backlog). `npm run check` passes apart from one flaky screenshot spec that passes alone; Joe signed off the look (23 Nov 2026), including the card height.
