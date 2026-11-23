@@ -13,6 +13,8 @@ import {
   DRESS_OPTION,
   DRESS_SLOT,
   GARMENTS,
+  HAT_MESHES,
+  HAT_SLOT,
   SHOES_AS_MADE,
   SHOES_SLOT,
   SHOE_MESHES,
@@ -57,8 +59,14 @@ interface Slot {
 }
 /** V5-04: the person's hair. Always on the avatar when their pack has it; the row only sets its colour, which is saved under `hair` in the same `colours` map as the garments. */
 const HAIR_SLOT = 'Hair';
+/** The slots whose control is a small pill on the stage, not a row in the list, so the list stays short enough for Save outfit to stay on screen (hair: V5-04; hat: V5-02). */
+const PILL_SLOTS: readonly string[] = [HAIR_SLOT, HAT_SLOT];
+const isPill = (name: string) => PILL_SLOTS.includes(name);
 
 const SLOTS: Slot[] = [
+  // V5-02: a hat (Joe, 23 Nov 2026: a cap and a beanie, for both people). Plain colour. Worn over the hair: the viewer then draws the hair with the faces
+  // the hat covers removed. The row is hidden when the pack has no hat.
+  { name: HAT_SLOT, options: ['None', GARMENTS.cap.option, GARMENTS.beanie.option], garments: { [GARMENTS.cap.option]: 'cap', [GARMENTS.beanie.option]: 'beanie' } },
   // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
   { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
@@ -85,6 +93,9 @@ const SLOTS: Slot[] = [
   // V5-04: hair colour (plain colour, chosen by Joe 23 Nov 2026). Hidden when the pack has no hair. Not part of a saved outfit.
   { name: HAIR_SLOT, options: [HAIR_SLOT], garments: { [HAIR_SLOT]: 'hair' } },
 ];
+
+/** The pack mesh behind each hat option, to offer a hat only when this person's pack has it. */
+const HAT_OF: Record<string, string> = { [GARMENTS.cap.option]: 'cap', [GARMENTS.beanie.option]: 'beanie' };
 
 /** The pack mesh behind each shoe option, to offer a shoe only when this person's pack has it. */
 const SHOE_OF: Record<string, string> = Object.fromEntries(SLOTS.find((s) => s.name === SHOES_SLOT)!.options.filter((o) => o !== 'None').map((o) => [o, SLOTS.find((s) => s.name === SHOES_SLOT)!.garments[o]]));
@@ -130,15 +141,17 @@ export function renderTryOn(el: HTMLElement): () => void {
     <div class="try-on">
       <div class="stage" id="stage">
         <p class="stage-status" role="status"></p>
-        <button type="button" class="wear-row hair-pill" data-box="${HAIR_SLOT}" data-row="${HAIR_SLOT}" aria-haspopup="dialog" hidden>
-          <span class="wear-swatch" data-row-swatch="${HAIR_SLOT}"></span>
-          <span class="wear-text"><span class="slot-label">${HAIR_SLOT}</span><span class="wear-name" data-slot="${HAIR_SLOT}"></span></span>
-        </button>
+        ${PILL_SLOTS.map(
+          (n) => `<button type="button" class="wear-row stage-pill ${n === HAIR_SLOT ? 'hair-pill' : 'hat-pill'}" data-box="${n}" data-row="${n}" aria-haspopup="dialog" hidden>
+          <span class="wear-swatch" data-row-swatch="${n}"></span>
+          <span class="wear-text"><span class="slot-label">${n}</span><span class="wear-name" data-slot="${n}"></span></span>
+        </button>`,
+        ).join('')}
         <span class="stage-hint" hidden>${matchMedia('(pointer: coarse)').matches ? 'Drag to turn · pinch to zoom' : 'Drag to turn · scroll to zoom'}</span>
       </div>
       <section class="panel" aria-labelledby="wearing-title">
         <h2 class="panel-title" id="wearing-title">What you're wearing</h2>
-        ${SLOTS.filter((s) => s.name !== HAIR_SLOT).map(
+        ${SLOTS.filter((s) => !isPill(s.name)).map(
           (s) => `<div class="slot" data-box="${s.name}">
             <button type="button" class="wear-row" data-row="${s.name}" aria-haspopup="dialog">
               <span class="wear-swatch" data-row-swatch="${s.name}"></span>
@@ -254,6 +267,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     (opt !== TUCKS_INTO || viewer.has('skirt')) &&
     (opt !== DRESS_OPTION || viewer.has('dress')) &&
     (!(opt in SHOE_OF) || viewer.has(SHOE_OF[opt])) &&
+    (!(opt in HAT_OF) || viewer.has(HAT_OF[opt])) &&
     !(opt.startsWith('Shirt') && !viewer.has(SHIRT_MESH[opt] ?? ''));
   /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
   const blockedNote = (slot: string, opt: string): string | null => {
@@ -290,6 +304,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.style.background = g ? colourOf(s) : '';
     }
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${HAT_SLOT}"]`)!.hidden = !HAT_MESHES.some((m) => viewer.has(m)) && outfit[HAT_SLOT] === 'None'; // a pack built before hats has none
     el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
     el.querySelector<HTMLElement>(`[data-box="${HAIR_SLOT}"]`)!.hidden = !viewer.has('hair'); // a pack built before hair has none
@@ -396,15 +411,15 @@ export function renderTryOn(el: HTMLElement): () => void {
   // --- The panel for one slot: a bottom sheet under the stage on a phone, in place of the row on a laptop. ---
   const place = () => {
     const s = editing;
-    for (const slot of SLOTS) if (slot.name !== HAIR_SLOT) rowOf(slot).hidden = false; // the hair pill is shown or hidden by renderRows, by whether the pack has hair
+    for (const slot of SLOTS) if (!isPill(slot.name)) rowOf(slot).hidden = false; // a pill is shown or hidden by renderRows, by whether the pack has that item
     if (!s) {
       tryOn.classList.remove('sheet-open');
       return;
     }
     if (laptop.matches) {
       tryOn.classList.remove('sheet-open');
-      if (s.name === HAIR_SLOT) {
-        outfitBtn.before(editor); // the hair control is a pill on the stage, so its panel goes at the foot of the list
+      if (isPill(s.name)) {
+        outfitBtn.before(editor); // a pill is on the stage, so its panel goes at the foot of the list
       } else {
         el.querySelector(`[data-box="${s.name}"]`)!.append(editor);
         rowOf(s).hidden = true;
@@ -477,7 +492,7 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   for (const s of SLOTS)
     rowOf(s).addEventListener('click', () => {
-      if (s.name === HAIR_SLOT && editing && editing !== s) return requestClose(); // the pill is on the stage, so while another panel is open a tap on it just closes that panel
+      if (isPill(s.name) && editing && editing !== s) return requestClose(); // the pill is on the stage, so while another panel is open a tap on it just closes that panel
       openEditor(s, rowOf(s));
     });
   editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
@@ -492,7 +507,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let down: { x: number; y: number } | null = null;
   stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   stage.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).closest('.hair-pill')) return; // the hair pill is inside the stage: it opens its own panel, it does not close one
+    if ((e.target as HTMLElement).closest('.stage-pill')) return; // a pill is inside the stage: it opens its own panel, it does not close one
     if (!tryOn.classList.contains('sheet-open')) return;
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
     requestClose();
@@ -598,6 +613,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   const dropMissingSkirt = () => {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
     if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
+    if (loadedSaved && packReady && outfit[HAT_SLOT] !== 'None' && !viewer.has(HAT_OF[outfit[HAT_SLOT]] ?? '')) outfit[HAT_SLOT] = 'None'; // a hat this person's pack lacks is not worn
     if (loadedSaved && packReady && outfit[SHOES_SLOT] !== 'None' && !viewer.has(SHOE_OF[outfit[SHOES_SLOT]] ?? '')) outfit[SHOES_SLOT] = 'None'; // a shoe this person's pack lacks is not worn
   };
   void viewer.ready.then(() => {
@@ -620,9 +636,10 @@ export function renderTryOn(el: HTMLElement): () => void {
       else if (s.name === DRESS_SLOT) look.dress = r.item;
       else if (s.name === 'Legs') look.legs = r.item;
       else if (s.name === SHOES_SLOT) look.shoes = r.item;
+      else if (s.name === HAT_SLOT) look.hat = r.item;
       else look.bottom = r.item;
     }
-    if (!look.top && !look.bottom && !look.legs && !look.dress && !look.shoes) return;
+    if (!look.top && !look.bottom && !look.legs && !look.dress && !look.shoes && !look.hat) return;
     await saveItems(items);
     await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
     outfitBtn.textContent = 'Outfit saved';

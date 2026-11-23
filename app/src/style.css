@@ -77,9 +77,10 @@ button { font-family: inherit; }
 .wear-row { width: 100%; min-height: 64px; display: flex; align-items: center; gap: 12px; padding: 0; border: 0; background: none; color: var(--ink); text-align: left; }
 .wear-row[hidden] { display: none; }
 /* V5-04: the hair colour control is a small pill on the stage, so it takes no room from the list of garments. */
-.hair-pill { position: absolute; top: 10px; left: 10px; z-index: 1; width: auto; min-height: 44px; gap: 8px; padding: 4px 14px 4px 4px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); }
-.hair-pill .wear-swatch { flex-basis: 34px; width: 34px; height: 34px; border-radius: 17px; }
-.hair-pill .wear-name { font-size: 14px; }
+.stage-pill { position: absolute; top: 10px; left: 10px; z-index: 1; width: auto; min-height: 44px; gap: 8px; padding: 4px 14px 4px 4px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); }
+.hat-pill { left: auto; right: 10px; }
+.stage-pill .wear-swatch { flex-basis: 34px; width: 34px; height: 34px; border-radius: 17px; }
+.stage-pill .wear-name { font-size: 14px; }
 .wear-swatch { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 10px; box-shadow: var(--swatch-edge); background: var(--line-strong); }
 .wear-swatch.o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }
 .wear-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
