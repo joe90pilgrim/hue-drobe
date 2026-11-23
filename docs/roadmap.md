@@ -16,7 +16,8 @@ Joe's avatar on phone and desktop; tee, trousers and sweatshirt with a colour pi
 | 3 | Loose clothes and layers | Dresses, skirts, shirts, jackets, coats, 2 multiple top layers |
 | 4 | Your real wardrobe | 15 photo to nearest item, 5 screenshot to nearest item, 12 create a packing list |
 | 5 | Finishing the look | Shoes, hats, jewellery, 11 hair styles |
-| 6 | Style assistant | 14 Gemini advice, 13 suggested packing list |
+| 6 | Style assistant | 14 Gemini advice and 13 suggested packing list (merged into one ticket) |
+| 7 | Packing and the app icon | 23 new app icon, 24 packing page redesign, 25 match suggestions to your wardrobe |
 | Later | Needs an architecture change first | 6 other poses, 8 change body dimensions or presets |
 
 ### 1.1 Make it mine
@@ -61,8 +62,13 @@ Comes after version 3 on purpose: matching real clothes to the library only work
 
 ### 6 Style assistant
 These are recommendations, which the MVP deliberately left out. They work best once the app knows your wardrobe and your season.
-- **Gemini advice (14).**
-- **Suggested packing list (13):** for example from the trip length and the weather.
+- **Gemini advice (14) and suggested packing list (13):** built together as one ticket, V6-01, which asks Gemini for a packing template from the trip name, dates and your season. Free-form advice and a weather service were dropped: a trip has no destination. Version 7 builds on it.
+
+### 7 Packing and the app icon
+Designed on 23 Nov 2026 from the packing mock-up and the icon options canvas. The spec is `docs/decisions/2026-11-23-v7-packing-and-icon-spec.md`.
+- **New app icon (23):** a tee in the colour wheel with a hanger hook (option A2), in the app icon, the favicon and the header.
+- **Packing page redesign (24):** trip cards with progress, a tray of silhouette tiles, planned looks as flat-lay cards, a collapsed Packed section, an Add sheet with tabs and search, and a laptop layout.
+- **Match suggestions to your wardrobe (25):** Gemini gets the list of your clothes (names, types and colours, never photos or measurements), suggests a list, and you swap each suggestion for a piece you own, one at a time or in bulk with Undo.
 
 ### Later: needs an architecture change first
 Both are bigger than they look and need their own capped experiment before going into a version.
@@ -72,6 +78,7 @@ Both are bigger than they look and need their own capped experiment before going
 ## Decisions to make along the way
 
 - **Sending data off the device (versions 4 and 6).** Photo matching, page scraping and Gemini all send data to outside services, which breaks the blueprint's "data stays on the device" principle. Decide deliberately before version 4, and agree it with Beth.
+- **Wardrobe list sent to Gemini (version 7).** Joe decided on 23 Nov 2026 that the list of saved clothes (id, garment type, name, colour) goes to Gemini for packing suggestions, because it is not photos. Photos and measurements still never leave the device. V7-05 records the amendment.
 - **Hosting and accounts (version 2).** Moving from one shared password to individual logins affects how the avatar files are protected on Google Cloud.
 
 ## Ideas list
@@ -90,8 +97,8 @@ Ideas are numbered in the order they were raised, not by priority. New ideas get
 10. Save quiz colours as favourites shown in the colour picker (1.1)
 11. Hair styles (5)
 12. Create a packing list (4)
-13. Suggest a packing list (6)
-14. Ask Gemini for advice (6)
+13. Suggest a packing list (6; built in V6-01, merged with 14)
+14. Ask Gemini for advice (6; merged into 13, built as the packing template in V6-01)
 15. Upload a photo to find the nearest item in the library (4)
 16. Individual logins (2)
 17. Starter outfits that come with the app, as well as saved ones (unassigned, to consider later)
@@ -100,3 +107,6 @@ Ideas are numbered in the order they were raised, not by priority. New ideas get
 20. Search and more filters in the Wardrobe, once there are enough clothes to need them (unassigned; from the 1.2 redesign)
 21. Undo after deleting a piece or outfit, in place of the confirmation (unassigned; from the 1.2 redesign)
 22. Baggier clothes slider or level setting per piece
+23. New app icon: a tee in the colour wheel with a hanger hook (7)
+24. Packing page redesign (7)
+25. Match Gemini's packing suggestions to clothes in your wardrobe (7)

@@ -98,10 +98,21 @@ No open decisions for 1.2.
 
 ## v6-style-assistant
 
-- **V6-01** Ask Gemini for advice: What should Gemini be told about you, exactly?
-- **V6-01** Ask Gemini for advice: A monthly spending cap on the Gemini API?
-- **V6-01** Ask Gemini for advice: Free-form chat, or set questions such as 'What goes with this?'
-- **V6-02** Suggested packing list: Which weather service, and is its cost acceptable?
+- ~~**V6-01** Gemini packing template: What should Gemini be told about you, exactly?~~ **Decided 23 Nov 2026:** trip name, dates, season and palette. V7-05 adds the wardrobe list (names, types and colours; never photos or measurements).
+- ~~**V6-01** Gemini packing template: A monthly spending cap on the Gemini API?~~ **Decided 23 Nov 2026:** no cap for now.
+- ~~**V6-01** Gemini packing template: Free-form chat, or set questions?~~ **Decided 23 Nov 2026:** neither. The advice ticket was merged into the packing template.
+- ~~**V6-02** Suggested packing list: Which weather service, and is its cost acceptable?~~ **Not needed (23 Nov 2026):** a trip has a name and dates only, so there is no destination to look up weather for.
+
+## v7-packing-and-icon
+
+- **V7-01** App icon: header logo: use the same mark in the header, without the tile? Recommendation: yes. Keep the single `any maskable` manifest icon? Recommendation: yes.
+- **V7-02** Packing page: Delete trip inside Edit trip? Recommendation: yes. Keep the ring in the corner of each trip card? Recommendation: yes.
+- **V7-03** Packing tray: Packed section closed by default? Recommendation: yes.
+- **V7-04** Add sheet: a tap on an "In an outfit" tile makes the piece its own entry (`own: true`)? Recommendation: yes.
+- **V7-05** Wardrobe list to Gemini: approve the new optional fields inside `trips` (data model); approve a 150-item, 32 KB cap; ceiling 2.5 hours, Sonnet high. Joe redeploys after it.
+- **V7-06** Rename "Make me a template" to "Suggest a list"? Recommendation: yes.
+- **V7-07** Match sheet: the closeness threshold in delta E (Claude Code measures the demo pairs and proposes a value); where it lives if the app cannot read `spike/tolerances.json`.
+- **V7-08** Undo window of 8 seconds? Recommendation: yes.
 
 ## later-architecture
 

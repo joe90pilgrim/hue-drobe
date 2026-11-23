@@ -1,7 +1,7 @@
 # Ticket: Outfit pieces in the packing list
 
 ## Summary
-- **Status:** ready once Joe answers the decisions below.
+- **Status:** built 23 Nov 2026; decisions answered (see the note at the end).
 - **Ceiling:** 1.5 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet, medium. Small state-logic change across the trips model and the Packing screen, plus a one-off backfill.
 - **Depends on:** V4-03 (built).

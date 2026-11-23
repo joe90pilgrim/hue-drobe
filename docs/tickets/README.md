@@ -103,7 +103,7 @@ Closed by Joe. Done tickets stay as history; open ones are closed, retired or pa
 | V3-13 | [All garments list with search](v3-loose-clothes/V3-13-all-garments-list.md) (parked) | V3-11 | Sonnet, medium |
 | V3-14 | [Experiment: cloth, garment-side pins and inner-layer hiding](v3-loose-clothes/V3-14-cloth-layering-experiment.md) (closed: folded into V3.1-01) | V3-07, V3-07c | Opus, high |
 | V3-15 | [Garment silhouettes module](v3-loose-clothes/V3-15-garment-silhouettes.md) | - | Sonnet, medium |
-| V3-16 | [Clothes tab as a closet](v3-loose-clothes/V3-16-clothes-tab-closet.md) | V3-15 | Sonnet, medium |
+| V3-16 | [Clothes tab as a closet](v3-loose-clothes/V3-16-clothes-tab-closet.md) (built; waits on the Pixel 8 scroll check and Joe's visual sign-off) | V3-15 | Sonnet, medium |
 | V3-17 | [Outfits tab flat-lay cards](v3-loose-clothes/V3-17-outfits-flat-lay-cards.md) (done) | V3-15, V3-16 | Sonnet, medium |
 
 ### Version 3.1: Template garments
@@ -126,6 +126,7 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 | V4-01 | [Photo to nearest item](v4-real-wardrobe/V4-01-photo-to-item.md) (outline) | V4-00, V3 garments | Sonnet, high (tentative) |
 | V4-02 | [Screenshot to nearest item](v4-real-wardrobe/V4-02-url-to-item.md) (built; waits on Joe's live check and Pixel 8; replaces the URL idea) | V4-00, V4-01 | Sonnet, high |
 | V4-03 | [Create a packing list](v4-real-wardrobe/V4-03-packing-list.md) (built) | V1.1-02, V1.1-03 | Haiku, high |
+| V4-04 | [Outfit pieces in the packing list](v4-real-wardrobe/V4-04-outfit-pieces-in-packing-list.md) (built) | V4-03 | Sonnet, medium |
 
 ### Version 5: Finishing the look
 
@@ -150,8 +151,23 @@ Notes on version 5, after V5-00 (23 Nov 2026):
 
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
-| V6-01 | [Gemini packing-list template](v6-style-assistant/V6-01-gemini-packing-template.md) (built; merges the old advice ticket and V6-02) | V4-00, V2-05 | Sonnet, medium (tentative) |
+| V6-01 | [Gemini packing-list template](v6-style-assistant/V6-01-gemini-packing-template.md) (built; merges the old advice ticket and V6-02; the server needs redeploying) | V4-00, V2-05 | Sonnet, medium (tentative) |
 | V6-02 | [Suggested packing list](v6-style-assistant/V6-02-suggested-packing.md) (merged into V6-01) | V4-03, V6-01 | Sonnet, medium (tentative) |
+
+### Version 7: Packing and the app icon
+
+Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.md`.
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V7-01 | [App icon: hanger and tee](v7-packing-and-icon/V7-01-app-icon-hanger-tee.md) (designed) | none | Sonnet, medium |
+| V7-02 | [Packing page: trip cards and summary](v7-packing-and-icon/V7-02-packing-page-trip-cards.md) (designed) | V3-15 | Sonnet, medium |
+| V7-03 | [Packing list as a tray of tiles, with planned looks](v7-packing-and-icon/V7-03-packing-tray-and-looks.md) (designed) | V7-02, V3-17 | Sonnet, medium |
+| V7-04 | [Add items and outfits sheet as tiles](v7-packing-and-icon/V7-04-add-items-sheet.md) (designed) | V7-03 | Sonnet, medium |
+| V7-05 | [Send the wardrobe list to Gemini, with structured suggestions](v7-packing-and-icon/V7-05-gemini-wardrobe-list.md) (designed; needs Joe's data-model decision) | V6-01 | Sonnet, high |
+| V7-06 | ["Suggest a list" sheet and Suggested rows](v7-packing-and-icon/V7-06-suggest-sheet-and-rows.md) (designed) | V7-03, V7-05 | Sonnet, medium |
+| V7-07 | [Match a suggestion to a piece you own](v7-packing-and-icon/V7-07-match-sheet.md) (designed; needs Joe's closeness threshold) | V7-06 | Sonnet, high |
+| V7-08 | [Review Gemini's matches in bulk, with Undo](v7-packing-and-icon/V7-08-review-matches-and-undo.md) (designed) | V7-07 | Sonnet, medium |
 
 ### Later: needs an architecture change first
 

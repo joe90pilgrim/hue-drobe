@@ -1,7 +1,7 @@
 # Ticket: Clothes tab as a closet (V3-16)
 
 ## Summary
-- **Status:** ready once V3-15 is done and its silhouettes are signed off.
+- **Status:** built 22 Nov 2026. Waits on the Pixel 8 scroll check and Joe's visual sign-off (see the note at the end).
 - **Ceiling:** 2 hours. The most this ticket may take, not a target. Stop as soon as the acceptance criteria are met.
 - **Worker:** Sonnet · Medium. One screen, scoped CSS, and e2e layout checks that must change on purpose.
 - **Depends on:** V3-15. Run before V3-17 (both edit `screens/wardrobe.ts` and `style.css`).

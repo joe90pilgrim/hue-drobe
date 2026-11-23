@@ -6,7 +6,7 @@ The full plan is in `docs/blueprints/Hue-drobe Build Blueprint.md`. Read it befo
 
 ## Where we are
 
-Stage 0, the spike, is complete; its decision records are in `docs/decisions/`. The MVP and versions 1.1, 1.2 and 2 are built, and we are building **version 3: loose clothes and layers**. Each ticket's state is in `docs/tickets/README.md`; the plan is in `docs/roadmap.md`.
+Stage 0, the spike, is complete; its decision records are in `docs/decisions/`. The MVP and versions 1.1, 1.2 and 2 are built. **Version 3 (loose clothes and layers)** is in progress, with some version 4 and 6 tickets already built. **Version 7 (packing and the app icon)** is designed. Each ticket's state is in `docs/tickets/README.md`; the plan is in `docs/roadmap.md`.
 
 Active work lives in:
 
