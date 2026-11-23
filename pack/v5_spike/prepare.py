@@ -36,7 +36,7 @@ def zip_of(pack):
 
 def main():
     out = pathlib.Path(arg("--out", ROOT / "private" / "v5_spike")).resolve()
-    cands = json.load(open(pathlib.Path(__file__).with_name("candidates.json")))["candidates"]
+    cands = json.load(open(arg("--candidates", pathlib.Path(__file__).with_name("candidates.json"))))["candidates"]
     packs = sorted({c["pack"] for c in cands if "pack" in c})
     for p in packs:  # the zip must be the archived one
         want = re.search(rf"\|\s*{p}\s*\|[^|]*\|\s*`([0-9a-f]{{64}})`", MANIFEST).group(1)
