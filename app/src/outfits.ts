@@ -14,6 +14,8 @@ export interface OutfitLook {
   shoes?: SavedItem;
   /** V5-02: a hat. */
   hat?: SavedItem;
+  /** V3.1-06: an outer layer (the blazer). */
+  outer?: SavedItem;
 }
 
 /**
@@ -34,6 +36,8 @@ export interface Outfit {
   shoes?: string;
   /** V5-02: the hat. Optional, so older outfits need no upgrade. */
   hat?: string;
+  /** V3.1-06: the outer layer (the blazer). Optional, so older outfits need no upgrade. */
+  outer?: string;
   /** Milliseconds since 1970; the list shows outfits in this order. */
   savedAt: number;
 }
@@ -43,13 +47,13 @@ const FALLBACK_NAME = 'Outfit';
 
 /** Auto-named from the items, such as 'Navy tee, Light grey trousers'. Editable, like saved items. */
 export function autoOutfitName(look: OutfitLook): string {
-  const names = [look.hat, look.dress, look.top, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i).map((i) => i.name);
+  const names = [look.hat, look.dress, look.top, look.outer, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i).map((i) => i.name);
   return cleanName(names.join(', '), FALLBACK_NAME);
 }
 
 export function newOutfit(look: OutfitLook, now = Date.now()): Outfit {
   const id = globalThis.crypto?.randomUUID?.() ?? `${now}-${Math.random().toString(36).slice(2)}`;
-  return { v: 1, id, name: autoOutfitName(look), top: look.top?.id, bottom: look.bottom?.id, ...(look.dress && { dress: look.dress.id }), ...(look.legs && { legs: look.legs.id }), ...(look.shoes && { shoes: look.shoes.id }), ...(look.hat && { hat: look.hat.id }), savedAt: now };
+  return { v: 1, id, name: autoOutfitName(look), top: look.top?.id, bottom: look.bottom?.id, ...(look.dress && { dress: look.dress.id }), ...(look.legs && { legs: look.legs.id }), ...(look.shoes && { shoes: look.shoes.id }), ...(look.hat && { hat: look.hat.id }), ...(look.outer && { outer: look.outer.id }), savedAt: now };
 }
 
 /** Keeps only valid, unique outfits that point at something, oldest first. Anything else stored is dropped. */
@@ -66,7 +70,8 @@ export function cleanOutfits(value: unknown): Outfit[] {
     const dress = typeof r.dress === 'string' && r.dress ? r.dress : undefined;
     const shoes = typeof r.shoes === 'string' && r.shoes ? r.shoes : undefined;
     const hat = typeof r.hat === 'string' && r.hat ? r.hat : undefined;
-    if (!top && !bottom && !legs && !dress && !shoes && !hat) continue;
+    const outer = typeof r.outer === 'string' && r.outer ? r.outer : undefined;
+    if (!top && !bottom && !legs && !dress && !shoes && !hat && !outer) continue;
     out.push({
       v: 1,
       id: r.id,
@@ -77,6 +82,7 @@ export function cleanOutfits(value: unknown): Outfit[] {
       ...(legs && { legs }),
       ...(shoes && { shoes }),
       ...(hat && { hat }),
+      ...(outer && { outer }),
       savedAt: typeof r.savedAt === 'number' && Number.isFinite(r.savedAt) ? r.savedAt : 0,
     });
   }
@@ -92,6 +98,7 @@ export function resolveOutfit(outfit: Outfit, items: SavedItem[]): OutfitLook {
     dress: outfit.dress ? items.find((i) => i.id === outfit.dress) : undefined,
     shoes: outfit.shoes ? items.find((i) => i.id === outfit.shoes) : undefined,
     hat: outfit.hat ? items.find((i) => i.id === outfit.hat) : undefined,
+    outer: outfit.outer ? items.find((i) => i.id === outfit.outer) : undefined,
   };
 }
 
@@ -123,8 +130,8 @@ function optionFor(item: SavedItem | undefined): string {
 export async function wearOutfit(outfit: Outfit, items: SavedItem[]): Promise<void> {
   const look = resolveOutfit(outfit, items);
   const colours = await kvGet<Record<string, string>>('colours', {});
-  const used = [look.top, look.bottom, look.legs, look.dress, look.shoes, look.hat].filter((i): i is SavedItem => !!i);
-  await kvPut('outfit', keepLayers({ Top: optionFor(look.top), Bottom: optionFor(look.bottom), Legs: optionFor(look.legs), Dress: optionFor(look.dress), Shoes: optionFor(look.shoes), Hat: optionFor(look.hat) }));
+  const used = [look.top, look.bottom, look.legs, look.dress, look.shoes, look.hat, look.outer].filter((i): i is SavedItem => !!i);
+  await kvPut('outfit', keepLayers({ Top: optionFor(look.top), Bottom: optionFor(look.bottom), Legs: optionFor(look.legs), Dress: optionFor(look.dress), Shoes: optionFor(look.shoes), Hat: optionFor(look.hat), Outer: optionFor(look.outer) }));
   await kvPut('colours', { ...colours, ...Object.fromEntries(used.map((i) => [i.garment, i.colour])) });
   if (look.top?.neckline) await kvPut(NECKLINE_KEY, look.top.neckline);
   if (look.legs?.sheer !== undefined) await kvPut(SHEER_KEY, look.legs.sheer);

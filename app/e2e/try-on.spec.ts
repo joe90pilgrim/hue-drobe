@@ -8,7 +8,7 @@ test('on a phone the stage uses the full width and each row is at least 64 px hi
   expect(stage!.x).toBe(0);
   expect(stage!.width).toBe(412);
   const rows = page.locator('.wear-row');
-  await expect(rows).toHaveCount(8); // Hat, Dress, Top, Bottom, Legs, Under, Shoes and Hair (the hat, dress, under, shoes and hair rows are hidden unless the pack allows them)
+  await expect(rows).toHaveCount(9); // Hat, Outer, Dress, Top, Bottom, Legs, Under, Shoes and Hair (the hat, outer, dress, under, shoes and hair rows are hidden unless the pack allows them)
   // The hair pill (V5-04) sits on the stage, not in the list, and is a 44 px touch target; every row in the list is at least 64 px.
   for (const row of await rows.all()) if (await row.isVisible()) expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual((await row.getAttribute('data-row')) === 'Hair' ? 44 : 64);
   await expect(page.locator('[data-slot="Top"]')).toHaveText('T-shirt, crew neck');
