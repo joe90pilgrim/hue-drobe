@@ -1,5 +1,6 @@
 import { createViewer, DEFAULT_HAIR_COLOUR } from '../viewer';
 import { kvGet, kvPut } from '../store';
+import { person } from '../person';
 import {
   addFavourite,
   hasFavourite,
@@ -248,6 +249,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let dragged = false; // the turn hint goes away after the first drag
   const viewer = createViewer(stage, (msg) => {
     status.textContent = msg ?? '';
+    status.classList.toggle('stage-error', !!msg && !msg.startsWith('Getting'));
     status.hidden = msg === null;
     hint.hidden = msg !== null || dragged;
   });
@@ -267,6 +269,11 @@ export function renderTryOn(el: HTMLElement): () => void {
   let chooserOpen = false; // the colour chooser replaces the slot's controls inside the panel
   let lastRow: HTMLButtonElement | null = null; // gets the focus back when the controls close
   let packReady = false; // the pack and its list of passing layer combinations have loaded
+  // Which meshes this person's pack had last time, so the Dress, Outer, Hat, Shoes and Hair rows show at once on a return visit instead of after the download (V7-09). Convenience only.
+  const SEEN_KEY = `huedrobe-pack-seen-${person()}`;
+  let seen: Set<string> | undefined;
+  try { seen = new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? 'null') as string[]); } catch { seen = undefined; }
+  const rowHas = (m: string) => (packReady || !seen ? viewer.has(m) : seen.has(m));
   let savedKey: string | null = null; // the garment, colour and neckline last added to the wardrobe
   /** A skirt is offered only when this person's pack has one (a man's does not). Known once the pack has loaded. */
   const offered = (opt: string) =>
@@ -312,12 +319,12 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.classList.toggle('o-empty', !g);
       sw.style.background = g ? colourOf(s) : '';
     }
-    el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
-    el.querySelector<HTMLElement>(`[data-box="${OUTER_SLOT}"]`)!.hidden = !outerMesh() && outfit[OUTER_SLOT] === 'None'; // a pack built before blazers has none
-    el.querySelector<HTMLElement>(`[data-box="${HAT_SLOT}"]`)!.hidden = !HAT_MESHES.some((m) => viewer.has(m)) && outfit[HAT_SLOT] === 'None'; // a pack built before hats has none
-    el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
+    el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !rowHas('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${OUTER_SLOT}"]`)!.hidden = !OUTER_MESHES.some(rowHas) && outfit[OUTER_SLOT] === 'None'; // a pack built before blazers has none
+    el.querySelector<HTMLElement>(`[data-box="${HAT_SLOT}"]`)!.hidden = !HAT_MESHES.some((m) => rowHas(m)) && outfit[HAT_SLOT] === 'None'; // a pack built before hats has none
+    el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => rowHas(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
-    el.querySelector<HTMLElement>(`[data-box="${HAIR_SLOT}"]`)!.hidden = !viewer.has('hair'); // a pack built before hair has none
+    el.querySelector<HTMLElement>(`[data-box="${HAIR_SLOT}"]`)!.hidden = !rowHas('hair'); // a pack built before hair has none
     outfitBtn.disabled = !SLOTS.some((s) => s.name !== HAIR_SLOT && garmentOf(s)); // an outfit needs at least one garment on the avatar
   };
 
@@ -633,6 +640,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   };
   void viewer.ready.then(() => {
     packReady = true;
+    try { localStorage.setItem(SEEN_KEY, JSON.stringify(['dress', 'hair', ...HAT_MESHES, ...SHOE_MESHES, ...OUTER_MESHES].filter((m) => viewer.has(m)))); } catch { /* private window */ }
     if (gone) return;
     dropMissingSkirt();
     refresh();

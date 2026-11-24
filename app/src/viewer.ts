@@ -105,7 +105,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   const sheers = new Map<string, boolean>();
   /** V3.1-02: the manifest's `inner_layers_drawn`: outer pack mesh -> inner mesh -> the file of the inner garment with the faces the outer covers removed. */
   let underFiles: Record<string, Record<string, string>> = {};
-  const underLoading = new Set<string>();
+  const underLoading = new Map<string, Promise<void>>();
   let bytes = 0;
   let disposed = false;
   const loader = new GLTFLoader();
@@ -151,8 +151,14 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   const loadUnder = async (inner: string, outer: string) => {
     const name = underName(inner, outer);
     const file = underFiles[outer]?.[inner];
-    if (underLoading.has(name) || !file || !/^[A-Za-z0-9_.-]+\.glb$/.test(file)) return;
-    underLoading.add(name);
+    if (!file || !/^[A-Za-z0-9_.-]+\.glb$/.test(file)) return;
+    const going = underLoading.get(name);
+    if (going) return going;
+    const p = fetchUnder(name, file);
+    underLoading.set(name, p);
+    return p;
+  };
+  const fetchUnder = async (name: string, file: string) => {
     try {
       const res = await fetch(packUrl() + file);
       const buf = res.ok ? await res.arrayBuffer() : null;
@@ -197,11 +203,14 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       layerCombos = parseLayerCombos(m);
       underFiles = parseUnderFiles(m);
       syncUnder();
+      // V7-09: fetch every inner-under-outer file now, so a blazer shows the moment it is picked; the spinner waits for them.
+      return Promise.allSettled(Object.entries(underFiles).flatMap(([outer, inners]) => Object.keys(inners).map((inner) => loadUnder(inner, outer))));
     })
+    .then(() => undefined)
     .catch(() => undefined); // no manifest, or not JSON (the dev server answers a missing file with index.html): no layering offered
   const ready = Promise.allSettled([...loads, manifestLoad]).then(() => undefined);
   onStatus('Getting your avatar ready…');
-  Promise.all(loads).then(
+  Promise.all(loads).then(() => manifestLoad).then(
     () => onStatus(null),
     // The developer instruction is for `?debug` only; Joe and his wife see a plain message.
     () => onStatus(debug ? 'Avatar pack not found. Run: python pack/build_pack.py --private' : "The avatar couldn't load. Try reloading the page."),
