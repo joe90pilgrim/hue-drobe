@@ -568,3 +568,7 @@ button { font-family: inherit; }
 .chips button { flex: none; min-height: 44px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 22px; background: var(--surface); color: var(--ink); font-size: 15px; font-weight: 600; }
 .chips button[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: #fff; }
 .chips button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* V7-09: a spinner beside the "Getting your avatar ready…" message (not on the error message) */
+.stage-status:not(.stage-error)::before { content: ''; flex: none; width: 18px; height: 18px; margin-right: 10px; border: 2px solid var(--muted); border-top-color: transparent; border-radius: 50%; animation: p-sug-turn 0.8s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .stage-status::before { animation-duration: 3s; } }

@@ -249,6 +249,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let dragged = false; // the turn hint goes away after the first drag
   const viewer = createViewer(stage, (msg) => {
     status.textContent = msg ?? '';
+    status.classList.toggle('stage-error', !!msg && !msg.startsWith('Getting'));
     status.hidden = msg === null;
     hint.hidden = msg !== null || dragged;
   });
