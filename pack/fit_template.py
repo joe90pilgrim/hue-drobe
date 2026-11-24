@@ -101,6 +101,41 @@ def hides_inner(meta):
     return bool(meta.get("inner_layers")) and (h if isinstance(h, bool) else meta.get("layer") in ("mid", "outer"))
 
 
+HIDE_OVERLAP_MAX_CM = 5
+
+
+def _validate_hide_options(m, p):
+    """hide_all (a list of inner layers) and hide_overlap_cm ({inner layer: cm, above 0 and at most 5}) refine hide_inner; both need it on.
+    skip_clearance_min (a list of inner layers) is checked here too: see check_reports.py."""
+    if "skip_clearance_min" in m:
+        k = m["skip_clearance_min"]
+        if not isinstance(k, list) or not k or not all(isinstance(x, str) for x in k) or len(set(k)) != len(k):
+            p.append("skip_clearance_min must be a non-empty list of distinct inner layer names")
+        elif set(k) - set(m["inner_layers"]):
+            p.append(f"skip_clearance_min names {sorted(set(k) - set(m['inner_layers']))}, which are not in inner_layers")
+    for f in ("hide_all", "hide_overlap_cm"):
+        if f in m and not hides_inner(m):
+            p.append(f"{f} needs hide_inner (an outer or mid layer with inner_layers, and hide_inner not false)")
+            return
+    if "hide_all" in m:
+        h = m["hide_all"]
+        if not isinstance(h, list) or not h or not all(isinstance(x, str) for x in h) or len(set(h)) != len(h):
+            p.append("hide_all must be a non-empty list of distinct inner layer names")
+        elif set(h) - set(m["inner_layers"]):
+            p.append(f"hide_all names {sorted(set(h) - set(m['inner_layers']))}, which are not in inner_layers")
+    if "hide_overlap_cm" in m:
+        o = m["hide_overlap_cm"]
+        if not isinstance(o, dict) or not o:
+            p.append("hide_overlap_cm must be an object of inner layer name to cm")
+        else:
+            if set(o) - set(m["inner_layers"]):
+                p.append(f"hide_overlap_cm names {sorted(set(o) - set(m['inner_layers']))}, which are not in inner_layers")
+            if any(not isinstance(v, (int, float)) or isinstance(v, bool) or not 0 < v <= HIDE_OVERLAP_MAX_CM for v in o.values()):
+                p.append(f"hide_overlap_cm values must be numbers above 0 and at most {HIDE_OVERLAP_MAX_CM}")
+            if isinstance(m.get("hide_all"), list) and set(o) & set(m["hide_all"]):
+                p.append("an inner layer cannot be in both hide_all and hide_overlap_cm")
+
+
 def _validate_settle(m, p):
     s = m["settle"]
     if s == "none":
@@ -316,6 +351,7 @@ def validate_meta(m, where="meta.json"):
         p.append("hide_inner must be true or false")
     elif m.get("hide_inner") is True and not m["inner_layers"]:
         p.append("hide_inner needs inner_layers")
+    _validate_hide_options(m, p)
     _validate_settle(m, p)
     _validate_keep_islands(m, p)
     if p:
@@ -684,10 +720,13 @@ def run():
         out["seconds"] = round(time.time() - t0, 1)
         return out
 
-    def hide_covered(item_bm, inner_, pf):
+    def hide_covered(item_bm, inner_, pf, hide_all=False, overlap_cm=0.0):
         """V3.1-01 (V3-14): the inner layer as drawn under this item. A ray from HIDE_RAY_START under each inner face, out along its
         normal, that meets the item marks the face covered; covered faces are removed (as the body is under the dress) and the rest is
-        exported, with the inner layer's own material, as <name>_<inner>_under_<pack_file>.glb. Returns (path, faces, faces hidden)."""
+        exported, with the inner layer's own material, as <name>_<inner>_under_<pack_file>.glb. Returns (path, faces, faces hidden).
+        hide_all: every face is hidden (the file has no faces: the app draws nothing of that layer while the item is worn).
+        overlap_cm: covered faces within that surface distance of an uncovered face are kept, so the inner layer runs under the item's
+        edge (a hem) and nothing shows through a gap there."""
         otb = item_bm.copy()
         bmesh.ops.triangulate(otb, faces=otb.faces[:])
         otree = BVHTree.FromBMesh(otb)
@@ -698,6 +737,26 @@ def run():
         bm.normal_update()
         covered = [f for f in bm.faces if otree.ray_cast(f.calc_center_median() - f.normal * HIDE_RAY_START, f.normal, HIDE_RAY_LENGTH)[0] is not None]
         total = len(bm.faces)
+        if hide_all:
+            covered = list(bm.faces)
+        elif overlap_cm > 0:
+            import heapq
+            cov = set(covered)
+            cen = {f: f.calc_center_median() for f in bm.faces}
+            dist = {f: 0.0 for f in bm.faces if f not in cov}
+            heap = [(0.0, f.index, f) for f in dist]
+            heapq.heapify(heap)
+            while heap:
+                d, _, f = heapq.heappop(heap)
+                if d > dist.get(f, 1e9):
+                    continue
+                for e in f.edges:
+                    for g in e.link_faces:
+                        nd = d + (cen[g] - cen[f]).length
+                        if g is not f and nd < overlap_cm / 100 and nd < dist.get(g, 1e9):
+                            dist[g] = nd
+                            heapq.heappush(heap, (nd, g.index, g))
+            covered = [f for f in covered if f not in dist]
         bmesh.ops.delete(bm, geom=covered, context="FACES")
         bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context="VERTS")
         bm.to_mesh(io_.data)
@@ -720,7 +779,8 @@ def run():
         tid, pf = meta["id"], meta["pack_file"]
         hides = HIDE and meta["delete_group"]
         R = {"template": tid, "category": meta["category"], "layer": meta["layer"], "source": meta["source"], "licence": meta["licence"],
-             "approved": meta["approved"], "delete_group": meta["delete_group"], "hides_body": hides, "inner_layers": meta["inner_layers"]}
+             "approved": meta["approved"], "delete_group": meta["delete_group"], "hides_body": hides, "inner_layers": meta["inner_layers"],
+             "clearance_min_skipped": meta.get("skip_clearance_min", [])}
         report["pack_items"][pf] = R
         try:
             mhclo = mhclo_path(meta, job["packs_dir"])
@@ -902,7 +962,7 @@ def run():
                     if not R["hides_inner"]:
                         R["layers"][inner_] = mesh_checks.layers({pf: item_bm}, {inner_: ib})[pf][inner_]
                         continue
-                    upath, nf, nh = hide_covered(item_bm, inner_, pf)
+                    upath, nf, nh = hide_covered(item_bm, inner_, pf, inner_ in meta.get("hide_all", []), float((meta.get("hide_overlap_cm") or {}).get(inner_, 0.0)))
                     db = mesh_checks.load_glb(upath)
                     drawn.append(db)
                     R["layers"][inner_] = (mesh_checks.layers({pf: item_bm}, {inner_: db})[pf][inner_] if len(db.faces)

@@ -293,9 +293,11 @@ for f in reports:
                    f"after our fitting, with no hiding: {b_['intersecting_pairs_with_hiding_off']} (information)")
             for inner_, lc in (p_.get("layers") or {}).items():  # V3-07: over each inner layer, as V3-05's layer check
                 cl = lc["inner_inside_clearance_cm"]["min"]
-                ck(lc["intersecting_pairs"] <= tol["layers"]["intersecting_pairs_max"] and (cl is None or cl >= tol["layers"]["inner_clearance_cm_min"]),
+                skip = inner_ in (p_.get("clearance_min_skipped") or [])  # the template says this inner layer shows below the item's hem (blazers over trousers)
+                ck(lc["intersecting_pairs"] <= tol["layers"]["intersecting_pairs_max"] and (skip or cl is None or cl >= tol["layers"]["inner_clearance_cm_min"]),
                    f"pack item {iid} over {inner_}: {lc['intersecting_pairs']} intersecting face pairs (max {tol['layers']['intersecting_pairs_max']}), "
-                   f"inner garment at least {cl} cm inside it (min {tol['layers']['inner_clearance_cm_min']})")
+                   + (f"inside-clearance minimum not held ({cl} cm; skip_clearance_min in the template's meta.json)" if skip else
+                      f"inner garment at least {cl} cm inside it (min {tol['layers']['inner_clearance_cm_min']})"))
             for inner_ in p_.get("inner_layers", []):
                 if inner_ not in (p_.get("layers") or {}):
                     ck(False, f"pack item {iid} over {inner_}: layer check missing from report")
