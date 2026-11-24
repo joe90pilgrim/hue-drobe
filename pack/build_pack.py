@@ -65,6 +65,10 @@ PACK_FILES["hair"] = "{n}_hair.glb"
 # (the hair with the faces the hat covers removed), which the pack lists under inner_layers_drawn. A pack without a hat built for it has none.
 HATS = ("cap", "beanie")
 PACK_FILES.update({h: "{n}_" + h + ".glb" for h in HATS})
+# Joe, 24 Nov 2026: the blazers (Suits 01 jackets): blazer_male for Joe, blazer_female for B. Each is worn over the tee and trousers, which the pack
+# lists under inner_layers_drawn (the tee with no faces, the trousers with the covered faces removed). A pack has only the one built for its sex.
+BLAZERS = ("blazer_male", "blazer_female")
+PACK_FILES.update({b: "{n}_" + b + ".glb" for b in BLAZERS})
 
 
 def arg(flag, default=None):
@@ -260,6 +264,8 @@ def write_pack(name, build_dir, pack_dir, body_only=False):
         if key in SHOE_FILES and (body_only or built_shoes.get(shoe_of, {}).get("status") != "ok" or (key.startswith("body_") and not built_shoes[shoe_of].get("delete_group"))):  # V5-01: only a shoe this build made for this body; a file left in the build folder by an earlier build is not packed
             continue
         if key in HATS and (body_only or built_shoes.get(key, {}).get("status") != "ok"):  # V5-02: only a hat this build made for this body
+            continue
+        if key in BLAZERS and (body_only or built_shoes.get(key, {}).get("status") != "ok"):  # only a blazer this build made for this body
             continue
         if key == "hair" and (body_only or built_shoes.get("hair", {}).get("status") != "ok"):  # V5-04: only hair this build made for this body
             continue

@@ -1,0 +1,39 @@
+{
+  "_note": "Closed tailored jacket from the archived suits01 pack (CC0, Margaret Toigo), jacket island only (keep_islands), MHCLO fit as shipped, no cloth. The tee under it is hidden completely (hide_all) so nothing of it shows at the neckline; trousers are hidden under the jacket.",
+  "id": "blazer_male",
+  "pack_file": "blazer_male",
+  "allowed_bodies": "male",
+  "source": {
+    "pack": "suits01",
+    "asset": "toigo_male_suit_3"
+  },
+  "sha256": "e5457dffafce4a5f44e179278c712e64a040b5e5e3aa41f15ed8100be5694c01",
+  "keep_islands_vertices": 4256,
+  "hide_all": [
+    "tee"
+  ],
+  "category": "outer",
+  "layer": "outer",
+  "licence": "CC0",
+  "credit": null,
+  "delete_group": false,
+  "settle": "none",
+  "contact_groups": [
+    "all"
+  ],
+  "clearance_cm": 0.4,
+  "replaces": [],
+  "inner_layers": [
+    "tee",
+    "trousers"
+  ],
+  "hide_inner": true,
+  "approved": true,
+  "colour": "plain",
+  "keep_islands": [
+    0
+  ],
+  "skip_clearance_min": [
+    "trousers"
+  ]
+}

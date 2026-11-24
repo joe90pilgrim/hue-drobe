@@ -150,7 +150,7 @@ class LoadTemplates(unittest.TestCase):
             m = next(x for x in metas if x["id"] == hat)
             self.assertEqual((m["category"], m["layer"], m["inner_layers"], m["allowed_bodies"], m["colour"]), ("hats", "outer", ["hair"], "both", "plain"))
             self.assertTrue(ft.hides_inner(m))
-        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female", "trainers", "monk_straps", "oxfords_female", "sandals", "ankle_boots", "culturalibre_hair_01", "culturalibre_hair_02", "newsboy_cap", "slouchy_beanie"})  # V3.1-01: the V3-09 blazers are retired; the base tees came with V3.1-03; the shoes with V5-01; the hair with V5-04; the hats with V5-02
+        self.assertEqual({m["id"] for m in metas}, {"shift_dress", "shirt_untucked_bd", "tee_male", "tee_female", "trainers", "monk_straps", "oxfords_female", "sandals", "ankle_boots", "culturalibre_hair_01", "culturalibre_hair_02", "newsboy_cap", "slouchy_beanie", "blazer_male", "blazer_female"})  # V3.1-01: the V3-09 blazers were retired, the Suits 01 jackets came back as blazer_male and blazer_female (cloth-free, tee hidden); the base tees came with V3.1-03; the shoes with V5-01; the hair with V5-04; the hats with V5-02
 
 
 class Settle(unittest.TestCase):
@@ -219,6 +219,42 @@ class HideInner(unittest.TestCase):
             ft.validate_meta({**GOOD, "hide_inner": "yes"})
         with self.assertRaisesRegex(ft.MetaError, "hide_inner needs inner_layers"):
             ft.validate_meta({**GOOD, "inner_layers": [], "hide_inner": True})
+
+
+class HideOptions(unittest.TestCase):
+    """hide_all and hide_overlap_cm refine hide_inner (blazer templates)."""
+    OUTER = {**GOOD, "layer": "outer", "inner_layers": ["tee", "trousers"]}
+
+    def test_good(self):
+        ft.validate_meta({**self.OUTER, "hide_all": ["tee"], "hide_overlap_cm": {"trousers": 2.0}})
+        ft.validate_meta({**self.OUTER, "hide_overlap_cm": {"trousers": 5}})
+
+    def test_need_hide_inner(self):
+        for k, v in (("hide_all", ["tee"]), ("hide_overlap_cm", {"tee": 1})):
+            with self.assertRaisesRegex(ft.MetaError, f"{k} needs hide_inner"):
+                ft.validate_meta({**self.OUTER, "hide_inner": False, k: v})
+            with self.assertRaisesRegex(ft.MetaError, f"{k} needs hide_inner"):
+                ft.validate_meta({**self.OUTER, "inner_layers": [], k: v})
+
+    def test_hide_all_refused(self):
+        for v in ([], "tee", ["tee", "tee"], [3], ["shoes"]):
+            with self.assertRaisesRegex(ft.MetaError, "hide_all"):
+                ft.validate_meta({**self.OUTER, "hide_all": v})
+
+    def test_overlap_refused(self):
+        for v in ({}, [], {"tee": 0}, {"tee": -1}, {"tee": 5.5}, {"tee": True}, {"tee": "2"}, {"shoes": 1}):
+            with self.assertRaisesRegex(ft.MetaError, "hide_overlap_cm"):
+                ft.validate_meta({**self.OUTER, "hide_overlap_cm": v})
+
+    def test_skip_clearance_min(self):
+        ft.validate_meta({**self.OUTER, "skip_clearance_min": ["trousers"]})
+        for v in ([], "trousers", ["trousers", "trousers"], [1], ["shoes"]):
+            with self.assertRaisesRegex(ft.MetaError, "skip_clearance_min"):
+                ft.validate_meta({**self.OUTER, "skip_clearance_min": v})
+
+    def test_same_layer_in_both_refused(self):
+        with self.assertRaisesRegex(ft.MetaError, "both hide_all and hide_overlap_cm"):
+            ft.validate_meta({**self.OUTER, "hide_all": ["tee"], "hide_overlap_cm": {"tee": 1}})
 
 
 class GarmentPins(unittest.TestCase):
