@@ -3,7 +3,7 @@
 Puts the app on **Cloud Run** behind **Identity-Aware Proxy (IAP)**. Google does the sign-in in front of the app, and only two Google accounts, Joe's and B's, are let in. Each person's avatar files are served only to that person.
 
 - `server.mjs` is a small static server with no dependencies. On every request (page, manifest, service worker, avatar files) it checks IAP's signed header (`x-goog-iap-jwt-assertion`: ES256, Google's published keys, audience, issuer, expiry) and its own allow list. So it fails closed even if IAP's access list were ever widened. Someone else's avatar pack returns 404. `GET /api/me` returns `{"person": "joe"}` or `{"person": "b"}` for the app (used from V2-06).
-- `deploy.mjs` builds the app, copies each person's pack in from `private/pack/<person>/` (never committed), deploys with IAP on, and grants access to the emails in `private/users.json` (never committed).
+- `deploy.mjs` builds the app, copies each person's pack in from `private/pack/<person>/` (never committed): every `.glb` and `manifest.json` there, after checking the core files exist (`pack-files.mjs`; `pack-files.test.mjs` stops the lists drifting) and printing which optional files went in and which are absent, deploys with IAP on, and grants access to the emails in `private/users.json` (never committed).
 - Staging goes in `deploy/out/` (git-ignored).
 
 - `datastore.mjs` holds each person's synced data (V2-06b): Firestore on Cloud Run, a JSON file for local trials, memory for tests. `GET /api/data` returns the signed-in person's data and `PUT /api/data/{key}` writes one key. The person always comes from IAP's signed header, never from the request.

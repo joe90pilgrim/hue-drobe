@@ -3,12 +3,13 @@
 // Builds the app, copies each person's avatar pack in from private/pack/<person>/ (never committed),
 // sends the lot to Cloud Run with IAP on, and lets in only the people in private/users.json.
 // --stage-only stops after assembling deploy/out/ so you can look at it or run it locally.
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEFAULTS, gcloudValue, parseFlags, resolveProject, run } from './gcloud.mjs';
 import { parseAllowedUsers } from './server.mjs';
 import { setUpFirestore } from './firestore-setup.mjs';
+import { CORE_PACK, KNOWN_PACK, selectPackFiles } from './pack-files.mjs';
 
 const flags = parseFlags(process.argv.slice(2));
 const here = (p) => fileURLToPath(new URL(p, import.meta.url));
@@ -31,10 +32,9 @@ try {
 }
 const emails = Object.values(JSON.parse(usersJson));
 
-// The files the viewer loads (keep in step with PACK_FILES in app/vite.config.ts and app/src/viewer.ts).
-const PACK = ['body', 'tee', 'tee_v', 'tee_scoop', 'trousers', 'shorts', 'tights', 'sweatshirt'];
+// A pack must have the core files; every other .glb and manifest.json in it is copied too (pack-files.mjs).
 for (const person of people) {
-  const missing = PACK.filter((n) => !existsSync(here(`../private/pack/${person}/${n}.glb`)));
+  const missing = CORE_PACK.filter((n) => !existsSync(here(`../private/pack/${person}/${n}.glb`)));
   if (missing.length) {
     console.error(`Avatar pack not found in private/pack/${person}/ (${missing.join(', ')}). Run: python pack/build_pack.py --private`);
     process.exit(1);
@@ -56,7 +56,15 @@ cpSync(here('./Dockerfile'), out + '/Dockerfile');
 cpSync(here('../app/dist'), out + '/public', { recursive: true });
 for (const person of people) {
   mkdirSync(`${out}/public/pack/${person}`, { recursive: true });
-  for (const n of PACK) cpSync(here(`../private/pack/${person}/${n}.glb`), `${out}/public/pack/${person}/${n}.glb`);
+  const src = here(`../private/pack/${person}/`);
+  const files = selectPackFiles(readdirSync(src));
+  for (const f of files) cpSync(src + f, `${out}/public/pack/${person}/${f}`);
+  const optional = files.filter((f) => !CORE_PACK.includes(f.replace(/\.glb$/, '')));
+  const bytes = files.reduce((t, f) => t + statSync(src + f).size, 0);
+  const absent = KNOWN_PACK.filter((n) => !files.includes(`${n}.glb`));
+  console.log(`  ${person}: ${files.length} files, ${(bytes / 1048576).toFixed(1)} MB
+    optional included: ${optional.join(', ')}
+    absent: ${absent.join(', ') || 'none'}`);
 }
 // The env file and IAP settings are not part of the image; .gcloudignore keeps them out of the upload.
 writeFileSync(out + '/.gcloudignore', 'env.yaml\niap-settings.yaml\n.gcloudignore\n');
