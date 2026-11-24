@@ -15,6 +15,9 @@ import {
   GARMENTS,
   HAT_MESHES,
   HAT_SLOT,
+  OUTER_MESHES,
+  OUTER_OPTION,
+  OUTER_SLOT,
   SHOES_AS_MADE,
   SHOES_SLOT,
   SHOE_MESHES,
@@ -67,6 +70,9 @@ const SLOTS: Slot[] = [
   // V5-02: a hat (Joe, 23 Nov 2026: a cap and a beanie, for both people). Plain colour. Worn over the hair: the viewer then draws the hair with the faces
   // the hat covers removed. The row is hidden when the pack has no hat.
   { name: HAT_SLOT, options: ['None', GARMENTS.cap.option, GARMENTS.beanie.option], garments: { [GARMENTS.cap.option]: 'cap', [GARMENTS.beanie.option]: 'beanie' } },
+  // V3.1-06: the blazer (Joe, 24 Nov 2026: worn with anything). A pack has only its own sex's blazer, so `garments` here is a placeholder: `garmentOf` and `apply` pick
+  // whichever blazer mesh the pack loaded. While it is worn the viewer draws the tee and trousers as their `_under_blazer_*` files. Hidden when the pack has no blazer.
+  { name: OUTER_SLOT, options: ['None', OUTER_OPTION], garments: { [OUTER_OPTION]: 'blazer_male' } },
   // The shift dress (V3-02) is in a woman's pack only; the row is hidden when the pack lacks it. It takes the place of the top and the bottom.
   { name: DRESS_SLOT, options: ['None', DRESS_OPTION], garments: { [DRESS_OPTION]: 'dress' } },
   // The sweatshirt is an alternative top (MVP-05 scope), built over the trousers like the tee, so it shares the Top slot.
@@ -268,6 +274,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     (opt !== DRESS_OPTION || viewer.has('dress')) &&
     (!(opt in SHOE_OF) || viewer.has(SHOE_OF[opt])) &&
     (!(opt in HAT_OF) || viewer.has(HAT_OF[opt])) &&
+    (opt !== OUTER_OPTION || !!outerMesh()) &&
     !(opt.startsWith('Shirt') && !viewer.has(SHIRT_MESH[opt] ?? ''));
   /** Why an option cannot be chosen right now (a layer it never goes with), or null when it can. */
   const blockedNote = (slot: string, opt: string): string | null => {
@@ -281,7 +288,9 @@ export function renderTryOn(el: HTMLElement): () => void {
       return `A skirt goes with a T-shirt or nothing on top. Change your top from the ${outfit.Top === 'Sweatshirt' ? 'sweatshirt' : 'shirt'} to wear a skirt.`;
     return null;
   };
-  const garmentOf = (slot: Slot) => slot.garments[outfit[slot.name]];
+  /** The blazer mesh this person's pack has (a man's blazer or a woman's), once the pack has loaded. */
+  const outerMesh = () => OUTER_MESHES.find((m) => viewer.has(m));
+  const garmentOf = (slot: Slot) => (slot.name === OUTER_SLOT ? (outfit[OUTER_SLOT] === OUTER_OPTION ? outerMesh() ?? '' : '') : slot.garments[outfit[slot.name]]);
   const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : slot.name === HAIR_SLOT ? DEFAULT_HAIR_COLOUR : DEFAULT_COLOUR)).toLowerCase();
   const itemKey = (slot: Slot) =>
     `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
@@ -304,6 +313,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       sw.style.background = g ? colourOf(s) : '';
     }
     el.querySelector<HTMLElement>(`[data-box="${DRESS_SLOT}"]`)!.hidden = !viewer.has('dress'); // a man's pack has no dress
+    el.querySelector<HTMLElement>(`[data-box="${OUTER_SLOT}"]`)!.hidden = !outerMesh() && outfit[OUTER_SLOT] === 'None'; // a pack built before blazers has none
     el.querySelector<HTMLElement>(`[data-box="${HAT_SLOT}"]`)!.hidden = !HAT_MESHES.some((m) => viewer.has(m)) && outfit[HAT_SLOT] === 'None'; // a pack built before hats has none
     el.querySelector<HTMLElement>(`[data-box="${SHOES_SLOT}"]`)!.hidden = !Object.values(SHOE_OF).some((m) => viewer.has(m)) && outfit[SHOES_SLOT] === 'None'; // a pack built before shoes has none
     el.querySelector<HTMLElement>(`[data-box="${UNDER_SLOT}"]`)!.hidden = !(outfit[UNDER_SLOT] === UNDER_OPTION || necklinesUnder(viewer.layers(), outfit.Top).length > 0); // shown with a top that can go over a tee
@@ -375,6 +385,10 @@ export function renderTryOn(el: HTMLElement): () => void {
   /** Shows exactly one mesh per slot: the chosen garment, with the chosen neckline if it has them, tucked in when a skirt is worn (V3-01b). */
   const apply = (slot: Slot) => {
     if (slot.name === HAIR_SLOT) return; // the viewer always draws the hair
+    if (slot.name === OUTER_SLOT) {
+      for (const m of OUTER_MESHES) viewer.setGarment(m, outfit[OUTER_SLOT] === OUTER_OPTION && m === outerMesh());
+      return;
+    }
     const tucked = isTucked(outfit);
     const layered = layeredOk(viewer.layers(), outfit, neckline); // V3-05: the tee under a sweatshirt or shirt, which is then the version built over the tee
     if (slot.name === UNDER_SLOT) {
@@ -614,6 +628,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (loadedSaved && packReady && outfit.Bottom === TUCKS_INTO && !viewer.has('skirt')) outfit.Bottom = 'Trousers';
     if (loadedSaved && packReady && outfit[DRESS_SLOT] === DRESS_OPTION && !viewer.has('dress')) outfit[DRESS_SLOT] = 'None';
     if (loadedSaved && packReady && outfit[HAT_SLOT] !== 'None' && !viewer.has(HAT_OF[outfit[HAT_SLOT]] ?? '')) outfit[HAT_SLOT] = 'None'; // a hat this person's pack lacks is not worn
+    if (loadedSaved && packReady && outfit[OUTER_SLOT] === OUTER_OPTION && !outerMesh()) outfit[OUTER_SLOT] = 'None'; // a blazer this person's pack lacks is not worn
     if (loadedSaved && packReady && outfit[SHOES_SLOT] !== 'None' && !viewer.has(SHOE_OF[outfit[SHOES_SLOT]] ?? '')) outfit[SHOES_SLOT] = 'None'; // a shoe this person's pack lacks is not worn
   };
   void viewer.ready.then(() => {
@@ -637,9 +652,10 @@ export function renderTryOn(el: HTMLElement): () => void {
       else if (s.name === 'Legs') look.legs = r.item;
       else if (s.name === SHOES_SLOT) look.shoes = r.item;
       else if (s.name === HAT_SLOT) look.hat = r.item;
+      else if (s.name === OUTER_SLOT) look.outer = r.item;
       else look.bottom = r.item;
     }
-    if (!look.top && !look.bottom && !look.legs && !look.dress && !look.shoes && !look.hat) return;
+    if (!look.top && !look.bottom && !look.legs && !look.dress && !look.shoes && !look.hat && !look.outer) return;
     await saveItems(items);
     await saveOutfits([...(await loadOutfits()), newOutfit(look)]);
     outfitBtn.textContent = 'Outfit saved';

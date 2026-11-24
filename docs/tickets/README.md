@@ -117,6 +117,7 @@ Built on the V3-14 result: plain MHCLO for fitted items, Blender cloth with garm
 | V3.1-03 | [T-shirt template](v3.1-templates/V3.1-03-tee-template.md) | V3.1-01 | Sonnet, medium |
 | V3.1-04 | [Straight-leg trousers template](v3.1-templates/V3.1-04-straight-leg-trousers-template.md) | V3.1-01 | Sonnet, high |
 | V3.1-05 | [Open-front coat template](v3.1-templates/V3.1-05-open-front-coat-template.md) | V3.1-01, V3.1-02, coat source decision | Sonnet, high |
+| V3.1-06 | [Offer the blazer in the app](v3.1-templates/V3.1-06-blazer-in-app.md) | PR 13 (blazer templates) | Sonnet, medium |
 
 ### Version 4: Your real wardrobe
 

@@ -77,6 +77,11 @@ export const SHAPES: Record<string, Shape> = {
     box: [4, 30, 94, 30], xfill: '#2b2b2b', body: 'M8 52 Q8 46 20 46 L82 46 Q94 46 94 52 Z',
     extra: 'M6 52 L96 52 L96 56 Q96 60 90 60 L12 60 Q6 60 6 56 Z', detail: 'M30 46 L34 34 Q48 30 62 34 L66 46 M48 32 L48 46',
   },
+  // V3.1-06: the blazer, a jacket with lapels and a centre button line (the same drawing for both sexes).
+  blazer: {
+    hook: HOOK_TOP, box: [4, 8, 92, 88],
+    body: 'M36 12 L50 30 L64 12 L86 24 L92 82 L80 84 L72 44 L72 92 L28 92 L28 44 L20 84 L8 82 L14 24 Z', collar: 'M50 30 L36 12 L30 22 L40 40 L50 52 Z M50 30 L64 12 L70 22 L60 40 L50 52 Z', detail: 'M50 52 L50 92',
+  },
   // Any garment id without a shape: a plain rounded block, so nothing shows blank.
   generic: { hook: HOOK_TOP, box: [18, 14, 64, 80], body: 'M26 24 Q26 14 36 14 L64 14 Q74 14 74 24 L74 84 Q74 94 64 94 L36 94 Q26 94 26 84 Z', detail: 'M32 22 L68 22' },
 };
@@ -96,6 +101,8 @@ export function silhouetteKey(garment: string, neckline?: string): string {
       return 'oxford';
     case 'sandals':
       return 'sandal';
+    case 'blazer_male': case 'blazer_female':
+      return 'blazer';
     case 'beanie': case 'cap': case 'sneaker': case 'boot': // V5 shelf shapes
     case 'shirt_short': case 'shirt_mid': case 'shirt_long': case 'trousers': case 'shorts': case 'skirt': case 'tights': case 'dress':
       return garment;
@@ -169,7 +176,7 @@ export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode =
 
 // --- V3-17: the flat-lay of an outfit ------------------------------------------------------------------------------
 
-export type FlatSlot = 'hat' | 'top' | 'dress' | 'bottom' | 'legs' | 'shoes';
+export type FlatSlot = 'hat' | 'outer' | 'top' | 'dress' | 'bottom' | 'legs' | 'shoes';
 
 /** One piece of an outfit. No `item` means the piece was deleted: it is drawn as a dashed outline. */
 export interface FlatPiece {
@@ -194,9 +201,9 @@ export interface FlatLayout {
   placements: FlatPlacement[];
 }
 
-const SLOT_ORDER: FlatSlot[] = ['hat', 'top', 'dress', 'bottom', 'legs', 'shoes'];
+const SLOT_ORDER: FlatSlot[] = ['hat', 'outer', 'top', 'dress', 'bottom', 'legs', 'shoes'];
 /** The outline drawn for a deleted piece. */
-const EMPTY_KEY: Record<FlatSlot, string> = { hat: 'beanie', top: 'tee', dress: 'dress', bottom: 'trousers', legs: 'tights', shoes: 'sneaker' };
+const EMPTY_KEY: Record<FlatSlot, string> = { hat: 'beanie', outer: 'blazer', top: 'tee', dress: 'dress', bottom: 'trousers', legs: 'tights', shoes: 'sneaker' };
 const PAD = 4;
 export const FLAT_GAP = 5;
 
@@ -261,7 +268,9 @@ export function flatLayOf(o: Outfit, look: OutfitLook): string {
     id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
   const pieces = [
     ...piece('hat', o.hat, look.hat),
-    ...(o.dress ? piece('dress', o.dress, look.dress) : [...piece('top', o.top, look.top), ...piece('bottom', o.bottom, look.bottom)]),
+    // V3.1-06: a blazer stands in for the top in the flat-lay, as on the avatar (where the tee is not drawn under it).
+    ...piece('outer', o.outer, look.outer),
+    ...(o.dress ? piece('dress', o.dress, look.dress) : [...(o.outer ? [] : piece('top', o.top, look.top)), ...piece('bottom', o.bottom, look.bottom)]),
     ...piece('legs', o.legs, look.legs),
     ...piece('shoes', o.shoes, look.shoes),
   ];

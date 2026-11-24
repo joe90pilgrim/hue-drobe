@@ -32,6 +32,7 @@ const UNSAFE = /[\u0000-\u001f\u007f<>]|:\/\/|www\./i;
 export const GARMENT_IDS = [
   'tee', 'sweatshirt', 'shirt_short', 'shirt_mid', 'shirt_long', 'trousers', 'shorts', 'tights', 'skirt', 'dress',
   'trainers', 'oxfords', 'monk_straps', 'sandals', 'ankle_boots', 'cap', 'beanie',
+  'blazer_male', 'blazer_female',
 ];
 
 const isDay = (s) => {

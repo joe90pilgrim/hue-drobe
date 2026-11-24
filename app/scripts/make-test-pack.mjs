@@ -7,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 // Each person's pack has the same files as the real one: Joe's has no skirt, dress or tucked tees (skirt.spec.ts relies on that).
 const WOMANS_ONLY = ['skirt', 'dress', 'body_dress', 'tee_tucked', 'tee_v_tucked', 'tee_scoop_tucked'];
-const PEOPLE = { joe: (name) => !WOMANS_ONLY.includes(name), b: () => true };
+// V3.1-06: each person has only their own sex's blazer, and the tee and trousers drawn under it.
+const PEOPLE = { joe: (name) => !WOMANS_ONLY.includes(name) && !name.includes('blazer_female'), b: (name) => !name.includes('blazer_male') };
 // name -> [width, height, centre height] in metres. Keep the names in step with PACK_FILES in src/viewer.ts.
 const PARTS = {
   body: [0.4, 1.7, 0.85],
@@ -31,6 +32,12 @@ const PARTS = {
   shirt_short_over_tee: [0.46, 0.65, 1.3],
   shirt_mid_over_tee: [0.46, 0.65, 1.3],
   shirt_long_over_tee: [0.46, 0.65, 1.3],
+  blazer_male: [0.52, 0.7, 1.28],
+  blazer_female: [0.5, 0.68, 1.28],
+  tee_under_blazer_male: [0.44, 0.58, 1.3],
+  trousers_under_blazer_male: [0.42, 0.9, 0.5],
+  tee_under_blazer_female: [0.44, 0.58, 1.3],
+  trousers_under_blazer_female: [0.42, 0.9, 0.5],
 };
 
 /** A binary glTF holding one box (24 vertices, 12 triangles) with a plain grey material, which the app repaints. */

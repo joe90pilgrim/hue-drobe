@@ -29,6 +29,10 @@ export const GARMENTS = {
   // V5-02 (Joe, 23 Nov 2026): hats, a slot of their own, for both people. Plain colour, worn over the person's hair (the manifest's `garments.hats`).
   cap: { label: 'cap', slot: 'Hat', option: 'Cap' },
   beanie: { label: 'beanie', slot: 'Hat', option: 'Beanie' },
+  // V3.1-06 (Joe, 24 Nov 2026): the blazer, an outer layer in a slot of its own, worn over the tee and trousers. Each person's pack has only their own sex's blazer.
+  // Joe's decision: it may be worn with anything, so `keepLayers` has no rule for it. While it is worn, the viewer draws the tee and trousers as their `_under_blazer_*` files.
+  blazer_male: { label: 'blazer', slot: 'Outer', option: 'Blazer' },
+  blazer_female: { label: 'blazer', slot: 'Outer', option: 'Blazer' },
 } as const;
 export type GarmentId = keyof typeof GARMENTS;
 
@@ -45,6 +49,11 @@ export const SHOE_MESHES: readonly string[] = (['trainers', 'oxfords', 'monk_str
 export const HAT_SLOT = 'Hat';
 export const isHat = (garment: string): boolean => garment in GARMENTS && GARMENTS[garment as GarmentId].slot === HAT_SLOT;
 export const HAT_MESHES: readonly string[] = ['cap', 'beanie'];
+
+/** V3.1-06: the slot the blazer goes in, and the pack meshes of the two blazers (a pack has only its own sex's). */
+export const OUTER_SLOT = 'Outer';
+export const OUTER_OPTION = 'Blazer';
+export const OUTER_MESHES: readonly string[] = ['blazer_male', 'blazer_female'];
 
 /**
  * V3-11: the slot sheet shows garment types (chips) and, for a type with variants, a second row. This is the one lookup between

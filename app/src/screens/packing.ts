@@ -110,7 +110,7 @@ export function renderPacking(el: HTMLElement): () => void {
   /** The pieces an outfit is made of, as the saved items that are still in the wardrobe. */
   const piecesOf = (o: Outfit): SavedItem[] => {
     const look = resolveOutfit(o, items);
-    return [look.hat, look.dress, look.top, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i);
+    return [look.hat, look.dress, look.top, look.outer, look.bottom, look.legs, look.shoes].filter((i): i is SavedItem => !!i);
   };
 
   // --- The list of trips and the chosen trip's checklist -------------------------------------------------------------
@@ -251,6 +251,7 @@ export function renderPacking(el: HTMLElement): () => void {
   const slotOf = (i: SavedItem) => GARMENTS[i.garment].slot;
   const SLOTS: { slot: string; label: string }[] = [
     { slot: 'Top', label: 'Tops' },
+    { slot: 'Outer', label: 'Jackets' },
     { slot: 'Dress', label: 'Dresses' },
     { slot: 'Bottom', label: 'Bottoms' },
     { slot: 'Legs', label: 'Tights' },

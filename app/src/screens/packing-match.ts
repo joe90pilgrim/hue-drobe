@@ -23,7 +23,7 @@ export interface MatchView {
 }
 
 /** The slot's name as a chip label, such as "Tops". A line with no slot has no chip of its own. */
-const SLOT_LABEL: Record<string, string> = { Top: 'Tops', Bottom: 'Bottoms', Legs: 'Tights', Dress: 'Dresses', Shoes: 'Shoes', Hat: 'Hats' };
+const SLOT_LABEL: Record<string, string> = { Top: 'Tops', Outer: 'Jackets', Bottom: 'Bottoms', Legs: 'Tights', Dress: 'Dresses', Shoes: 'Shoes', Hat: 'Hats' };
 
 const quantityOf = (line: PackEntry) => line.quantity ?? 1;
 
