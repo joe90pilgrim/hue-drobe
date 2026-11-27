@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>V9-03 pattern harness (spike only, ships nothing)</title>
+<style>html,body{margin:0;background:#e9e6e1}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { PATTERN_GLSL, applyPattern } from './pattern-material.js';
+
+// ?target=tee  the garment that carries the pattern (the others stay plain)   &pattern=none|hstripes|vstripes|vstripes_x|spots|flowers
+// &wear=tee,trousers   &w=600&h=800   &focus=1.2&dist=1.7 (camera height and distance)
+const q = new URLSearchParams(location.search);
+const target = q.get('target') ?? 'tee', pattern = q.get('pattern') ?? 'none';
+const wear = (q.get('wear') ?? `${target},trousers`).split(',');
+const W = +(q.get('w') ?? 600), H = +(q.get('h') ?? 800);
+const focusY = +(q.get('focus') ?? 1.2), dist = +(q.get('dist') ?? 1.7);
+const COLOURS = { body: '#e3b892', tee: '#2e4a7a', sweatshirt: '#8a2f3c', trousers: '#4a4a4a' };
+const SECOND = '#f0e6d2';
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(1);
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#e9e6e1');
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8478, 1.6));
+const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+sun.position.set(1.5, 2.5, 3);
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(30, W / H, 0.05, 20);
+const cz = 0.03;
+window.setView = (azDeg) => {
+  const a = azDeg * Math.PI / 180;
+  camera.position.set(Math.sin(a) * dist, focusY, cz + Math.cos(a) * dist);
+  camera.lookAt(0, focusY, cz);
+  renderer.render(scene, camera);
+};
+
+const loader = new GLTFLoader();
+async function add(name, colour) {
+  const g = await loader.loadAsync(`/pack/${name}.glb`);
+  g.scene.traverse((o) => {
+    if (!o.isMesh) return;
+    const m = new THREE.MeshStandardMaterial({ color: colour, roughness: 0.85, metalness: 0, vertexColors: !!o.geometry.attributes.color });
+    o.material = m;
+    if (name === target && pattern !== 'none') applyPattern(m, pattern, SECOND);
+  });
+  scene.add(g.scene);
+}
+await add('body', COLOURS.body);
+for (const n of wear) await add(n, COLOURS[n] ?? '#777');
+
+window.stats = () => {
+  let tris = 0;
+  scene.traverse((o) => { if (o.isMesh) tris += o.geometry.index.count / 3; });
+  const gl = renderer.getContext(), e = gl.getExtension('WEBGL_debug_renderer_info');
+  return { tris, gpu: e ? gl.getParameter(e.UNMASKED_RENDERER_WEBGL) : 'n/a' };
+};
+// Times n full frames, each followed by a 1-pixel readback so the GPU has finished. Returns ms per frame.
+window.bench = (n = 120) => {
+  const gl = renderer.getContext(), px = new Uint8Array(4);
+  window.setView(20);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px);
+  const t0 = performance.now();
+  for (let i = 0; i < n; i++) { window.setView(20 + i); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); }
+  return (performance.now() - t0) / n;
+};
+window.glslBytes = PATTERN_GLSL.length;
+window.setView(0);
+window.ready = true;
+</script>
