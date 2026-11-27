@@ -34,8 +34,43 @@ describe('style.css colours', () => {
   });
 
   it('has no text below 12 px', () => {
-    const sizes = [...css.matchAll(/font-size:\s*([\d.]+)px/g)].map((m) => Number(m[1]));
+    const tokens = Object.fromEntries([...css.matchAll(/(--(?:text|display)-\d+):\s*(\d+)px/g)].map((m) => [m[1], Number(m[2])]));
+    expect(Object.keys(tokens).length).toBeGreaterThan(5);
+    const sizes = [...css.matchAll(/font-size:\s*([^;}]+)/g)].flatMap((m) => {
+      const px = m[1].match(/^([\d.]+)px$/);
+      if (px) return [Number(px[1])];
+      const t = m[1].trim().match(/^var\((--(?:text|display)-\d+)\)$/);
+      return t ? [tokens[t[1]]] : [];
+    });
+    expect(sizes.length).toBeGreaterThan(50);
     expect(sizes.filter((s) => s < 12)).toEqual([]);
+  });
+
+  // V10-02: one spacing, radius and type scale. Every font-size, border-radius and gap is a token, or on the review's "leave alone" list
+  // (docs/designs/2026-11-27-ui-review/ui-review.md, section C): 20, 30, 34 and 40px type, 50% and 0 radius, 0 gap, and the .hud debug box.
+  const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map((m) => ({ selector: m[1].trim().replace(/\s+/g, ' '), body: m[2] }));
+  const declarations = (prop: RegExp) => rules.flatMap((r) => [...r.body.matchAll(/(?:^|;)\s*([a-z-]+)\s*:\s*([^;]+)/g)].filter((d) => prop.test(d[1])).map((d) => ({ selector: r.selector, prop: d[1], value: d[2].trim() })));
+  const literalsIn = (value: string) => value.replace(/var\([^)]*\)/g, '').replace(/calc\([^)]*\)/g, '').split(/\s+/).filter(Boolean);
+
+  it('uses a token or a leave-alone value for every font-size, border-radius and gap', () => {
+    const bad: string[] = [];
+    for (const d of declarations(/^(font-size|border-radius|gap|row-gap|column-gap)$/)) {
+      if (d.selector.includes('.hud') || d.selector === ':root') continue;
+      const allowed = d.prop === 'font-size' ? ['20px', '30px', '34px', '40px'] : ['0', '50%'];
+      for (const t of literalsIn(d.value)) if (!allowed.includes(t)) bad.push(`${d.selector} { ${d.prop}: ${d.value} }`);
+    }
+    expect([...new Set(bad)]).toEqual([]);
+  });
+
+  it('keeps the banner green only in the --ok tokens, and uses them only on .p-sug-banner', () => {
+    for (const h of ['1f5a33', 'e8f1ea', 'b9d2bf']) {
+      const lines = css.split(/\r?\n/).filter((l) => l.toLowerCase().includes('#' + h));
+      expect(lines.length, h).toBe(1);
+      expect(lines[0], h).toContain('--ok-');
+    }
+    const users = rules.filter((r) => r.selector !== ':root' && /var\(--ok-/.test(r.body)).map((r) => r.selector);
+    expect(users.length).toBeGreaterThan(0);
+    expect(users.filter((u) => !/^\.p-sug-banner\b/.test(u))).toEqual([]);
   });
 
   it('gives every swatch the faint inner edge', () => {

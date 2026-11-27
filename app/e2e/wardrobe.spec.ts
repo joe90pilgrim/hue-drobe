@@ -65,9 +65,11 @@ test('hides Add to wardrobe when nothing is worn, and deletes a saved item only 
 
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await ask.getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByText('Nothing here yet. On Try on, change a piece and tap Add to wardrobe.')).toBeVisible();
+  await expect(page.locator('#w-empty')).toBeVisible();
+  await expect(page.locator('#w-empty')).toContainText('Nothing here yet. On Try on, change a piece and');
   await page.reload();
-  await expect(page.getByText('Nothing here yet. On Try on, change a piece and tap Add to wardrobe.')).toBeVisible();
+  await expect(page.locator('#w-empty')).toBeVisible();
+  await expect(page.locator('#w-empty')).toContainText('Nothing here yet. On Try on, change a piece and');
 });
 
 // A fixture, not real data: 20 pieces, tops and bottoms mixed.

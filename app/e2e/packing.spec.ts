@@ -181,7 +181,8 @@ test('an entry whose clothes were deleted shows as removed, can be taken off, an
   await page.getByRole('button', { name: 'Edit trip' }).click();
   await page.getByRole('button', { name: 'Delete trip' }).click();
   await page.getByRole('dialog', { name: /^Delete / }).getByRole('button', { name: 'Delete', exact: true }).click();
-  await expect(page.getByText('No trips yet. Tap New trip to start a packing list.')).toBeVisible();
+  await expect(page.locator('#p-empty')).toBeVisible();
+  await expect(page.locator('#p-empty')).toContainText('No trips yet.');
 });
 
 test('will not save a trip that ends before it starts', async ({ page }) => {
@@ -282,8 +283,8 @@ test('with no key or a Gemini error the screen says so plainly and the trip is u
   await page.getByRole('button', { name: 'Suggest a list' }).click();
   await page.getByRole('button', { name: 'Ask Gemini' }).click();
   await expect(page.locator('#p-sug-error')).toHaveText('Packing templates are not switched on yet.');
-  await expect(page.locator('#p-tpl-status')).toHaveText('Packing templates are not switched on yet.');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Packing templates are not switched on yet.')).toHaveCount(1); // shown once, in the sheet (V10-02, E2)
+  await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByText('Socks')).toBeVisible();
 
   await page.unroute('**/api/packing-template');
@@ -291,8 +292,8 @@ test('with no key or a Gemini error the screen says so plainly and the trip is u
   await page.getByRole('button', { name: 'Suggest a list' }).click();
   await page.getByRole('button', { name: 'Ask Gemini' }).click();
   await expect(page.locator('#p-sug-error')).toHaveText('Could not make a template. Try again in a moment.');
-  await expect(page.locator('#p-tpl-status')).toHaveText('Could not make a template. Try again in a moment.');
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Could not make a template. Try again in a moment.')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByText('Socks')).toBeVisible();
   await expect(page.locator('input[data-kind="template"]')).toHaveCount(1);
 });
@@ -362,7 +363,7 @@ test("Suggest sheet: cancelling sends nothing, and suggested rows show ghost sil
 
   // Cancel and the X send nothing.
   await page.getByRole('button', { name: 'Suggest a list' }).click();
-  await page.getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Suggest a list' }).click();
   await page.getByRole('button', { name: 'Close' }).click();
@@ -430,7 +431,8 @@ test('Match swaps a suggestion for a piece you own, and the list shows it as a t
   await expect(page.locator('.p-sug:not(.p-sug-done)')).toHaveCount(1); // only the umbrella is left
   await expect(page.locator('.p-sug-done')).toHaveCount(1); // the top stays, marked Matched
   await expect(page.locator('.p-sug-done')).toContainText('Matched to Navy tee');
-  await expect(page.locator('.p-sug-done').getByRole('button', { name: /is matched/ })).toBeDisabled();
+  await expect(page.locator('.p-sug-done .p-sug-status')).toHaveText('Matched'); // a status line, not a disabled button (V10-02, F6)
+  await expect(page.locator('.p-sug-done').getByRole('button', { name: /Remove/ })).toBeEnabled();
   await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
 
   await page.reload();

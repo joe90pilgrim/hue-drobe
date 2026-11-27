@@ -1,5 +1,6 @@
 // V10-01: measures the running app and src/style.css for the UI design review. Read-only against the app.
-// Usage (from the repo root, PowerShell or bash):  node app/scripts/design-audit.mjs [baseUrl] [outDir]
+// Usage (from the repo root, PowerShell or bash):  node app/scripts/design-audit.mjs [--laptop] [baseUrl] [outDir]
+//   --laptop  measure at 1280x800 with a mouse instead of 412x915 on a phone (V10-02); default outDir is then docs/screenshots/review-2026-11-after/laptop/
 //   baseUrl  default http://localhost:4199 (a running `vite preview`; this script starts and builds nothing)
 //   outDir   default docs/screenshots/review-2026-11/ (writes design-audit.json and design-audit.txt there)
 // Joe's private avatar pack is blocked on purpose, as in screenshots.mjs, so no body is ever loaded and the stage is empty.
@@ -9,13 +10,15 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 
-const base = (process.argv[2] ?? 'http://localhost:4199').replace(/\/$/, '');
-const out = process.argv[3] ?? fileURLToPath(new URL('../../docs/screenshots/review-2026-11/', import.meta.url));
+const LAPTOP = process.argv.includes('--laptop');
+const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const base = (args[0] ?? 'http://localhost:4199').replace(/\/$/, '');
+const out = args[1] ?? fileURLToPath(new URL(LAPTOP ? '../../docs/screenshots/review-2026-11-after/laptop/' : '../../docs/screenshots/review-2026-11/', import.meta.url));
 const cssPath = fileURLToPath(new URL('../src/style.css', import.meta.url));
 mkdirSync(out, { recursive: true });
 
-const PHONE = { width: 412, height: 915 };
-const WIDTHS = [360, 412, 560];
+const PHONE = LAPTOP ? { width: 1280, height: 800 } : { width: 412, height: 915 }; // the one viewport the run measures at
+const WIDTHS = LAPTOP ? [1280] : [360, 412, 560];
 const MIN_FONT = 12;
 const MIN_TARGET = 44;
 
@@ -336,7 +339,7 @@ async function run() {
     process.exit(2);
   }
   const browser = await chromium.launch();
-  const ctx = await browser.newContext({ viewport: PHONE, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
+  const ctx = await browser.newContext(LAPTOP ? { viewport: PHONE, deviceScaleFactor: 1 } : { viewport: PHONE, hasTouch: true, isMobile: true, deviceScaleFactor: 2 });
   await ctx.route('**/pack/**', (r) => r.abort()); // Joe's private pack stays blocked; the stage is empty on purpose
   await ctx.addInitScript(() => {
     document.addEventListener('DOMContentLoaded', () => {
@@ -482,9 +485,9 @@ async function run() {
     await scene('packing-trip-tray-lower');
     await page.locator('.p-packed-btn').click();
     await scene('packing-trip-packed-open');
-    await page.locator('.p-trip').nth(1).click();
+    await page.locator('.p-trip[data-id="t2"]').click();
     await scene('packing-trip-empty');
-    await page.locator('.p-trip').first().click();
+    await page.locator('.p-trip[data-id="t1"]').click();
   });
   await tryScene('edit-trip', async () => {
     await page.locator('[data-act="edit"]').click();
@@ -659,7 +662,7 @@ function render(data, css, summary) {
   const L = [];
   const h = (t) => L.push('', t, '='.repeat(t.length));
   L.push(`Hue-drobe design audit, ${data.meta.date}`);
-  L.push(`App: ${base}   Viewport: ${PHONE.width}x${PHONE.height} at 2x   Screens measured: ${data.scenes.length}   Widths for overflow: ${WIDTHS.join(', ')} px`);
+  L.push(`App: ${base}   Viewport: ${PHONE.width}x${PHONE.height} at ${LAPTOP ? 1 : 2}x   Screens measured: ${data.scenes.length}   Widths for overflow: ${WIDTHS.join(', ')} px`);
   L.push(`Script: app/scripts/design-audit.mjs   Stylesheet: app/src/style.css (${data.meta.cssLines} lines)`);
 
   h('1. Headline numbers');
@@ -671,8 +674,8 @@ function render(data, css, summary) {
   L.push(`Overflow findings (screen x width): ${summary.overflowRows.length}`);
   if (summary.notReached.length) L.push(`Screens not reached: ${summary.notReached.map((n) => `${n.scene} (${n.reason})`).join('; ')}`);
 
-  h('2. Per screen at 412 px');
-  L.push(table(['screen', 'sizes', 'min px', '<12px', 'targets', '<44px', 'no focus', 'overflow 360/412/560'], data.scenes.map((s) => {
+  h(`2. Per screen at ${PHONE.width} px`);
+  L.push(table(['screen', 'sizes', 'min px', '<12px', 'targets', '<44px', 'no focus', `overflow ${WIDTHS.join('/')}`], data.scenes.map((s) => {
     const sizes = Object.keys(s.fonts).map(Number).sort((a, b) => a - b);
     const noFocus = s.focus.filter((f) => f.kind === 'none' || !f.focused).length;
     const ov = WIDTHS.map((w) => { const o = s.overflow[w]; return o.docScrolls || o.pastViewport.length || o.clipped.length ? `${o.docScrolls ? 'doc ' : ''}${o.pastViewport.length}p/${o.clipped.length}c` : 'ok'; }).join(' / ');
@@ -708,7 +711,7 @@ function render(data, css, summary) {
   L.push(summary.focusFail.length ? table(['control class', 'result', 'screens'], summary.focusFail.map((f) => [f.key, f.kind, f.scenes.join('; ')])) : 'Every control tested shows an author-styled outline or box-shadow on focus.');
 
   h('9. Horizontal overflow and clipped content (p = elements past the screen edge, c = text clipped by overflow:hidden)');
-  if (!summary.overflowRows.length) L.push('None at 360, 412 or 560 px.');
+  if (!summary.overflowRows.length) L.push(`None at ${WIDTHS.join(', ')} px.`);
   for (const r of summary.overflowRows) {
     L.push(`${r.scene} at ${r.width}px: page scrollWidth ${r.docScrollWidth}${r.docScrolls ? ' (scrolls sideways)' : ''}`);
     for (const p of r.past) L.push(`    past edge: ${p.selector} left ${p.left} right ${p.right} "${p.text}"`);

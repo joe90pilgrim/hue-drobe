@@ -10,15 +10,17 @@ export function createBackupDialog(onRestored: () => void): { open: () => void }
   dlg.setAttribute('aria-labelledby', 'bk-title');
   dlg.innerHTML = `
     <div id="bk-main">
-      <h2 id="bk-title">Back up and restore</h2>
+      <div class="p-sheet-head">
+        <h2 id="bk-title">Back up and restore</h2>
+        <button type="button" class="p-close" id="b-close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      </div>
       <p class="help">Save your clothes, outfits, favourite colours, colour quiz result and current look to a file. Restoring from a file replaces everything on this device.</p>
       <div class="sheet-actions">
         <button type="button" class="primary" id="b-export">Save a backup</button>
         <button type="button" class="secondary" id="b-import">Restore from file</button>
         <input type="file" id="b-file" accept="application/json,.json" hidden>
       </div>
-      <p class="help" id="b-msg" role="status"></p>
-      <button type="button" class="sheet-close" id="b-close">Close</button>
+      <p class="msg" id="b-msg" role="status"></p>
     </div>
     <div id="bk-confirm" hidden>
       <h2>Replace everything on this device with this backup?</h2>
@@ -36,6 +38,12 @@ export function createBackupDialog(onRestored: () => void): { open: () => void }
   const file = $<HTMLInputElement>('#b-file');
   let pending: Record<string, unknown> | null = null;
 
+  /** One message line. An error is ink with a "!" icon, a success has a tick, anything else is plain (E1, V10-02). */
+  const say = (text: string, tone: 'ok' | 'error' | '' = '') => {
+    msg.textContent = text;
+    if (tone) msg.dataset.tone = tone;
+    else delete msg.dataset.tone;
+  };
   const showMain = () => {
     pending = null;
     confirmView.hidden = true;
@@ -43,7 +51,7 @@ export function createBackupDialog(onRestored: () => void): { open: () => void }
   };
   dlg.addEventListener('close', () => {
     showMain();
-    msg.textContent = '';
+    say('');
   });
   // A tap on the scrim (the dialog's own backdrop) closes it.
   dlg.addEventListener('click', (e) => {
@@ -58,7 +66,7 @@ export function createBackupDialog(onRestored: () => void): { open: () => void }
     a.download = backupFileName();
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    msg.textContent = 'Backup saved.';
+    say('Backup saved.', 'ok');
   });
   $('#b-import').addEventListener('click', () => file.click());
   file.addEventListener('change', async () => {
@@ -68,24 +76,24 @@ export function createBackupDialog(onRestored: () => void): { open: () => void }
     file.value = '';
     const parsed = parseBackup(text);
     if (!parsed.ok) {
-      msg.textContent = parsed.error;
+      say(parsed.error, 'error');
       return;
     }
     pending = parsed.data;
-    msg.textContent = '';
+    say('');
     mainView.hidden = true;
     confirmView.hidden = false;
     $('#b-replace').focus();
   });
   $('#b-cancel').addEventListener('click', () => {
     showMain();
-    msg.textContent = 'Restore cancelled.';
+    say('Restore cancelled.');
   });
   $('#b-replace').addEventListener('click', async () => {
     if (!pending) return;
     await importBackup(pending);
     showMain();
-    msg.textContent = 'Backup restored.';
+    say('Backup restored.', 'ok');
     onRestored();
   });
 

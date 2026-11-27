@@ -6,10 +6,14 @@
 import { colourName, DEFAULT_NECKLINE, ensureItem, GARMENTS, loadItems, NECKLINES, saveItems, type GarmentId, type Neckline, type SavedItem } from '../wardrobe';
 import { addFavourite, hasFavourite, loadFavourites, removeFavourite, saveFavourites, type Favourite } from '../favourites';
 import { createColourChooser } from '../colour-chooser';
+import { person } from '../person';
 import { cornerAt, inside, moveRect, rectFromDrag, resizeRect, toSource, usable, type Corner, type Rect } from '../crop';
 import { FALLBACK_COLOUR, FALLBACK_GARMENT, IdentifyError, identifyPhoto, type Suggestion } from '../identify';
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** The blazer template that belongs to the signed-in person (blazer_female for B, blazer_male for Joe); any other garment is returned as it is. */
+const ownBlazer = (g: GarmentId): GarmentId => (g === 'blazer_male' || g === 'blazer_female' ? (person() === 'b' ? 'blazer_female' : 'blazer_male') : g);
 
 /** Plain words for how sure Gemini was. */
 const sure = (c: number) => (c >= 0.8 ? 'fairly sure' : c >= 0.5 ? 'not very sure' : 'unsure');
@@ -40,8 +44,11 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
   sheet.className = 'sheet w-addsheet';
   sheet.setAttribute('aria-labelledby', 'w-add-title');
   sheet.innerHTML = `
-    <h2 id="w-add-title">Add from photo</h2>
-    <p class="help" role="status" data-note></p>
+    <div class="p-sheet-head">
+      <h2 id="w-add-title">Add from photo</h2>
+      <button type="button" class="p-close" data-act="cancel" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <p class="msg" role="status" data-note></p>
     <div class="w-crop" hidden>
       <p class="help">Drag a box around the one garment. Leave out faces, prices and other items. Never a photo of someone you know.</p>
       <div class="w-crop-stage"><canvas aria-label="Your screenshot. Drag a box around the garment." role="img"></canvas><div class="w-crop-box" hidden><i data-corner="nw"></i><i data-corner="ne"></i><i data-corner="sw"></i><i data-corner="se"></i></div></div>
@@ -63,6 +70,15 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
 
   const q = <T extends HTMLElement>(sel: string) => sheet.querySelector<T>(sel)!;
   const note = q('[data-note]');
+  /** One status line; while a request is running it has the spinner (E4). */
+  const say = (text: string, busy = false) => {
+    const spin = document.createElement('span');
+    spin.className = 'spinner';
+    spin.setAttribute('aria-hidden', 'true');
+    const words = document.createElement('span');
+    words.textContent = text;
+    note.replaceChildren(...(busy ? [spin, words] : [words]));
+  };
   const title = q('#w-add-title');
   const cropPane = q('.w-crop');
   const cropCanvas = q<HTMLCanvasElement>('.w-crop canvas');
@@ -110,8 +126,11 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
 
   const radio = (on: boolean, attrs: string, text: string) => `<button type="button" role="radio" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${attrs}>${text}</button>`;
   const draw = () => {
+    // L13: a pack has only its own person's blazer, so there is one "Blazer" chip, saved as that template.
+    const chosen = ownBlazer(garment);
     garmentRow.innerHTML = (Object.keys(GARMENTS) as GarmentId[])
-      .map((g) => radio(g === garment, `class="chip-btn" data-garment="${g}"`, cap(GARMENTS[g].label)))
+      .filter((g) => g === ownBlazer(g))
+      .map((g) => radio(g === chosen, `class="chip-btn" data-garment="${g}"`, cap(GARMENTS[g].label)))
       .join('');
     neckField.hidden = garment !== 'tee';
     neckField.querySelector('.seg')!.innerHTML = (Object.keys(NECKLINES) as Neckline[]).map((n) => radio(n === neckline, `data-neck="${n}"`, NECKLINES[n].label)).join('');
@@ -199,7 +218,7 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
 
   const apply = (s: Suggestion | null, message: string) => {
     if (s) {
-      garment = s.garment;
+      garment = ownBlazer(s.garment);
       neckline = s.neckline;
       sheer = s.sheer;
       colour = s.colour;
@@ -231,7 +250,7 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
     });
     form.hidden = true;
     addBtn.disabled = true;
-    note.textContent = reading;
+    say(reading, true);
     if (!sheet.open) sheet.showModal();
     try {
       const s = await identifyPhoto(image);

@@ -63,8 +63,8 @@ export function matchGrid(v: MatchView): string {
       <span class="p-tile-ring" aria-hidden="true">${on ? TICK : ''}</span>
       <span class="p-tile-art" aria-hidden="true">${itemSilhouette(c.item, 'flat')}</span>
       <span class="w-name p-tile-name">${esc(c.item.name)}</span>
-      <span class="w-sub p-match-tag">${tag ? esc(tag) : '&nbsp;'}</span>
-      <span class="w-sub p-pick-mark">${status || '&nbsp;'}</span>
+      ${tag ? `<span class="w-sub p-match-tag">${esc(tag)}</span>` : ''}
+      ${status ? `<span class="w-sub p-pick-mark">${status}</span>` : ''}
     </button>`;
     })
     .join('');
@@ -74,7 +74,7 @@ export function matchGrid(v: MatchView): string {
 export function matchChips(v: MatchView): string {
   const slot = slotOf(v.line);
   const chip = (scope: string, text: string) => `<button type="button" class="chip-btn" data-match-scope="${scope}" aria-pressed="${v.scope === scope}">${text}</button>`;
-  return (slot ? chip('slot', `${SLOT_LABEL[slot] ?? slot} · ${v.slotCount}`) : '') + chip('all', `All clothes · ${v.allCount}`);
+  return (slot && v.slotCount > 0 ? chip('slot', `${SLOT_LABEL[slot] ?? slot} · ${v.slotCount}`) : '') + chip('all', `All clothes · ${v.allCount}`);
 }
 
 /** The footer: a note, the main button and the three small ones. `onList` is the picked pieces already on the list by hand. */
@@ -87,7 +87,7 @@ export function matchFoot(v: MatchView): string {
   const note = allOnList && left < 1 ? 'Already on your list, so this suggestion is marked Matched.' : n > 0 && left > 0 ? `${left} more stays on your suggestions.` : '';
   const main = n === 0 ? 'Choose a piece' : n === 1 ? `Use ${esc(first)}` : `Use ${n} pieces`;
   return `
-      <p class="help p-match-note" id="p-match-note" role="status">${note}</p>
+      <p class="msg p-match-note" id="p-match-note" role="status">${note}</p>
       <button type="button" class="primary" data-act="match-use"${n === 0 ? ' disabled' : ''}>${main}</button>
       <div class="p-match-small">
         <button type="button" class="secondary" data-act="match-later">${nothingClose && n === 0 ? 'Keep as a suggestion' : 'Not now'}</button>
@@ -152,7 +152,6 @@ export function reviewFoot(n: number): string {
 /** The whole Review sheet. The list and footer are redrawn on their own as rows are ticked. */
 export function reviewSheet(rows: ReviewRow[], off: Set<string>): string {
   return `
-      <div class="grab" aria-hidden="true"></div>
       <div class="p-sheet-head">
         <h2 id="p-sheet-title">Review matches</h2>
         <button type="button" class="p-close" data-act="close" aria-label="Close">${CLOSE_X}</button>
@@ -165,7 +164,6 @@ export function reviewSheet(rows: ReviewRow[], off: Set<string>): string {
 /** The whole Match sheet. The grid, chips and footer are redrawn on their own as pieces are picked, so the sheet keeps its scroll. */
 export function matchSheet(v: MatchView): string {
   return `
-      <div class="grab" aria-hidden="true"></div>
       <div class="p-sheet-head">
         <h2 id="p-sheet-title">Match to your clothes</h2>
         <button type="button" class="p-close" data-act="close" aria-label="Close">${CLOSE_X}</button>

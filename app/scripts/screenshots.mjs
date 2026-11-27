@@ -208,9 +208,9 @@ for (const [size, opts] of Object.entries(sizes)) {
   await shot('packing-trip-tray-lower');
   await page.locator('.p-packed-btn').click();
   await shot('packing-trip-packed-open');
-  await page.locator('.p-trip').nth(1).click();
+  await page.locator('.p-trip[data-id="t2"]').click();
   await shot('packing-trip-empty');
-  await page.locator('.p-trip').first().click();
+  await page.locator('.p-trip[data-id="t1"]').click();
   await page.locator('[data-act="edit"]').click();
   await shot('packing-edit-trip');
   await pressEsc();

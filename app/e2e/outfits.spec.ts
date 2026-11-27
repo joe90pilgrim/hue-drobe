@@ -90,8 +90,10 @@ test('deletes a saved outfit after asking, and keeps the deletion after a reload
   await page.getByRole('link', { name: 'Wardrobe' }).click();
   await wardrobeTab(page, 'Outfits').click();
   await deleteCard(page, 'Light grey tee, Light grey trousers');
-  await expect(page.getByText('No outfits yet. On Try on, put a look together and tap Save outfit.')).toBeVisible();
+  await expect(page.locator('#w-empty')).toBeVisible();
+  await expect(page.locator('#w-empty')).toContainText('No outfits yet. On Try on, put a look together and');
   await page.reload();
   await wardrobeTab(page, 'Outfits').click();
-  await expect(page.getByText('No outfits yet. On Try on, put a look together and tap Save outfit.')).toBeVisible();
+  await expect(page.locator('#w-empty')).toBeVisible();
+  await expect(page.locator('#w-empty')).toContainText('No outfits yet. On Try on, put a look together and');
 });

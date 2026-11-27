@@ -116,7 +116,9 @@ export function renderWardrobe(el: HTMLElement): () => void {
     photoAdd.setVisible(tab === 'clothes');
     const count = (f: Filter) => (f === 'all' ? items.length : items.filter((i) => slotOf(i) === f).length);
     const all: { f: Filter; label: string }[] = [{ f: 'all', label: 'All' }, ...GROUPS.map((g) => ({ f: g.slot as Filter, label: g.label }))];
+    if (filter !== 'all' && count(filter) === 0) filter = 'all';
     chips.innerHTML = all
+      .filter(({ f }) => f === 'all' || count(f) > 0)
       .map(({ f, label }) => `<button type="button" class="chip-btn" data-filter="${f}" aria-pressed="${filter === f}">${label}${f === 'all' ? '' : ` · ${count(f)}`}</button>`)
       .join('');
   };
@@ -135,8 +137,10 @@ export function renderWardrobe(el: HTMLElement): () => void {
     if (tab === 'clothes') {
       const list = filter === 'all' ? items : items.filter((i) => slotOf(i) === filter);
       empty.hidden = list.length > 0;
-      empty.textContent =
-        items.length === 0 ? 'Nothing here yet. On Try on, change a piece and tap Add to wardrobe.' : `No ${GROUPS.find((g) => g.slot === filter)?.label.toLowerCase() ?? 'clothes'} yet.`;
+      empty.innerHTML =
+        items.length === 0
+          ? 'Nothing here yet. On Try on, change a piece and <span class="when-tap">tap</span><span class="when-select">select</span> Add to wardrobe.'
+          : `No ${GROUPS.find((g) => g.slot === filter)?.label.toLowerCase() ?? 'clothes'} yet.`;
       grid.classList.add('closet');
       const card = (i: SavedItem, mode: 'hang' | 'shelf') => `<button type="button" class="w-card${on('item', i.id) ? ' on' : ''}" data-kind="item" data-id="${i.id}" aria-pressed="${on('item', i.id)}">
             <span class="c-art">${silhouetteOf(i, mode)}</span>
@@ -155,7 +159,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
     } else {
       grid.classList.remove('closet');
       empty.hidden = outfits.length > 0;
-      empty.textContent = 'No outfits yet. On Try on, put a look together and tap Save outfit.';
+      empty.innerHTML = 'No outfits yet. On Try on, put a look together and <span class="when-tap">tap</span><span class="when-select">select</span> Save outfit.';
       grid.innerHTML = outfits
         .map((o) => {
           const look = resolveOutfit(o, items);
@@ -188,7 +192,7 @@ export function renderWardrobe(el: HTMLElement): () => void {
       : `<button type="button" class="primary d-try" data-act="try">Try it on</button>
          <div class="d-pair"><button type="button" class="secondary" data-act="rename">Rename</button><button type="button" class="secondary danger" data-act="delete">Delete</button></div>`;
     const hint = item && !renaming ? '<p class="d-hint">Delete asks you to confirm first. Outfits that use this piece will show a gap where it was.</p>' : '';
-    return `<div class="grab" aria-hidden="true"></div><div class="d-head">${art}${head}</div>${actions}${hint}`;
+    return `<div class="d-head">${art}${head}</div>${actions}${hint}`;
   };
 
   const drawDetail = () => {
