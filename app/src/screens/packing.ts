@@ -363,8 +363,10 @@ export function renderPacking(el: HTMLElement): () => void {
 
   /** Which step the Suggest sheet is on. `suggestRun` changes whenever the sheet is cancelled or closed, so a late answer is dropped. */
   let suggestRun = 0;
+  /** The note typed on the Suggest sheet. It is kept for "Try again" and cleared when the sheet is opened afresh. */
+  let suggestNotes = '';
   const showSuggest = (t: Trip, step: SuggestStep) => {
-    sheet.innerHTML = suggestSheet(t, hasSeason, items.length > 0, step);
+    sheet.innerHTML = suggestSheet(t, hasSeason, items.length > 0, step, suggestNotes);
     if (!sheet.open) sheet.showModal();
     sheet.querySelector<HTMLElement>('[data-act="suggest-ask"], [data-act="suggest-done"], [data-act="suggest-cancel"]')?.focus();
   };
@@ -378,7 +380,7 @@ export function renderPacking(el: HTMLElement): () => void {
     draw();
     showSuggest(t, { step: 'loading' });
     try {
-      const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason(), await loadItems()));
+      const lines = await fetchTemplate(buildTemplateRequest(t, await loadSeason(), await loadItems(), suggestNotes));
       if (gone) return;
       trips = replaceTemplate(trips, t.id, lines);
       save();
@@ -400,6 +402,7 @@ export function renderPacking(el: HTMLElement): () => void {
   const openSuggest = async (t: Trip) => {
     // Read the quiz now, so the sheet describes exactly what the request will hold.
     hasSeason = !!(await loadSeason());
+    suggestNotes = '';
     if (!gone) showSuggest(t, { step: 'confirm' });
   };
 
@@ -670,6 +673,7 @@ export function renderPacking(el: HTMLElement): () => void {
     }
     if (act === 'suggest-ask') {
       const open = selectedTrip();
+      suggestNotes = sheet.querySelector<HTMLTextAreaElement>('#p-sug-notes')?.value ?? suggestNotes;
       if (open) void makeTemplate(open);
       return;
     }

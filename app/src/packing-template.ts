@@ -1,6 +1,6 @@
 // V6-01: asks our own server's /api/packing-template (which calls Gemini) for a packing-list template.
 // What leaves the phone: the trip name, the two dates, only if the colour quiz is complete the season name and its palette as
-// hex colours, and (V7-05) the wardrobe list: each saved piece's id, garment type, name and colour. No photos, no measurements,
+// hex colours, (V7-05) the wardrobe list: each saved piece's id, garment type, name and colour, and the optional note typed on the Suggest sheet. No photos, no measurements,
 // and no key in the app (decision of 18 Nov 2026, amended 23 Nov 2026 twice).
 import { kvGet } from './store';
 import { scoreQuiz } from './quiz/quiz';
@@ -22,6 +22,8 @@ export interface TemplateRequest {
   ends: string;
   season?: { name: string; palette: string[] };
   wardrobe?: WardrobePiece[];
+  /** An optional note for Gemini, typed by the user on the Suggest sheet. */
+  notes?: string;
 }
 
 /** The most pieces sent (the server refuses more), and a byte guard well under its 32 KB body cap. The newest pieces win. */
@@ -31,6 +33,9 @@ const PIECE_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
 /** The most lines kept from an answer (the server sends at most this many). */
 const MAX_LINES = 60;
+
+/** The longest note the server accepts. */
+export const MAX_NOTES = 300;
 
 /** The season and palette for a finished quiz, or undefined when the quiz is missing or not complete. */
 export function seasonFromAnswers(answers: unknown): TemplateRequest['season'] {
@@ -59,12 +64,14 @@ export function wardrobePieces(items: SavedItem[]): WardrobePiece[] {
  * The request for a trip. The season is added only when there is one, so without the quiz neither key is sent, and the wardrobe
  * only when there is a saved piece. `wardrobe` is the saved items; only their id, garment, name and colour are used.
  */
-export function buildTemplateRequest(trip: Pick<Trip, 'name' | 'starts' | 'ends'>, season?: TemplateRequest['season'], wardrobe: SavedItem[] = []): TemplateRequest {
+export function buildTemplateRequest(trip: Pick<Trip, 'name' | 'starts' | 'ends'>, season?: TemplateRequest['season'], wardrobe: SavedItem[] = [], notes = ''): TemplateRequest {
   const name = plainText(trip.name) || 'Trip';
   const req: TemplateRequest = { name, starts: trip.starts, ends: trip.ends };
   if (season) req.season = season;
   const pieces = wardrobePieces(wardrobe);
   if (pieces.length) req.wardrobe = pieces;
+  const note = plainText(notes).slice(0, MAX_NOTES).trim();
+  if (note) req.notes = note;
   return req;
 }
 

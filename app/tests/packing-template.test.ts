@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { quiz } from '../src/quiz/quiz';
 // @ts-expect-error plain JavaScript module from the server, no type declarations
 import { GARMENT_IDS, MAX_BODY_BYTES, MAX_WARDROBE as SERVER_MAX_WARDROBE, cleanRequest } from '../../deploy/packing.mjs';
-import { MAX_WARDROBE, buildTemplateRequest, seasonFromAnswers, toLines, wardrobePieces } from '../src/packing-template';
+import { MAX_NOTES, MAX_WARDROBE, buildTemplateRequest, seasonFromAnswers, toLines, wardrobePieces } from '../src/packing-template';
 import { GARMENTS, newItem, type SavedItem } from '../src/wardrobe';
 
 const COMPLETE = Object.fromEntries(quiz.questions.map((q) => [q.id, q.answers[0].id]));
@@ -41,6 +41,12 @@ describe('the template request', () => {
   it('sends only the trip fields, even from a full trip record', () => {
     const trip = { ...TRIP, v: 1 as const, id: 'secret-id', entries: [{ kind: 'item' as const, ref: 'tee-1', packed: true }], savedAt: 5 };
     expect(Object.keys(buildTemplateRequest(trip))).toEqual(['name', 'starts', 'ends']);
+  });
+
+  it('adds a tidy note only when there is one, cut to the server limit', () => {
+    expect(Object.keys(buildTemplateRequest(TRIP, undefined, [], '   '))).toEqual(['name', 'starts', 'ends']);
+    expect(buildTemplateRequest(TRIP, undefined, [], ' Carry-on <only>\nplease ').notes).toBe('Carry-on only please');
+    expect(buildTemplateRequest(TRIP, undefined, [], 'x'.repeat(500)).notes).toHaveLength(MAX_NOTES);
   });
 
   it('takes markup and control characters out of the name, which the server would refuse', () => {

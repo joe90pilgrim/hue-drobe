@@ -436,6 +436,8 @@ button { font-family: inherit; }
 .p-sug-banner .secondary:disabled { opacity: 0.45; }
 .p-sug-info { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--sunken); }
 .p-sug-info h3 { margin: 6px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.p-sug-notes { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font: inherit; font-size: 15px; resize: vertical; }
+.p-sug-notes:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .p-sug-info h3:first-child { margin-top: 0; }
 .p-sug-info p { margin: 0; }
 .p-sug-wait { display: flex; align-items: center; gap: 10px; font-weight: 600; }

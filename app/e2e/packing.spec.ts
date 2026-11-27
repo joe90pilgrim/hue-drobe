@@ -211,6 +211,7 @@ test('Suggest a list adds ticked-off-able lines, sends the palette only after th
   await page.getByRole('button', { name: 'Suggest a list' }).click();
   const dlg = page.getByRole('dialog', { name: 'Suggest a packing list' });
   await expect(dlg.locator('#p-sug-sent')).toHaveText('The trip name and dates, and a list of your clothes: names, types and colours.');
+  await expect(dlg.getByLabel(/Anything else Gemini should know/)).toHaveValue('');
   await expect(dlg.locator('#p-sug-stays')).toHaveText('Your photos and measurements. Gemini sees your clothes as names, types and colours, never as pictures.');
   expect(bodies).toHaveLength(0);
 
@@ -246,10 +247,30 @@ test('Suggest a list adds ticked-off-able lines, sends the palette only after th
   await expect(page.getByText('Linen shirt')).toBeVisible();
   await expect(page.getByText('Passport and visa')).toHaveCount(0);
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toBeVisible();
+  expect('notes' in bodies[1]).toBe(false); // an empty note is not sent
   expect(Object.keys(bodies[1]).sort()).toEqual(['ends', 'name', 'season', 'starts', 'wardrobe']);
   const season = bodies[1].season as { name: string; palette: string[] };
   expect(season.name).toMatch(/Spring|Summer|Autumn|Winter/);
   expect(season.palette.length).toBeGreaterThan(0);
+});
+
+test('a note typed on the Suggest sheet is sent, and is gone next time the sheet opens', async ({ page }) => {
+  const bodies: Record<string, unknown>[] = [];
+  await page.route('**/api/packing-template', (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({ json: { items: [{ label: 'Socks', quantity: null, group: 'Clothes' }] } });
+  });
+  await page.goto('/#/packing');
+  await seedStore(page, { trips: [{ ...lisbon, entries: [] }] });
+  await page.reload();
+  await page.getByRole('button', { name: /Lisbon weekend/ }).click();
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await page.getByLabel(/Anything else Gemini should know/).fill('Carry-on only, lots of walking');
+  await page.getByRole('button', { name: 'Ask Gemini' }).click();
+  await page.getByRole('button', { name: 'See the list' }).click();
+  expect(bodies[0].notes).toBe('Carry-on only, lots of walking');
+  await page.getByRole('button', { name: 'Suggest a list' }).click();
+  await expect(page.getByLabel(/Anything else Gemini should know/)).toHaveValue('');
 });
 
 test('with no key or a Gemini error the screen says so plainly and the trip is unchanged', async ({ page }) => {
