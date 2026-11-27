@@ -5,7 +5,7 @@
 import { silhouetteSvg } from '../silhouettes';
 import type { SavedItem } from '../wardrobe';
 import { slotOf } from '../match';
-import { formatDates, templateText, type PackEntry, type Trip } from '../trips';
+import { formatDates, isMatched, templateText, type PackEntry, type Trip } from '../trips';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
@@ -33,11 +33,25 @@ export function lineName(e: PackEntry): { name: string; quantity: number } {
 export const liveMatches = (e: PackEntry, items: SavedItem[]) => (e.matches ?? []).filter((id) => items.some((i) => i.id === id)).length;
 
 /** The lines Gemini matched to clothes that still exist. */
-export const matchedLines = (lines: PackEntry[], items: SavedItem[]) => lines.filter((e) => liveMatches(e, items) > 0);
+export const matchedLines = (lines: PackEntry[], items: SavedItem[]) => lines.filter((e) => !isMatched(e) && liveMatches(e, items) > 0);
 
 /** A suggested line: dashed row, ghost silhouette, name, quantity chip, a Match button, Edit and Remove. Match is off for a line that is not clothes. */
 export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
   const { name, quantity } = lineName(e);
+  if (isMatched(e)) {
+    const pieces = (e.matchedTo ?? []).map((id) => items.find((i) => i.id === id)?.name).filter((n): n is string => !!n);
+    return `
+    <li class="p-row p-sug p-sug-done">
+      <div class="p-check">
+        <span class="p-sug-art" aria-hidden="true">${ghostOf(e)}</span>
+        <span class="p-text"><span class="w-name">${esc(name)}</span><span class="w-sub">${pieces.length ? `Matched to ${esc(pieces.join(', '))}` : 'Matched'}</span></span>
+      </div>
+      <span class="p-sug-btns">
+        <button type="button" class="secondary" disabled aria-label="${esc(name)} is matched">Matched</button>
+        <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(name)}">Remove</button>
+      </span>
+    </li>`;
+  }
   const n = liveMatches(e, items);
   const sub = [e.group ? esc(e.group) : 'Suggested', n ? `<span class="p-sug-match">${n} in your wardrobe</span>` : ''].filter(Boolean).join(' · ');
   return `
@@ -58,7 +72,7 @@ export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
 
 /** The "Suggested" section: its heading and rows. Empty text when there are no lines. */
 export const suggestedSection = (lines: PackEntry[], items: SavedItem[]) =>
-  lines.length ? `<h3 class="p-group">Suggested <span class="p-sug-count">${lines.length}</span></h3><ul class="p-list" aria-label="Suggestions">${lines.map((e) => suggestedRow(e, items)).join('')}</ul>` : '';
+  lines.length ? `<h3 class="p-group">Suggested <span class="p-sug-count">${lines.filter((e) => !isMatched(e)).length}</span></h3><ul class="p-list" aria-label="Suggestions">${lines.map((e) => suggestedRow(e, items)).join('')}</ul>` : '';
 
 /** The green banner above the rows when Gemini matched some of them. */
 export function matchBanner(lines: PackEntry[], items: SavedItem[]): string {

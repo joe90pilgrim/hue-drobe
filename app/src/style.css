@@ -428,6 +428,9 @@ button { font-family: inherit; }
 .p-sug-btns .secondary:disabled { opacity: 0.45; }
 .p-sug-match { color: #1f5a33; font-weight: 600; }
 .p-sug-count { font-weight: 400; color: var(--muted); }
+.p-sug-done { border-style: solid; border-color: #b4b4b4; background: #f2f2f2; }
+.p-sug-done .p-sug-art { opacity: .6; }
+.p-sug-done .w-sub { color: var(--ink); font-weight: 600; }
 .p-sug-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid #b9d2bf; border-radius: 14px; background: #e8f1ea; color: #1f5a33; font-weight: 600; }
 .p-sug-banner .secondary { flex: 0 0 auto; height: 40px; padding: 0 14px; font-size: 14px; }
 .p-sug-banner .secondary:disabled { opacity: 0.45; }

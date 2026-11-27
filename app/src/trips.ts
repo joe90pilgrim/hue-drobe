@@ -29,6 +29,8 @@ export interface PackEntry {
   type?: GarmentId;
   /** Template lines only (V7-05): ids of wardrobe items Gemini judged to fit this line. They may since have been deleted. */
   matches?: string[];
+  /** Template lines only: set once the line is fully matched, to the ids of the pieces that cover it. The line stays, shown as Matched. */
+  matchedTo?: string[];
   /** Item entries only: ids of the outfits that brought this item onto the list. */
   via?: string[];
   /** Item entries only: true when the item was also added by hand. */
@@ -119,10 +121,10 @@ export function cleanTrips(value: unknown): Trip[] {
 /** Template text: spaces tidied, cut to length. Empty when there is nothing left. */
 const cleanLine = (s: unknown, max: number) => (typeof s === 'string' ? s.replace(/\s+/g, ' ').trim().slice(0, max).trim() : '');
 
-type TemplateExtras = Pick<PackEntry, 'label' | 'quantity' | 'colour' | 'type' | 'matches'>;
+type TemplateExtras = Pick<PackEntry, 'label' | 'quantity' | 'colour' | 'type' | 'matches' | 'matchedTo'>;
 
 /** The V7-05 fields of a template line, each kept only when valid, so a bad one is dropped and the line stays. */
-function templateExtras(raw: { label?: unknown; quantity?: unknown; colour?: unknown; type?: unknown; matches?: unknown }): TemplateExtras {
+function templateExtras(raw: { label?: unknown; quantity?: unknown; colour?: unknown; type?: unknown; matches?: unknown; matchedTo?: unknown }): TemplateExtras {
   const out: TemplateExtras = {};
   const label = cleanLine(raw.label, TEMPLATE_TEXT_MAX);
   if (label) out.label = label;
@@ -133,6 +135,10 @@ function templateExtras(raw: { label?: unknown; quantity?: unknown; colour?: unk
     const ids = [...new Set(raw.matches.filter((m): m is string => typeof m === 'string' && !!m))];
     if (ids.length) out.matches = ids;
   }
+  if (Array.isArray(raw.matchedTo)) {
+    const ids = [...new Set(raw.matchedTo.filter((m): m is string => typeof m === 'string' && !!m))];
+    if (ids.length) out.matchedTo = ids;
+  }
   return out;
 }
 
@@ -142,14 +148,14 @@ function cleanEntries(value: unknown): PackEntry[] {
   const out: PackEntry[] = [];
   for (const raw of value) {
     if (!raw || typeof raw !== 'object') continue;
-    const { kind, ref, packed, via, own, text, group, label, quantity, colour, type, matches } = raw as Record<string, unknown>;
+    const { kind, ref, packed, via, own, text, group, label, quantity, colour, type, matches, matchedTo } = raw as Record<string, unknown>;
     if ((kind !== 'item' && kind !== 'outfit' && kind !== 'template') || typeof ref !== 'string' || !ref) continue;
     if (out.some((e) => e.kind === kind && e.ref === ref)) continue;
     if (kind === 'template') {
       const line = cleanLine(text, TEMPLATE_TEXT_MAX);
       if (!line) continue;
       const g = cleanLine(group, TEMPLATE_GROUP_MAX);
-      out.push({ kind, ref, packed: packed === true, text: line, ...(g && { group: g }), ...templateExtras({ label, quantity, colour, type, matches }) });
+      out.push({ kind, ref, packed: packed === true, text: line, ...(g && { group: g }), ...templateExtras({ label, quantity, colour, type, matches, matchedTo }) });
       continue;
     }
     if (kind === 'outfit') {
@@ -189,7 +195,10 @@ export const inOutfitOnly = (trip: Trip, ref: string) => {
 };
 
 /** Items and template lines are tickable; outfits are planned looks and are not. */
-const isItem = (e: PackEntry) => e.kind !== 'outfit';
+/** A suggestion that is fully matched: the pieces that cover it are on the list and counted, so the line itself is not. */
+export const isMatched = (e: PackEntry) => e.kind === 'template' && !!e.matchedTo?.length;
+
+const isItem = (e: PackEntry) => e.kind !== 'outfit' && !isMatched(e);
 
 /**
  * Hand-adds an item (not packed yet), or takes the hand-add off when it was already hand-added. An item that an outfit
@@ -255,20 +264,20 @@ export function editTemplateLine(list: Trip[], id: string, ref: string, text: st
 /**
  * Swaps a suggestion for pieces you own (V7-07). Each piece becomes an item put there by hand (`own`), so taking an outfit off
  * later never drops it; a piece already on the list is not added twice, though one an outfit held is now also yours. The
- * suggestion is removed, or, when it asked for more than the pieces picked, lowered by that number and kept (its text is
+ * suggestion stays as Matched (`matchedTo`), or, when it asked for more than the pieces picked, lowered by that number and kept (its text is
  * rewritten only if it still reads as it came from Gemini, so a line Joe edited keeps his words). Pieces beyond the
  * quantity are ignored. Returns the trip as it was when the line is missing or nothing is picked.
  */
 export function matchLine(trip: Trip, lineId: string, itemIds: string[]): Trip {
   const line = trip.entries.find((e) => e.kind === 'template' && e.ref === lineId);
   const ids = [...new Set(itemIds)].slice(0, line?.quantity ?? 1);
-  if (!line || !ids.length) return trip;
+  if (!line || !ids.length || isMatched(line)) return trip;
   const left = (line.quantity ?? 1) - ids.length;
   const asked = line.label && line.text === templateText({ label: line.label, quantity: line.quantity });
   const entries = trip.entries.flatMap((e): PackEntry[] => {
     if (e !== line) return [e];
-    if (left < 1) return [];
     const { quantity: _q, matches: _m, ...rest } = e;
+    if (left < 1) return [{ ...rest, packed: false, matchedTo: [...new Set([...(e.matchedTo ?? []), ...ids])] }];
     const matches = (e.matches ?? []).filter((id) => !ids.includes(id));
     return [{ ...rest, ...(left > 1 && { quantity: left }), ...(matches.length && { matches }), ...(asked && { text: templateText({ label: line.label!, quantity: left }) }) }];
   });
