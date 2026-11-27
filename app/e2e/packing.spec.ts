@@ -361,7 +361,7 @@ test("Suggest sheet: cancelling sends nothing, and suggested rows show ghost sil
   await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 1 suggestion to clothes you own');
   await expect(page.locator('.p-sug-banner button')).toBeEnabled();
   const rose = page.locator('.p-sug', { hasText: 'Rose jumper' });
-  await expect(rose.locator('svg[data-mode="ghost"] path[fill="#c9a0a0"][fill-opacity="0.4"]')).toHaveCount(1);
+  await expect(rose.locator('svg[data-mode="ghost"] path[fill="#c9a0a0"]:not([fill-opacity])')).toHaveCount(1);
   await expect(rose.locator('.p-sug-match')).toHaveText('1 in your wardrobe'); // the unknown id is not counted
   await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('.p-sug-qty')).toHaveText('× 2');
   await expect(page.locator('.p-sug', { hasText: 'Thermal tops' }).locator('svg[data-shape="tee"]')).toHaveCount(1);

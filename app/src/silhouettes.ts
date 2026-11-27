@@ -149,13 +149,13 @@ function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean):
   return parts;
 }
 
-/** V7-06: a suggestion, not a piece you own: a dashed grey outline, filled with the suggested colour at 40% (neutral grey when there is none). */
+/** V7-06: a suggestion, not a piece you own: a dashed grey outline, filled with the suggested colour at full strength (neutral grey when there is none). */
 function ghostParts(key: string, colour: string): string[] {
   const sh = SHAPES[key];
   const fill = HEX.test(colour) ? colour : '#9a9a9a';
   const dash = 'stroke="#7a7a7a" stroke-width="1.6" stroke-dasharray="4 3" stroke-linejoin="round" stroke-linecap="round"';
-  const parts = [`<path d="${sh.body}" fill="${fill}" fill-opacity="0.4" ${dash} data-ghost="body"/>`];
-  if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${fill}" fill-opacity="0.4" ${dash}/>`);
+  const parts = [`<path d="${sh.body}" fill="${fill}" ${dash} data-ghost="body"/>`];
+  if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${fill}" ${dash}/>`);
   if (sh.collar) parts.push(`<path d="${sh.collar}" fill="none" ${dash}/>`);
   if (sh.detail) parts.push(`<path d="${sh.detail}" fill="none" stroke="#7a7a7a" stroke-width="1" stroke-linecap="round" opacity="0.6"/>`);
   return parts;
