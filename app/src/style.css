@@ -48,6 +48,8 @@ h1, h2 { font-weight: 700; }
 h3, h4 { font-weight: 600; }
 #app, .shell { height: 100dvh; }
 button { font-family: inherit; }
+/* One focus ring for every control (V10-02, F3). */
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 /* App shell (V1.2-02). Phone: top bar, content, tab bar. Laptop (900 px and up): sidebar and content. Tabs come from the screens list in main.ts. */
 .shell { display: flex; flex-direction: column; }
@@ -153,7 +155,6 @@ button { font-family: inherit; }
 .cur-swatch.o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }
 .secondary.choose-unused { flex: 1; min-width: 0; height: 48px; padding: 0 var(--space-8); border-radius: var(--radius-control); display: flex; align-items: center; justify-content: center; }
 .secondary.choose:disabled { opacity: .5; }
-.editor button:focus-visible, .editor input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* The colour chooser (V1.2-05): replaces the slot's controls inside the panel, so the avatar stays in view. */
 .ed-controls, .chooser { display: flex; flex-direction: column; gap: var(--space-12); }
 .ed-controls[hidden], .chooser[hidden], .editor-back[hidden], .editor h2[hidden] { display: none; }
@@ -247,7 +248,6 @@ button { font-family: inherit; }
 .swatch { position: relative; width: 44px; height: 44px; padding: 0; border: 0; border-radius: var(--radius-tile); box-shadow: var(--swatch-edge); }
 .swatch .heart { display: none; position: absolute; right: 3px; bottom: 3px; }
 .swatch[aria-pressed="true"] .heart { display: block; }
-.swatch:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .fav-count { margin: var(--space-12) 0 0; font-size: var(--text-13); color: var(--muted); }
 
 /* Favourite colour tiles in the change-a-piece panel (V1.1-01, V1.2-04). */
@@ -281,13 +281,11 @@ button { font-family: inherit; }
   /* Snag: a mouse can't scroll a hidden-scrollbar sideways row, so on desktop the garment chips wrap instead. */
   .chips { flex-wrap: wrap; overflow-x: visible; padding-right: 0; }
   .chip-fade::after { display: none; }
-  /* V9-01: the five pattern chips wrap to two rows here, so they are compact (a mouse needs less) to keep the whole panel inside the laptop's height. */
+  /* V9-01: the five pattern chips wrap to two rows here; a tighter gap keeps the whole panel inside the laptop's height (V10-02: the chips stay 44px). */
   .chips[data-patterns] { gap: var(--space-6); padding-top: 0; padding-bottom: 0; }
-  .chips[data-patterns] button { min-height: 32px; padding: 0 var(--space-12); font-size: var(--text-14); }
-  .ed-controls { gap: var(--space-12); }
+    .ed-controls { gap: var(--space-12); }
   .editor { padding-bottom: var(--space-8); }
   .editor-head { margin-top: 0; }
-  .seg button { min-height: 40px; }
   .slider input[type="range"] { height: 28px; border-radius: var(--radius-button); }
   .slider input[type="range"]::-webkit-slider-thumb { width: 26px; height: 26px; }
   .quiz:not(:has(.result)) { max-width: 640px; width: 100%; margin: 0 auto; }
@@ -321,7 +319,7 @@ button { font-family: inherit; }
   .primary:hover:not(:disabled) { background: var(--text-2); }
   .secondary:hover:not(:disabled) { border-color: var(--ink); background: var(--ground); }
   .answer:hover:not([aria-checked="true"]) { border-color: var(--ink); background: var(--ground); }
-  .fav-tile:hover:not(:disabled) { box-shadow: var(--swatch-edge), 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+  .fav-tile:hover:not(:disabled):not(.on) { box-shadow: var(--swatch-edge), 0 0 0 2px var(--surface), 0 0 0 3px var(--line-strong); }
 }
 
 .hud { position: absolute; top: 8px; left: 8px; margin: 0; padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.6); color: #fff; font: 12px/1.4 ui-monospace, monospace; pointer-events: none; }
@@ -365,8 +363,6 @@ button { font-family: inherit; }
 .w-add-form { display: flex; flex-direction: column; gap: var(--space-12); }
 .w-add-chips { display: flex; flex-wrap: wrap; gap: var(--space-8); }
 .w-add-chips .chip-btn[aria-checked="true"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); font-weight: 600; }
-.w-addsheet button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
-.w-photo-row .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .chip-btn { min-height: 44px; padding: 0 var(--space-16); border: 1px solid var(--line-strong); border-radius: var(--radius-pill); background: var(--surface); color: var(--ink); font-size: var(--text-14); }
 .chip-btn[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--on-ink); font-weight: 600; }
 .w-layout { display: flex; gap: var(--space-24); align-items: flex-start; }
@@ -387,7 +383,6 @@ button { font-family: inherit; }
 .layer-note { margin: 0; font-size: var(--text-14); line-height: 1.45; color: var(--muted); }
 .seg button:disabled { opacity: 0.4; cursor: not-allowed; }
 .w-name-input { width: 100%; min-height: 44px; padding: 0 var(--space-12); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--text-16); }
-.w-card:focus-visible, .chip-btn:focus-visible, .w-tabs button:focus-visible, .w-name-input:focus-visible, .w-sheet button:focus-visible, .w-panel button:focus-visible, .w-confirm button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* The chosen piece: sheet content (phone) and panel content (laptop) are the same markup. */
 .d-head { display: flex; align-items: center; gap: var(--space-12); }
 .d-swatch { flex: 0 0 56px; width: 56px; height: 56px; border-radius: var(--radius-control); box-shadow: var(--swatch-edge); display: flex; align-items: center; justify-content: center; }
@@ -452,18 +447,16 @@ button { font-family: inherit; }
 .p-sug-qty { flex: 0 0 auto; padding: var(--space-2) var(--space-12); border-radius: var(--radius-pill); background: var(--sunken); font-size: var(--text-13); font-weight: 700; }
 .p-sug-btns { display: flex; gap: var(--space-8); flex: 0 0 auto; margin-left: auto; }
 .p-sug-btns .secondary:disabled { opacity: 0.45; }
-.p-sug-match { color: var(--ok-ink); font-weight: 600; }
+.p-sug-match { color: var(--ink); font-weight: 600; }
 .p-sug-count { font-weight: 400; color: var(--muted); }
 .p-sug-done { border-style: solid; border-color: var(--line-ghost); background: var(--ground); }
-.p-sug-done .p-sug-art { opacity: .6; }
 .p-sug-done .w-sub { color: var(--ink); font-weight: 600; }
 .p-sug-banner { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); padding: var(--space-12) var(--space-16); border: 1px solid var(--ok-line); border-radius: var(--radius-button); background: var(--ok-fill); color: var(--ok-ink); font-weight: 600; }
-.p-sug-banner .secondary { flex: 0 0 auto; height: 40px; padding: 0 var(--space-16); font-size: var(--text-14); }
+.p-sug-banner .secondary { flex: 0 0 auto; height: 44px; padding: 0 var(--space-16); font-size: var(--text-14); }
 .p-sug-banner .secondary:disabled { opacity: 0.45; }
 .p-sug-info { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-12) var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-button); background: var(--sunken); }
 .p-sug-info h3 { margin: var(--space-6) 0 0; font-size: var(--text-13); text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
 .p-sug-notes { width: 100%; box-sizing: border-box; padding: var(--space-12) var(--space-12); border: 1px solid var(--line-strong); border-radius: var(--radius-control); background: var(--surface); color: var(--ink); font: inherit; font-size: var(--text-15); resize: vertical; }
-.p-sug-notes:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .p-sug-info h3:first-child { margin-top: 0; }
 .p-sug-info p { margin: 0; }
 .p-sug-wait { display: flex; align-items: center; gap: var(--space-12); font-weight: 600; }
@@ -477,7 +470,7 @@ button { font-family: inherit; }
 .p-match-line { display: flex; align-items: center; gap: var(--space-12); min-height: 64px; padding: var(--space-6) var(--space-12); border: 1.5px dashed var(--line-ghost); border-radius: var(--radius-button); background: var(--ghost); }
 .p-match-sub { display: flex; align-items: center; gap: var(--space-6); }
 .p-match-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; box-shadow: var(--swatch-edge); }
-.p-match-tag { min-height: 16px; font-weight: 600; color: var(--ok-ink); }
+.p-match-tag { min-height: 16px; font-weight: 600; color: var(--ink); }
 .p-match-foot { display: flex; flex-direction: column; gap: var(--space-12); }
 .p-match-foot .p-match-note { min-height: 20px; }
 .p-match-foot .primary:disabled { opacity: 0.45; }
@@ -490,8 +483,9 @@ button { font-family: inherit; }
 .p-toast-undo { flex: 0 0 auto; min-height: 44px; padding: 0 var(--space-12); border: 0; border-radius: var(--radius-tile); background: transparent; color: var(--on-ink); font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
 /* V7-08: the Review sheet */
 .p-review { list-style: none; display: flex; flex-direction: column; gap: var(--space-8); margin: var(--space-12) 0; padding: 0; }
-.p-review-row { display: flex; align-items: center; gap: var(--space-8); width: 100%; min-height: 64px; padding: var(--space-6) var(--space-12); border: 1.5px solid var(--line); border-radius: var(--radius-button); background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
-.p-review-row.on { border-color: var(--ok-ink); background: var(--ok-fill); }
+.p-review-row { position: relative; display: flex; align-items: center; gap: var(--space-8); width: 100%; min-height: 64px; padding: var(--space-6) var(--space-12); border: 1.5px solid var(--line); border-radius: var(--radius-button); background: var(--surface); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.p-review-row.on { border: 2px solid var(--ink); padding: calc(var(--space-6) - 1px) calc(var(--space-12) - 1px); }
+.p-review-row .p-tile-ring { position: static; flex: 0 0 24px; }
 .p-review-row .p-text { min-width: 0; flex: 1 1 0; }
 .p-review-arrow { flex: 0 0 auto; width: 18px; height: 18px; color: var(--muted); }
 .p-review-arrow svg { width: 100%; height: 100%; }
@@ -503,7 +497,7 @@ button { font-family: inherit; }
 .p-swatches { display: inline-flex; align-items: center; flex: 0 0 auto; gap: var(--space-4); }
 .p-swatch { display: block; width: 16px; height: 16px; border-radius: var(--radius-xs); box-shadow: var(--swatch-edge); }
 .p-row.packed .w-name { text-decoration: line-through; color: var(--muted); }
-.p-row .secondary { height: 40px; padding: 0 var(--space-12); font-size: var(--text-14); }
+.p-row .secondary { height: 44px; padding: 0 var(--space-12); font-size: var(--text-14); }
 /* V7-03: the list as a tray of tiles, planned looks as flat-lay cards, and a collapsed Packed section */
 .p-detail > .p-group { margin: var(--space-6) 0 calc(-1 * var(--space-4)); }
 .p-tray { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-8); }
@@ -516,7 +510,8 @@ button { font-family: inherit; }
 .p-tile-ring { position: absolute; top: 8px; right: 8px; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; box-sizing: border-box; border: 1.5px solid var(--line-ghost); border-radius: 50%; background: var(--surface); }
 .p-tile.packed .p-tile-ring { border-color: var(--ink); background: var(--ink); color: var(--on-ink); }
 .p-tile-ring svg { width: 16px; height: 16px; }
-.p-tray-packed .p-tile { opacity: .75; background: var(--sunken); }
+.p-tray-packed .p-tile { background: var(--sunken); }
+.p-tray-packed .p-tile-name { color: var(--muted); text-decoration: line-through; }
 .p-tile-li.p-gone-li { grid-column: 1 / -1; }
 .p-looks .p-gone { width: 140px; }
 .p-gone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-8); width: 100%; min-height: 96px; padding: var(--space-12); box-sizing: border-box; border: 1.5px dashed var(--line-strong); border-radius: var(--radius-button); text-align: center; }
@@ -528,7 +523,6 @@ button { font-family: inherit; }
 .p-packed-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 48px; padding: 0 var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-button); background: var(--surface); color: var(--ink); font: inherit; font-weight: 600; }
 .p-chev { width: 8px; height: 8px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin-right: var(--space-4); transition: transform .15s; }
 .p-packed-btn[aria-expanded="true"] .p-chev { transform: rotate(-135deg); }
-.p-tile:focus-visible, .p-packed-btn:focus-visible, .p-gone button:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 /* Snag list 23 Nov 2026: New trip sits between the heading and the trips; the add sheet has a close button. */
 .p-new { display: block; width: 100%; margin: var(--space-12) 0 var(--space-16); }
 .p-sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-12); }
@@ -549,7 +543,7 @@ button { font-family: inherit; }
 .p-bar-fill { display: block; height: 100%; background: var(--ink); border-radius: var(--radius-pill); }
 .p-summary { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); }
 .p-summary-top { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-12); }
-.p-summary .p-edit { flex: 0 0 auto; height: 40px; padding: 0 var(--space-16); font-size: var(--text-14); }
+.p-summary .p-edit { flex: 0 0 auto; height: 44px; padding: 0 var(--space-16); font-size: var(--text-14); }
 .p-actions { display: flex; flex-wrap: wrap; gap: var(--space-12); }
 .p-actions .primary, .p-actions .secondary { flex: 1 1 160px; min-height: 48px; }
 .p-delete { align-self: center; min-height: 44px; padding: 0 var(--space-12); border: 0; background: none; color: var(--danger); font: inherit; font-weight: 600; text-decoration: underline; }
@@ -560,6 +554,13 @@ button { font-family: inherit; }
 .p-group { margin: var(--space-8) 0 0; font-size: var(--text-13); font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 /* V7-04: the add sheet as tabs, chips and a tile grid with a sticky footer */
 .p-pick-tabs { flex: 0 0 auto; width: 100%; }
+/* C3: the search field's own clear button is the browser's blue; ours is an ink cross, 44px like .p-close. */
+.p-search { position: relative; }
+.p-search .w-name-input { padding-right: 44px; }
+.w-name-input::-webkit-search-cancel-button, .w-name-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.p-search-clear { position: absolute; top: 0; right: 0; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--ink); }
+.p-search-clear[hidden] { display: none; }
+.p-search-clear svg { width: 22px; height: 22px; }
 #p-pick-chips { flex: 0 0 auto; }
 .p-grid { display: grid; gap: var(--space-8); }
 .p-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -575,7 +576,6 @@ button { font-family: inherit; }
 .p-grid-2 .p-pick { min-height: 190px; }
 .p-pick-foot { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom)); margin: 0 calc(-1 * var(--space-16)) calc(-1 * var(--space-16) - env(safe-area-inset-bottom)); padding: var(--space-12) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--line); }
 .p-pick-foot .primary { width: 100%; height: 50px; }
-.p-pick:focus-visible, .p-row button:focus-visible, .p-check input:focus-visible, .p-form button:focus-visible, .p-form input:focus-visible, .p-sheet button:focus-visible, .p-trip:focus-visible, .p-delete:focus-visible, .p-detail .primary:focus-visible, .p-detail .secondary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 .p-form { display: flex; flex-direction: column; gap: var(--space-8); }
 .p-form .sheet-actions { margin-top: var(--space-8); }
 #p-f-error:not(:empty) { color: var(--danger); }
@@ -584,8 +584,6 @@ button { font-family: inherit; }
   .p-page > .w-head, .p-page > .w-empty { grid-column: 1 / -1; }
   .p-page > .p-detail { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; }
   .w-tabs { width: 300px; max-width: 100%; }
-  .w-tabs button { min-height: 40px; }
-  .chip-btn { min-height: 40px; }
   .w-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-12); }
   .w-tile { height: 104px; }
   .w-panel { flex: 0 0 auto; width: 100%; max-width: 340px; min-width: 280px; position: sticky; top: 0; padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); }

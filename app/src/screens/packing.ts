@@ -291,6 +291,8 @@ export function renderPacking(el: HTMLElement): () => void {
         ? shown.map((o) => pickTile('outfit', o.id, flatLayOf(o, resolveOutfit(o, items)), o.name, hasEntry(t, 'outfit', o.id) ? 'on' : 'off', 'o-flat p-pick-flat')).join('')
         : `<p class="help p-grid-empty">${outfits.length === 0 ? 'No saved outfits yet.' : 'Nothing matches'}</p>`;
     }
+    const clear = sheet.querySelector<HTMLElement>('.p-search-clear');
+    if (clear) clear.hidden = pickQuery === '';
     const done = sheet.querySelector<HTMLElement>('#p-pick-done');
     if (done) done.textContent = `Done · ${t.entries.length} on the list`;
   };
@@ -312,7 +314,10 @@ export function renderPacking(el: HTMLElement): () => void {
         <button type="button" role="tab" id="p-tab-outfits" data-tab="outfits" aria-selected="false"></button>
       </div>
       <label class="field-label" for="p-pick-search">Search</label>
-      <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
+      <div class="p-search">
+        <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
+        <button type="button" class="p-search-clear" data-act="clear-search" aria-label="Clear text" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="w-chips" id="p-pick-chips" role="group" aria-label="Show"></div>
       <div id="p-pick-grid" role="tabpanel"></div>
       <div class="p-pick-foot"><button type="button" class="primary" id="p-pick-done" data-act="done">Done</button></div>`;
@@ -613,6 +618,15 @@ export function renderPacking(el: HTMLElement): () => void {
     if (e.target === sheet) return sheet.close(); // a tap on the scrim
     const target = e.target as HTMLElement;
     const t = selectedTrip();
+    if (target.closest('[data-act="clear-search"]')) {
+      pickQuery = '';
+      const box = sheet.querySelector<HTMLInputElement>('#p-pick-search');
+      if (box) {
+        box.value = '';
+        box.focus();
+      }
+      return drawPicks();
+    }
     const reviewRow = target.closest<HTMLElement>('[data-review-line]');
     if (reviewRow && reviewing && t) return toggleReview(t, reviewRow.dataset.reviewLine!);
     const matchTile = target.closest<HTMLElement>('[data-match-item]');
