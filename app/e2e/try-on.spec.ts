@@ -208,7 +208,7 @@ test('a change in either view shows on the doll', async ({ page }) => {
   expect(await page.locator('.try-on').evaluate((e) => (e.textContent!.match(/\bSave\b/g) ?? []).length)).toBe(1);
 });
 
-// V9-01: patterns. Nothing is drawn yet (V9-02); the editor only chooses and remembers them.
+// V9-01: patterns. The editor chooses and remembers them; V9-02 draws them on the doll and V9-04 on the 3D avatar (tests below).
 
 const patternGroup = (page: import('@playwright/test').Page) => page.getByRole('radiogroup', { name: 'Pattern', exact: true });
 const patternColourButton = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Pattern colour, / });
@@ -268,4 +268,42 @@ test('choosing a pattern changes the doll at once, its colour follows, and Plain
   await page.getByRole('button', { name: /^Back to the/ }).click();
   await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
   await expect(doll.locator('pattern')).toHaveCount(0);
+});
+
+// V9-04: patterns on the 3D avatar. The fixture boxes have no UVs, which suits the object-space shader.
+
+test('a pattern reaches the 3D avatar: the viewer holds it, the picture changes with it and its colour, and Plain takes it off', async ({ page }) => {
+  const glErrors: string[] = [];
+  page.on('console', (m) => { if (m.type() === 'error' && /WebGL|THREE/.test(m.text())) glErrors.push(m.text().slice(0, 300)); }); // a shader that does not compile
+  await page.goto('/#/try-on');
+  await page.getByRole('radiogroup', { name: 'View' }).getByRole('radio', { name: '3D' }).click();
+  await expect(page.locator('.stage-status')).toHaveAttribute('hidden', '');
+  await openSlot(page, 'Top');
+  await setColour(page, '#1f2a5a');
+  const stage = page.locator('#stage');
+  const canvas = stage.locator('canvas');
+  await expect(stage).toHaveAttribute('data-pattern', '');
+  const plain = await canvas.screenshot();
+
+  await patternGroup(page).getByRole('radio', { name: 'Horizontal stripes' }).click();
+  await expect(stage).toHaveAttribute('data-pattern', 'tee:hstripes:#ffffff');
+  await expect.poll(async () => (await canvas.screenshot()).equals(plain)).toBe(false); // drawn, not only remembered
+  const white = await canvas.screenshot();
+
+  await patternColourButton(page).click();
+  await page.getByRole('button', { name: 'Fine-tune colour' }).click();
+  await page.getByLabel('Colour code').fill('#ff0000');
+  await expect(stage).toHaveAttribute('data-pattern', 'tee:hstripes:#ff0000');
+  await expect.poll(async () => (await canvas.screenshot()).equals(white)).toBe(false);
+  await page.getByRole('button', { name: /^Back to the/ }).click();
+
+  for (const name of ['Vertical stripes', 'Spots', 'Flowers']) {
+    await patternGroup(page).getByRole('radio', { name }).click();
+    await expect(stage).toHaveAttribute('data-pattern', /^tee:[a-z]+:#ff0000$/);
+    await expect.poll(async () => (await canvas.screenshot()).equals(plain)).toBe(false);
+  }
+  await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
+  await expect(stage).toHaveAttribute('data-pattern', '');
+  await expect.poll(async () => (await canvas.screenshot()).equals(plain)).toBe(true);
+  expect(glErrors).toEqual([]);
 });

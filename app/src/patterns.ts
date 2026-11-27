@@ -1,7 +1,7 @@
 // Patterns (V9-01): the five options, which garments can have one, and the stored shapes. Shared by the data (wardrobe.ts, outfits.ts),
 // the Try On editor, and later the 2D drawing (V9-02) and the 3D spike (V9-03). Nothing here draws.
 // Decisions: docs/decisions/2026-11-27-v9-patterns.md (two colours only; every garment except shoes; five options).
-import { GARMENTS, isShoe, type GarmentId } from './wardrobe';
+import { GARMENTS, isHat, isShoe, type GarmentId } from './wardrobe';
 
 export const PATTERNS = {
   plain: { label: 'Plain', word: '' },
@@ -26,8 +26,8 @@ export type PatternMap = Record<string, PatternChoice>;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
-/** Every garment except shoes (Joe, 27 Nov 2026). False for `hair` and for ids that are not garments. */
-export const isPatternable = (garment: string): boolean => garment in GARMENTS && !isShoe(garment);
+/** Every garment except shoes (Joe, 27 Nov 2026) and hats (V9-04, Joe, 27 Nov 2026: a pattern drawn from model-space position is cut and stretched on a head-sized item). False for `hair` and for ids that are not garments. */
+export const isPatternable = (garment: string): boolean => garment in GARMENTS && !isShoe(garment) && !isHat(garment);
 
 /** A pattern choice, checked: undefined when the id is unknown or plain, the colour is not a hex, or the garment cannot have a pattern. */
 export function cleanChoice(garment: string, pattern: unknown, colour: unknown): PatternChoice | undefined {

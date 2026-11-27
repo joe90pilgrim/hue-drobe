@@ -70,8 +70,8 @@ Added 22 Nov 2026, after the V5-00 pull request carried 33 commits instead of 2:
 - **Fitted items use the MHCLO fit as it is.** Loose items (shirts worn loose, jumpers, jackets, coats) get their volume from Blender's own cloth with collision against the body and inner garments, pinned by a vertex group on the garment itself (collar, shoulder seams, waistband), never on the body.
 - **No scripted reshaping of garments:** no inflating vertices, hull or band maths, or per-body warping to force looseness or clearance. If a template doesn't look right with MHCLO plus cloth, report it and stop.
 - **Layers:** where an outer garment covers an inner one, hide the covered inner faces, as the body is hidden under a dress, rather than pushing the outer garment off the inner one.
-- No custom physics or material code: Blender's own cloth and modifiers only.
-- Garments are plain colour in 3D, with one optional pattern and second colour drawn in 2D (V9, Joe's decision of 27 Nov 2026: plain, horizontal stripes, vertical stripes, spots or flowers; not on shoes). Only hair and shoes keep textures, shrunk to 1024 px.
+- No custom physics or material code in the asset build: Blender's own cloth and modifiers only. The one exception is the runtime pattern tweak below.
+- Garments are plain colour in the pack, with one optional pattern and second colour (V9, Joe's decision of 27 Nov 2026: plain, horizontal stripes, vertical stripes, spots or flowers; not on shoes). The pattern is drawn in 2D on the doll and, from V9-04, on the 3D avatar by exactly one named runtime material tweak: `onBeforeCompile` in `app/src/viewer-pattern.ts`, working from model-space position and normal. No custom shader files, no pattern data or textures in the pack, and no other runtime material code. Only hair and shoes keep textures, shrunk to 1024 px.
 
 ## Testing
 

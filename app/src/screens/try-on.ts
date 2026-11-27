@@ -686,6 +686,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!g || !cur) return;
     patterns[g] = { ...cur, colour: hex };
     lastPatternColour[g] = hex;
+    viewer.setPattern(g, cur.pattern, hex);
     renderRows();
     syncEditor();
     drawDoll();
@@ -702,6 +703,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       // The first time a pattern is chosen its colour contrasts with the base; after that the garment's last pattern colour comes back.
       patterns[g] = { pattern: p, colour: patterns[g]?.colour ?? lastPatternColour[g] ?? contrastColour(colourOf(s)) };
     }
+    viewer.setPattern(g, p, patterns[g]?.colour ?? '#ffffff');
     syncEditor();
     drawDoll();
     void kvPut(PATTERNS_KEY, { ...patterns });
@@ -748,6 +750,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       }
     }
     patterns = cleanPatterns(savedPatterns) ?? {};
+    for (const [g, c] of Object.entries(patterns)) viewer.setPattern(g, c.pattern, c.colour);
     favourites = favs;
     dropMissingSkirt();
     refresh();

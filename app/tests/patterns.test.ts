@@ -7,8 +7,8 @@ describe('patterns (V9-01)', () => {
   it('offers the five options', () => {
     expect(PATTERN_IDS).toEqual(['plain', 'hstripes', 'vstripes', 'spots', 'flowers']);
   });
-  it('lets every garment except shoes have a pattern, and nothing else', () => {
-    for (const g of Object.keys(GARMENTS) as GarmentId[]) expect(isPatternable(g), g).toBe(GARMENTS[g].slot !== 'Shoes');
+  it('lets every garment except shoes and hats have a pattern, and nothing else', () => {
+    for (const g of Object.keys(GARMENTS) as GarmentId[]) expect(isPatternable(g), g).toBe(GARMENTS[g].slot !== 'Shoes' && GARMENTS[g].slot !== 'Hat');
     expect(isPatternable('hair')).toBe(false);
     expect(isPatternable('nonsense')).toBe(false);
   });
