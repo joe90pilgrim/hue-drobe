@@ -1,7 +1,7 @@
 # Ticket: Try On: 2D paper-doll as the default view, 3D one toggle away (V8-01)
 
 ## Summary
-- **Status:** Ready, subject to the decisions below.
+- **Status:** Done (27 Nov 2026).
 - **Ceiling:** 3 hours maximum. Stop the moment the acceptance criteria are met.
 - **Worker:** Sonnet · High. The shapes and rules already exist in the app; this is assembly and wiring, not invention. Move to Opus only if the layering rules need repeated rework.
 - **Depends on:** Nothing open. Builds on the garment shapes in `app/src/silhouettes.ts` (V3-15).
@@ -83,4 +83,4 @@ Work stops if any is open. Recommendations are marked.
 
 ## Note
 Built 27 Nov 2026 (Opus 5.5, Joe accepted all five recommendations). Round 1 laid the `silhouettes.ts` hanger shapes over a figure, and Joe rejected it: it read as a small tee over trousers, with no body. Round 2 follows Gemini's prototype instead: `paper-doll.ts` builds a body from landmarks and draws every garment id fitted to it, outlined, with a ground shadow. Try On opens in 2D, and the 3D loop is paused there: 0 animation frames in 600 ms in 2D, 38 in 3D (`e2e/try-on.spec.ts`). Unit tests: 12 in `tests/paper-doll.test.ts`. Full `npm run check` passes.
-Left: Joe's visual sign-off on phone and laptop for Joe and B (round 2 of 3).
+Done: Joe signed off the round 2 look on 27 Nov 2026. The Try On docs screenshots are left for the next refresh, as decided.
