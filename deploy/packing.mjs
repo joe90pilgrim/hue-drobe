@@ -208,7 +208,7 @@ export function createPacker({ apiKey, model = DEFAULT_MODEL, fetchImpl = fetch 
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify(req.body),
-        signal: AbortSignal.timeout(30_000),
+        signal: AbortSignal.timeout(90_000),
       });
     } catch (e) {
       throw Object.assign(new Error('The packing service could not be reached'), { status: 502, cause: e.name });
