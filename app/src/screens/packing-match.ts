@@ -3,7 +3,7 @@
 import { isClose, slotOf, type Candidate } from '../match';
 import { itemSilhouette } from '../silhouettes';
 import { colourName, type SavedItem } from '../wardrobe';
-import type { PackEntry } from '../trips';
+import { isMatched, type PackEntry } from '../trips';
 import { ghostOf, lineName } from './packing-suggest';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -84,7 +84,7 @@ export function matchFoot(v: MatchView): string {
   const first = v.ranked.find((c) => c.item.id === v.picked[0])?.item.name ?? '';
   const nothingClose = !v.ranked.some((c) => c.geminiPick || isClose(c.distance));
   const allOnList = n > 0 && v.picked.every((id) => v.ranked.find((c) => c.item.id === id)?.status === 'on');
-  const note = allOnList && left < 1 ? 'Already on your list, so this suggestion is removed.' : n > 0 && left > 0 ? `${left} more stays on your suggestions.` : '';
+  const note = allOnList && left < 1 ? 'Already on your list, so this suggestion is marked Matched.' : n > 0 && left > 0 ? `${left} more stays on your suggestions.` : '';
   const main = n === 0 ? 'Choose a piece' : n === 1 ? `Use ${esc(first)}` : `Use ${n} pieces`;
   return `
       <p class="help p-match-note" id="p-match-note" role="status">${note}</p>
@@ -110,6 +110,7 @@ export function reviewRows(lines: PackEntry[], items: SavedItem[]): ReviewRow[] 
   const taken = new Set<string>();
   const rows: ReviewRow[] = [];
   for (const line of lines) {
+    if (isMatched(line)) continue;
     const live = (line.matches ?? []).flatMap((id) => items.filter((i) => i.id === id));
     const item = live.find((i) => !taken.has(i.id)) ?? live[0];
     if (!item) continue;

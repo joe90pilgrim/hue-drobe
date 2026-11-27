@@ -406,22 +406,27 @@ test('Match swaps a suggestion for a piece you own, and the list shows it as a t
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.locator('#p-toast')).toHaveText('Matched to Navy tee');
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
-  await expect(page.locator('.p-sug')).toHaveCount(1); // only the umbrella is left
+  await expect(page.locator('.p-sug:not(.p-sug-done)')).toHaveCount(1); // only the umbrella is left
+  await expect(page.locator('.p-sug-done')).toHaveCount(1); // the top stays, marked Matched
+  await expect(page.locator('.p-sug-done')).toContainText('Matched to Navy tee');
+  await expect(page.locator('.p-sug-done').getByRole('button', { name: /is matched/ })).toBeDisabled();
   await expect(page.locator('.p-count')).toHaveText('0 of 2 packed');
 
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
-  await expect(page.locator('.p-sug')).toHaveCount(1);
+  await expect(page.locator('.p-sug:not(.p-sug-done)')).toHaveCount(1);
+  await expect(page.locator('.p-sug-done')).toHaveCount(1);
 });
 
-test('Match on a piece already on the list removes the suggestion and adds no second copy', async ({ page }) => {
+test('Match on a piece already on the list marks the suggestion Matched and adds no second copy', async ({ page }) => {
   await openMatchFor(page, [navyTee], [{ kind: 'item', ref: 'tee-1', packed: true, own: true }, sugLine()]);
   const dlg = page.getByRole('dialog');
   await expect(dlg.locator('[data-match-item="tee-1"]')).toContainText('On the list');
-  await expect(dlg.locator('#p-match-note')).toHaveText('Already on your list, so this suggestion is removed.');
+  await expect(dlg.locator('#p-match-note')).toHaveText('Already on your list, so this suggestion is marked Matched.');
   await dlg.getByRole('button', { name: 'Use Navy tee' }).click();
-  await expect(page.locator('.p-sug')).toHaveCount(0);
+  await expect(page.locator('.p-sug:not(.p-sug-done)')).toHaveCount(0);
+  await expect(page.locator('.p-sug-done')).toHaveCount(1);
   await expect(page.locator('.p-count')).toHaveText('1 of 1 packed'); // still one piece, still packed
   await page.locator('.p-packed-btn').click();
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
@@ -459,7 +464,8 @@ test('Match with nothing close chooses nothing, and the suggestion can stay', as
   await page.getByRole('dialog').locator('[data-match-item="tee-1"]').click();
   await page.getByRole('dialog').getByRole('button', { name: 'Use Navy tee' }).click();
   await expect(page.locator('.p-tile[data-ref="tee-1"]')).toHaveCount(1);
-  await expect(page.locator('.p-sug')).toHaveCount(0);
+  await expect(page.locator('.p-sug:not(.p-sug-done)')).toHaveCount(0);
+  await expect(page.locator('.p-sug-done')).toHaveCount(1);
 });
 
 // V7-08: review Gemini's matches in bulk, with Undo.
@@ -473,7 +479,7 @@ test('Review matches: untick one, match the rest, then Undo puts the trip back l
   });
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
-  const names = () => page.locator('.p-sug .w-name').allTextContents();
+  const names = () => page.locator('.p-sug:not(.p-sug-done) .w-name').allTextContents();
   const before = await names();
   expect(before).toEqual(['Navy top', 'Dark top', 'Slim trousers', 'Umbrella']);
   await expect(page.locator('.p-sug-banner')).toContainText('Gemini matched 3 suggestions');
@@ -518,7 +524,7 @@ test('Undo restores the whole trip, and goes after 8 seconds or the next edit', 
   await seedStore(page, { wardrobe: [navyTee, navyTee2, trousers], trips: [tripWith([line('l-1', 'Navy top', ['tee-1']), line('l-2', 'Dark top', ['tee-2']), line('l-3', 'Slim trousers', ['trousers-1']), line('l-4', 'Umbrella')])] });
   await page.reload();
   await page.getByRole('button', { name: /Lisbon weekend/ }).click();
-  const names = () => page.locator('.p-sug .w-name').allTextContents();
+  const names = () => page.locator('.p-sug:not(.p-sug-done) .w-name').allTextContents();
 
   await page.getByRole('button', { name: 'Review', exact: true }).click();
   await page.getByRole('dialog').locator('[data-review-line="l-3"]').click();

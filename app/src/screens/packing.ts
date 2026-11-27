@@ -15,6 +15,7 @@ import {
   hasEntry,
   inOutfitOnly,
   loadTrips,
+  isMatched,
   matchesSearch,
   matchLine,
   matchMany,
@@ -499,7 +500,7 @@ export function renderPacking(el: HTMLElement): () => void {
     reviewing = null;
     sheet.close();
     draw();
-    const left = after.entries.filter((e) => e.kind === 'template').length;
+    const left = after.entries.filter((e) => e.kind === 'template' && !isMatched(e)).length;
     const n = pairs.length;
     showToast(`Matched ${n} ${n === 1 ? 'suggestion' : 'suggestions'} to your clothes. ${left} ${left === 1 ? 'suggestion' : 'suggestions'} left.`, true);
     undoMatch = { before: t, after };
