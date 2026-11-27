@@ -33,10 +33,13 @@ type Selection = { kind: 'item' | 'outfit'; id: string } | null;
 
 export function renderWardrobe(el: HTMLElement): () => void {
   el.innerHTML = `
-    <div class="w-head"><h1 class="page-title">Wardrobe</h1><div id="w-photo-slot"></div></div>
-    <div class="seg w-tabs" role="tablist" aria-label="Wardrobe">
-      <button type="button" role="tab" id="tab-clothes" aria-controls="w-view" aria-selected="true"></button>
-      <button type="button" role="tab" id="tab-outfits" aria-controls="w-view" aria-selected="false"></button>
+    <div class="w-head"><h1 class="page-title">Wardrobe</h1></div>
+    <div class="w-toolbar">
+      <div class="seg w-tabs" role="tablist" aria-label="Wardrobe">
+        <button type="button" role="tab" id="tab-clothes" aria-controls="w-view" aria-selected="true"></button>
+        <button type="button" role="tab" id="tab-outfits" aria-controls="w-view" aria-selected="false"></button>
+      </div>
+      <div id="w-photo-slot"></div>
     </div>
     <div class="w-chips" role="group" aria-label="Show" id="w-chips"></div>
     <div class="w-layout" id="w-view" role="tabpanel">
@@ -113,7 +116,6 @@ export function renderWardrobe(el: HTMLElement): () => void {
 
   const drawChips = () => {
     chips.hidden = tab !== 'clothes';
-    photoAdd.setVisible(tab === 'clothes');
     const count = (f: Filter) => (f === 'all' ? items.length : items.filter((i) => slotOf(i) === f).length);
     const all: { f: Filter; label: string }[] = [{ f: 'all', label: 'All' }, ...GROUPS.map((g) => ({ f: g.slot as Filter, label: g.label }))];
     if (filter !== 'all' && count(filter) === 0) filter = 'all';

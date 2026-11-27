@@ -339,16 +339,16 @@ button { font-family: inherit; }
 .w-chips[hidden] { display: none; }
 /* V4-01: add from a photo. */
 .w-head { min-height: 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-8); }
-.w-photo-row { display: flex; gap: var(--space-8); }
+/* The tabs and the "Add +" menu share one row. */
+.w-toolbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); }
+.w-toolbar .w-tabs { flex: 1 1 auto; min-width: 0; }
+.w-photo-row { position: relative; flex: 0 0 auto; }
 .w-photo-row[hidden] { display: none; }
-.w-photo-row .secondary { flex: 0 0 auto; min-height: 44px; height: 44px; padding: 0 var(--space-12); border-radius: var(--radius-button); font-size: var(--text-14); }
-/* Three buttons must sit beside the title on a phone, or the 4th row of cards is pushed off the screen (V4-01, V4-02): shorter words, tighter padding. */
-.w-photo-row .w-wide { display: none; }
-@media (max-width: 559px) {
-  .w-photo-row { gap: var(--space-6); }
-  .w-photo-row .secondary { padding: 0 var(--space-8); font-size: var(--text-13); }
-}
-@media (min-width: 560px) { .w-photo-row .w-wide { display: inline; } .w-photo-row .w-narrow { display: none; } }
+.w-photo-row .w-add-trigger { min-height: 44px; height: 44px; padding: 0 var(--space-16); border-radius: var(--radius-button); font-size: var(--text-14); font-weight: 600; }
+.w-add-menu { position: absolute; right: 0; top: calc(100% + var(--space-4, 4px)); z-index: 20; min-width: 200px; display: flex; flex-direction: column; padding: var(--space-4, 4px); border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); box-shadow: var(--shadow-raised); }
+.w-add-menu[hidden] { display: none; }
+.w-add-menu button { min-height: 44px; padding: 0 var(--space-12); border: 0; border-radius: var(--radius-button); background: none; color: var(--ink); font: inherit; font-size: var(--text-14); text-align: left; cursor: pointer; }
+.w-add-menu button:hover, .w-add-menu button:focus-visible { background: var(--line); }
 .w-addsheet { display: flex; flex-direction: column; gap: var(--space-12); max-height: 92vh; overflow-y: auto; }
 .w-addsheet > *, .p-sheet > * { flex-shrink: 0; }
 .w-addsheet:not([open]), .w-add-form[hidden], .w-crop[hidden] { display: none; }
@@ -598,7 +598,7 @@ button { font-family: inherit; }
   .p-page > .p-detail { grid-column: 2; grid-row: 2 / span 3; margin-top: 0; }
   .p-page > .p-prompt { display: block; grid-column: 2; grid-row: 2; margin-top: 0; }
   .p-page > .p-prompt[hidden] { display: none; }
-  .w-tabs { width: 300px; max-width: 100%; }
+  .w-toolbar .w-tabs { flex: 0 1 300px; width: 300px; max-width: 100%; }
   .w-grid { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: var(--space-12); }
   .w-tile { height: 104px; }
   .w-panel { flex: 0 0 auto; width: 100%; max-width: 340px; min-width: 280px; position: sticky; top: 0; padding: var(--space-16); border: 1px solid var(--line); border-radius: var(--radius-panel); background: var(--surface); }
