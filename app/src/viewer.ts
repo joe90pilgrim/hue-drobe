@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { person } from './person';
+import { applyPattern, hasPattern } from './viewer-pattern';
+import type { PatternId } from './patterns';
 import { HAT_MESHES, OUTER_MESHES, SHOE_MESHES, parseLayerCombos, parseUnderFiles, type LayerCombos } from './wardrobe';
 
 /** V3-05: the sweatshirt and shirts as worn over the tee. A pack has only the ones that passed on that body (the manifest lists them). */
@@ -33,6 +35,8 @@ export interface Viewer {
   setGarment: (name: string, visible: boolean) => void;
   /** Sets a garment's plain colour from an sRGB hex string such as `#2e5e8c`; `tee` colours every tee neckline. Works before it has loaded. */
   setColour: (name: string, hex: string) => void;
+  /** V9-04: draws a pattern (the V9-01 ids) in its second colour `hex` on a garment, over the colour set by `setColour`; `plain` removes it. `tee` covers every tee neckline and the Under slot. Works before it has loaded. */
+  setPattern: (name: string, pattern: PatternId, hex: string) => void;
   /** Makes a garment partly see-through (V2-04: sheer tights) or opaque again. Works before it has loaded. */
   setSheer: (name: string, sheer: boolean) => void;
   /** True once the pack has loaded and has this mesh. Before then, and for a mesh the person's pack lacks (a man's pack has no skirt), false. */
@@ -57,6 +61,13 @@ function paint(root: THREE.Object3D, hex: string) {
         if (mat.metalness === 1 && !mat.metalnessMap) mat.metalness = 0;
       }
     }
+  });
+}
+
+/** V9-04: draws a pattern in its second colour on every material under `root` (`plain` takes it off). */
+function patterned(root: THREE.Object3D, pattern: PatternId, hex: string, group: string) {
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) for (const m of Array.isArray(o.material) ? o.material : [o.material]) applyPattern(m, pattern, hex, group);
   });
 }
 
@@ -113,6 +124,20 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
   const wanted = new Map<string, boolean>([['hair', true]]); // the hair is always drawn (V5-04); a hat swaps it for its `hair_under_<hat>` file (V5-02)
   const colours = new Map<string, string>();
   const sheers = new Map<string, boolean>();
+  const patterns = new Map<string, { pattern: PatternId; hex: string }>();
+  /** Test hook: `stage.dataset.pattern` lists each garment group whose pattern is on a loaded material, as `group:pattern:hex`. */
+  const syncPatternHook = () => {
+    const on = new Set<string>();
+    for (const [n, g] of garments) {
+      const p = patterns.get(groupOf(n));
+      let any = false;
+      g.traverse((o) => {
+        if (o instanceof THREE.Mesh && (Array.isArray(o.material) ? o.material : [o.material]).some(hasPattern)) any = true;
+      });
+      if (p && any) on.add(`${groupOf(n)}:${p.pattern}:${p.hex}`);
+    }
+    stage.dataset.pattern = [...on].join(',');
+  };
   /** V3.1-02: the manifest's `inner_layers_drawn`: outer pack mesh -> inner mesh -> the file of the inner garment with the faces the outer covers removed. */
   let underFiles: Record<string, Record<string, string>> = {};
   const underLoading = new Map<string, Promise<void>>();
@@ -180,7 +205,10 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       garments.set(name, gltf.scene);
       const colour = colours.get(groupOf(name)) ?? defaultColour(groupOf(name));
       if (colour) paint(gltf.scene, colour);
+      const pat = patterns.get(groupOf(name));
+      if (pat) patterned(gltf.scene, pat.pattern, pat.hex, groupOf(name));
       scene.add(gltf.scene);
+      syncPatternHook();
       syncUnder();
     } catch {
       // a file that will not load leaves the full inner garment drawn
@@ -204,7 +232,10 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     const colour = colours.get(groupOf(name)) ?? defaultColour(name);
     if (colour) paint(gltf.scene, colour);
     if (sheers.get(name)) sheerness(gltf.scene, true);
+    const pat = patterns.get(groupOf(name));
+    if (pat) patterned(gltf.scene, pat.pattern, pat.hex, groupOf(name));
     scene.add(gltf.scene);
+    syncPatternHook();
   });
   let layerCombos: LayerCombos = {};
   const manifestLoad = fetch(packUrl() + 'manifest.json')
@@ -262,6 +293,12 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     setColour(name, hex) {
       colours.set(name, hex);
       for (const [n, g] of garments) if (groupOf(n) === name) paint(g, hex);
+    },
+    setPattern(name, pattern, hex) {
+      if (pattern === 'plain') patterns.delete(name);
+      else patterns.set(name, { pattern, hex });
+      for (const [n, g] of garments) if (groupOf(n) === name) patterned(g, pattern, hex, name);
+      syncPatternHook();
     },
     setSheer(name, sheer) {
       sheers.set(name, sheer);
