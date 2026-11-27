@@ -136,3 +136,74 @@ describe('flatLayOf', () => {
     expect(svg.match(/class="o-gap"/g)).toHaveLength(1);
   });
 });
+
+// V9-02: patterns on the tiles.
+import { PATTERN_IDS, isPatternable } from '../src/patterns';
+import { patternPaint } from '../src/silhouettes';
+import { GARMENTS, type GarmentId } from '../src/wardrobe';
+
+describe('patterns on tiles (V9-02)', () => {
+  const real = PATTERN_IDS.filter((p) => p !== 'plain') as Exclude<(typeof PATTERN_IDS)[number], 'plain'>[];
+  const tint = { pattern: 'hstripes' as const, colour: '#ffffff' };
+
+  it('draws every pattern on every patternable garment in hang, flat and shelf, and a shoe ignores it', () => {
+    for (const g of Object.keys(GARMENTS) as GarmentId[]) {
+      for (const mode of ['hang', 'flat', 'shelf'] as const) {
+        for (const p of real) {
+          const svg = silhouetteSvg({ garment: g, colour: '#1f2a5a', mode, pattern: { pattern: p, colour: '#ffffff' } });
+          const plain = silhouetteSvg({ garment: g, colour: '#1f2a5a', mode });
+          if (isPatternable(g)) {
+            const id = patternPaint({ pattern: p, colour: '#ffffff' }, '#1f2a5a').id;
+            expect(svg, `${g} ${mode} ${p}`).toContain(`<pattern id="${id}" patternUnits="userSpaceOnUse"`);
+            expect(svg, `${g} ${mode} ${p}`).toContain(`fill="url(#${id})"`);
+            expect(svg, `${g} ${mode} ${p}`).toContain('fill="#1f2a5a"'); // the base colour is still there under it
+          } else {
+            expect(svg, `${g} ${mode} ${p}`).toBe(plain);
+          }
+        }
+      }
+    }
+  });
+  it('leaves plain output exactly as it was: no defs, no pattern fill', () => {
+    const svg = silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat' });
+    expect(svg).not.toContain('<defs');
+    expect(svg).not.toContain('url(#');
+    expect(silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat', pattern: undefined })).toBe(svg);
+  });
+  it('keeps ghost suggestions plain', () => {
+    expect(silhouetteSvg({ garment: 'tee', colour: '#c0392b', mode: 'ghost', pattern: tint })).toBe(silhouetteSvg({ garment: 'tee', colour: '#c0392b', mode: 'ghost' }));
+  });
+  it('gives the same pattern the same id and content, and a different one a different id', () => {
+    const a = patternPaint({ pattern: 'spots', colour: '#aabbcc' }, '#112233');
+    expect(patternPaint({ pattern: 'spots', colour: '#aabbcc' }, '#112233')).toEqual(a);
+    expect(a.def).toContain(`id="${a.id}"`);
+    const ids = new Set([a, patternPaint({ pattern: 'spots', colour: '#aabbcc' }, '#112234'), patternPaint({ pattern: 'spots', colour: '#aabbcd' }, '#112233'), patternPaint({ pattern: 'flowers', colour: '#aabbcc' }, '#112233'), patternPaint({ pattern: 'spots', colour: '#aabbcc' }, '#112233', 2)].map((p) => p.id));
+    expect(ids.size).toBe(5);
+  });
+  it('draws flowers with petals in the pattern colour and a centre in the base colour', () => {
+    const { def } = patternPaint({ pattern: 'flowers', colour: '#ffffff' }, '#aa3355');
+    expect(def.match(/fill="#ffffff"/g)).toHaveLength(10); // five petals on each of the two flowers in a cell
+    expect(def.match(/fill="#aa3355"/g)).toHaveLength(2);
+  });
+  it('ignores a bad pattern colour instead of injecting it', () => {
+    const svg = silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', pattern: { pattern: 'spots', colour: '"/><script>' } });
+    expect(svg).not.toContain('script');
+    expect(svg).not.toContain('url(#');
+  });
+  it('keeps the sheer look of tights with a pattern on top', () => {
+    const svg = silhouetteSvg({ garment: 'tights', colour: '#111111', sheer: true, pattern: { pattern: 'vstripes', colour: '#8c8c8c' } });
+    expect(svg.match(/fill-opacity="0.55"/g)).toHaveLength(2); // the base and the pattern over it
+  });
+  it('draws a saved patterned item the same as silhouetteSvg, and carries the pattern into the flat-lay and tiles', () => {
+    const item = { v: 2, id: 'x', garment: 'tee', colour: '#1f2a5a', pattern: 'spots', patternColour: '#ffffff', name: 'Navy spotted tee', savedAt: 1 } as never;
+    expect(itemSilhouette(item, 'flat')).toBe(silhouetteSvg({ garment: 'tee', colour: '#1f2a5a', mode: 'flat', pattern: { pattern: 'spots', colour: '#ffffff' } }));
+    const id = patternPaint({ pattern: 'spots', colour: '#ffffff' }, '#1f2a5a').id;
+    const outfit = { v: 1, id: 'o', name: 'Look', top: 'x', bottom: 'y', savedAt: 1 } as never;
+    const plainTrousers = { v: 2, id: 'y', garment: 'trousers', colour: '#c8c8c8', name: 'y', savedAt: 1 } as never;
+    const svg = flatLayOf(outfit, { top: item, bottom: plainTrousers });
+    expect(svg.match(new RegExp(`<pattern id="${id}"`, 'g'))).toHaveLength(1);
+    expect(svg.match(/url\(#/g)).toHaveLength(1); // the trousers stay plain
+    const twice = flatLayOf({ ...(outfit as object), bottom: 'x' } as never, { top: item, bottom: item });
+    expect(twice.match(new RegExp(`<pattern id="${id}"`, 'g'))).toHaveLength(1); // one definition for two pieces
+  });
+});

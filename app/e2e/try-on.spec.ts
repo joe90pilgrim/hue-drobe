@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { closeSlot, garment, openSlot } from './helpers';
+import { closeSlot, garment, openSlot, setColour } from './helpers';
 
 // V1.2-03: Try on layout.
 
@@ -206,4 +206,66 @@ test('a change in either view shows on the doll', async ({ page }) => {
   await expect(page.locator('.doll [data-layer="top"]')).toHaveAttribute('data-garment', 'sweatshirt');
   await expect(page.locator('.doll [data-layer="bottom"]')).toHaveAttribute('data-garment', 'shorts');
   expect(await page.locator('.try-on').evaluate((e) => (e.textContent!.match(/\bSave\b/g) ?? []).length)).toBe(1);
+});
+
+// V9-01: patterns. Nothing is drawn yet (V9-02); the editor only chooses and remembers them.
+
+const patternGroup = (page: import('@playwright/test').Page) => page.getByRole('radiogroup', { name: 'Pattern', exact: true });
+const patternColourButton = (page: import('@playwright/test').Page) => page.getByRole('button', { name: /^Pattern colour, / });
+
+test('the Pattern row follows Colour and comes before Add to wardrobe; a pattern brings a contrasting Pattern colour button, and both are remembered', async ({ page }) => {
+  await page.goto('/#/try-on');
+  await openSlot(page, 'Top');
+  const dialog = page.getByRole('dialog', { name: 'Top' });
+  await setColour(page, '#1f2a5a');
+  await expect(patternGroup(page).getByRole('radio')).toHaveText(['Plain', 'Horizontal stripes', 'Vertical stripes', 'Spots', 'Flowers']);
+  await expect(patternGroup(page).getByRole('radio', { name: 'Plain' })).toBeChecked();
+  await expect(patternColourButton(page)).toBeHidden();
+
+  await patternGroup(page).getByRole('radio', { name: 'Horizontal stripes' }).click();
+  await expect(patternColourButton(page)).toHaveAccessibleName('Pattern colour, White, #ffffff'); // a light colour on a dark base
+  await setColour(page, '#f2ede3'); // the base moves to a light colour; the pattern colour stays as chosen
+  await expect(patternColourButton(page)).toHaveAccessibleName('Pattern colour, White, #ffffff');
+
+  const y = async (locator: ReturnType<typeof page.locator>) => (await locator.first().boundingBox())!.y;
+  const colourY = await y(dialog.getByRole('button', { name: 'Save colour to favourites', exact: true }));
+  const patternY = await y(patternGroup(page));
+  const patternColourY = await y(patternColourButton(page));
+  const addY = await y(dialog.getByRole('button', { name: 'Add to wardrobe' }));
+  expect(colourY).toBeLessThan(patternY);
+  expect(patternY).toBeLessThan(patternColourY);
+  expect(patternColourY).toBeLessThan(addY);
+  for (const c of [patternGroup(page).getByRole('radio'), patternColourButton(page)]) for (const e of await c.all()) expect((await e.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  await expect(page.getByText('Save', { exact: true })).toHaveCount(0); // "Save" appears once on Try On, in "Save outfit"
+
+  await patternGroup(page).getByRole('radio', { name: 'Spots' }).click();
+  await expect(patternColourButton(page)).toBeVisible(); // changing pattern keeps the colour button
+  await page.waitForTimeout(300); // the choice is saved in the background
+  await page.reload();
+  await openSlot(page, 'Top');
+  await expect(patternGroup(page).getByRole('radio', { name: 'Spots' })).toBeChecked();
+  await expect(patternColourButton(page)).toHaveAccessibleName('Pattern colour, White, #ffffff');
+  await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
+  await expect(patternColourButton(page)).toBeHidden();
+});
+
+// V9-02: patterns are drawn on the 2D doll.
+
+test('choosing a pattern changes the doll at once, its colour follows, and Plain takes it off', async ({ page }) => {
+  await page.goto('/#/try-on');
+  await openSlot(page, 'Top');
+  await setColour(page, '#1f2a5a');
+  const doll = page.locator('.doll svg');
+  await expect(doll.locator('pattern')).toHaveCount(0);
+  await patternGroup(page).getByRole('radio', { name: 'Horizontal stripes' }).click();
+  await expect(doll.locator('pattern')).toHaveCount(1);
+  await expect(doll.locator('[data-layer="top"] path[fill^="url(#"]')).not.toHaveCount(0);
+  await expect(doll.locator('pattern rect').first()).toHaveAttribute('fill', '#ffffff');
+  await patternColourButton(page).click();
+  await page.getByRole('button', { name: 'Fine-tune colour' }).click();
+  await page.getByLabel('Colour code').fill('#ff0000');
+  await expect(doll.locator('pattern rect').first()).toHaveAttribute('fill', '#ff0000'); // changes while the chooser is open
+  await page.getByRole('button', { name: /^Back to the/ }).click();
+  await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
+  await expect(doll.locator('pattern')).toHaveCount(0);
 });

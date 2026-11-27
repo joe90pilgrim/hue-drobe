@@ -2,6 +2,7 @@
 // Mid-fidelity shapes from docs/decisions/2026-11-22-wardrobe-closet-redesign-spec.md. Joe signs off the look.
 import { GARMENTS, NECKLINES, type GarmentId, type Neckline, type SavedItem } from './wardrobe';
 import type { Outfit, OutfitLook } from './outfits';
+import { choiceOf, cleanChoice, type PatternChoice } from './patterns';
 
 export type SilhouetteMode = 'hang' | 'flat' | 'shelf' | 'ghost';
 
@@ -130,10 +131,62 @@ export interface SilhouetteOptions {
   sheer?: boolean;
   colour: string;
   mode?: SilhouetteMode;
+  /** V9-02: the pattern and its colour. Ignored for shoes (and anything else `isPatternable` refuses) and in ghost mode. */
+  pattern?: PatternChoice;
+}
+
+// --- V9-02: patterns -----------------------------------------------------------------------------------------------
+// A pattern is an SVG `<pattern>` in user space, so it runs on unbroken across a garment's body and sleeves (all drawn in the same
+// coordinates). It is painted as a second copy of the garment's path over the base colour, in the pattern colour only: the base shows between.
+// The id says what the pattern is (kind, both colours and size), so the same inputs always give the same id and the same content.
+
+export interface PatternPaint {
+  id: string;
+  /** The `<pattern>` element, to go in the svg's `<defs>`. */
+  def: string;
+}
+
+const num = (v: number) => String(Math.round(v * 100) / 100);
+
+/**
+ * The pattern for a garment drawn in `base`. `scale` sizes it to the drawing: 1 for the tiles (a 100 by 100 drawing), about 2 for the doll
+ * (a 300 wide one). Both colours must already be valid hex: callers go through `cleanChoice`.
+ */
+export function patternPaint(choice: PatternChoice, base: string, scale = 1): PatternPaint {
+  const k = scale;
+  const col = choice.colour;
+  const id = `pat-${choice.pattern}-${base.slice(1).toLowerCase()}-${col.slice(1).toLowerCase()}-s${num(k)}`;
+  const cell = (w: number, h: number, body: string) =>
+    `<pattern id="${id}" patternUnits="userSpaceOnUse" width="${num(w * k)}" height="${num(h * k)}">${body}</pattern>`;
+  const dot = (x: number, y: number, r: number, fill: string) => `<circle cx="${num(x * k)}" cy="${num(y * k)}" r="${num(r * k)}" fill="${fill}"/>`;
+  switch (choice.pattern) {
+    case 'hstripes':
+      return { id, def: cell(10, 7, `<rect width="${num(10 * k)}" height="${num(3.5 * k)}" fill="${col}"/>`) };
+    case 'vstripes':
+      return { id, def: cell(7, 10, `<rect width="${num(3.5 * k)}" height="${num(10 * k)}" fill="${col}"/>`) };
+    case 'spots':
+      return { id, def: cell(9, 9, dot(2.25, 2.25, 1.5, col) + dot(6.75, 6.75, 1.5, col)) };
+    default: {
+      // flowers: five petals in the pattern colour round a small centre in the base colour, two flowers to the cell
+      const flower = (cx: number, cy: number) =>
+        [0, 1, 2, 3, 4].map((i) => dot(cx + 1.5 * Math.cos(((-90 + 72 * i) * Math.PI) / 180), cy + 1.5 * Math.sin(((-90 + 72 * i) * Math.PI) / 180), 1.1, col)).join('') + dot(cx, cy, 0.7, base);
+      return { id, def: cell(14, 14, flower(3.5, 3.5) + flower(10.5, 10.5)) };
+    }
+  }
+}
+
+/** `<defs>` for a set of patterns, each id once; empty when there are none. */
+export const patternDefs = (paints: PatternPaint[]): string =>
+  paints.length ? `<defs>${[...new Map(paints.map((p) => [p.id, p.def])).values()].join('')}</defs>` : '';
+
+/** The paint for a garment in a colour with a validated pattern, or undefined (plain, a shoe, a bad colour). */
+function paintFor(garment: string, colour: string, pattern: { pattern?: unknown; colour?: unknown } | undefined, scale = 1): PatternPaint | undefined {
+  const choice = cleanChoice(garment, pattern?.pattern, pattern?.colour);
+  return choice ? patternPaint(choice, HEX.test(colour) ? colour : '#9a9a9a', scale) : undefined;
 }
 
 /** The paths of one shape, without the svg wrapper. */
-function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean): string[] {
+function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean, paint?: PatternPaint): string[] {
   const sh = SHAPES[key];
   const fill = HEX.test(colour) ? colour : '#9a9a9a';
   const edge = edgeOf(fill);
@@ -143,6 +196,7 @@ function shapeParts(key: string, colour: string, sheer: boolean, hook: boolean):
   const parts: string[] = [];
   if (hook && sh.hook) parts.push(`<path d="${sh.hook}" fill="none" stroke="#8a8a8a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>`);
   parts.push(`<path d="${sh.body}" fill="${fill}"${op} ${stroke}/>`);
+  if (paint) parts.push(`<path d="${sh.body}" fill="url(#${paint.id})"${op} stroke="none" data-pattern="${paint.id}"/>`);
   if (sh.extra) parts.push(`<path d="${sh.extra}" fill="${sh.xfill ?? edge}" ${stroke}/>`);
   if (sh.collar) parts.push(`<path d="${sh.collar}" fill="${cfill}" ${stroke}/>`);
   if (sh.detail) parts.push(`<path d="${sh.detail}" fill="none" stroke="${edge}" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>`);
@@ -164,14 +218,15 @@ function ghostParts(key: string, colour: string): string[] {
 /** Inline SVG for a garment in a colour. `hang` is the full 100 by 100 drawing with its hook; `flat` and `shelf` are cropped to the shape and have no hook. */
 /** The silhouette of a saved item, in its own colour. Shared by the Wardrobe and Packing screens. */
 export const itemSilhouette = (i: SavedItem, mode: SilhouetteMode): string =>
-  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode });
+  silhouetteSvg({ garment: i.garment, neckline: i.neckline, sheer: i.sheer, colour: i.colour, mode, pattern: choiceOf(i) });
 
-export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang' }: SilhouetteOptions): string {
+export function silhouetteSvg({ garment, neckline, sheer = false, colour, mode = 'hang', pattern }: SilhouetteOptions): string {
   const key = silhouetteKey(garment, neckline);
   if (mode === 'ghost') return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${SHAPES[key].box.join(' ')}" aria-hidden="true" focusable="false" data-shape="${key}" data-mode="ghost">${ghostParts(key, colour).join('')}</svg>`;
   const hang = mode === 'hang';
   const viewBox = hang ? '0 0 100 100' : SHAPES[key].box.join(' ');
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${shapeParts(key, colour, sheer, hang).join('')}</svg>`;
+  const paint = paintFor(garment, colour, pattern);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}" aria-hidden="true" focusable="false" data-shape="${key}">${patternDefs(paint ? [paint] : [])}${shapeParts(key, colour, sheer, hang, paint).join('')}</svg>`;
 }
 
 // --- V3-17: the flat-lay of an outfit ------------------------------------------------------------------------------
@@ -181,7 +236,7 @@ export type FlatSlot = 'hat' | 'outer' | 'top' | 'dress' | 'bottom' | 'legs' | '
 /** One piece of an outfit. No `item` means the piece was deleted: it is drawn as a dashed outline. */
 export interface FlatPiece {
   slot: FlatSlot;
-  item?: { garment: string; neckline?: string; sheer?: boolean; colour: string };
+  item?: { garment: string; neckline?: string; sheer?: boolean; colour: string; pattern?: PatternChoice };
 }
 
 export interface FlatPlacement {
@@ -244,6 +299,7 @@ export function flatLayLayout(pieces: FlatPiece[]): FlatLayout {
 export function flatLaySvg(pieces: FlatPiece[]): string {
   const { width, height, placements } = flatLayLayout(pieces);
   const byDrawOrder = [...placements].sort((a, b) => (a.slot === 'legs' ? -1 : 0) - (b.slot === 'legs' ? -1 : 0)); // tights behind the bottom
+  const paints: PatternPaint[] = [];
   const groups = byDrawOrder.map((pl) => {
     const piece = pieces.find((q) => q.slot === pl.slot)!;
     const [bx, by] = SHAPES[pl.key].box;
@@ -253,9 +309,11 @@ export function flatLaySvg(pieces: FlatPiece[]): string {
       return `<g class="o-gap" data-slot="${pl.slot}" transform="${tf}"><path d="${sh.body}"/></g>`;
     }
     const it = piece.item!;
-    return `<g data-slot="${pl.slot}" data-shape="${pl.key}" transform="${tf}">${shapeParts(pl.key, it.colour, !!it.sheer, false).join('')}</g>`;
+    const paint = paintFor(it.garment, it.colour, it.pattern);
+    if (paint) paints.push(paint);
+    return `<g data-slot="${pl.slot}" data-shape="${pl.key}" transform="${tf}">${shapeParts(pl.key, it.colour, !!it.sheer, false, paint).join('')}</g>`;
   });
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">${groups.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid meet">${patternDefs(paints)}${groups.join('')}</svg>`;
 }
 
 /**
@@ -265,7 +323,7 @@ export function flatLaySvg(pieces: FlatPiece[]): string {
  */
 export function flatLayOf(o: Outfit, look: OutfitLook): string {
   const piece = (slot: FlatSlot, id: string | undefined, item: SavedItem | undefined): FlatPiece[] =>
-    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour } }] : [];
+    id ? [{ slot, item: item && { garment: item.garment, neckline: item.neckline, sheer: item.sheer, colour: item.colour, pattern: choiceOf(item) } }] : [];
   const pieces = [
     ...piece('hat', o.hat, look.hat),
     // V3.1-06: a blazer stands in for the top in the flat-lay, as on the avatar (where the tee is not drawn under it).

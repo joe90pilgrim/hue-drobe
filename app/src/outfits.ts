@@ -1,5 +1,6 @@
 // Preset outfits: a name and one saved item per slot (top, bottom, legs). Stored on the device.
 import { kvGet, kvPut } from './store';
+import { PATTERNS_KEY, cleanPatterns, withItemPattern } from './patterns';
 import { GARMENTS, NECKLINE_KEY, SHEER_KEY, cleanName, keepLayers, type SavedItem } from './wardrobe';
 
 /** A look made of saved items: one per slot (top, bottom, legs). A slot with no item is empty. */
@@ -133,6 +134,8 @@ export async function wearOutfit(outfit: Outfit, items: SavedItem[]): Promise<vo
   const used = [look.top, look.bottom, look.legs, look.dress, look.shoes, look.hat, look.outer].filter((i): i is SavedItem => !!i);
   await kvPut('outfit', keepLayers({ Top: optionFor(look.top), Bottom: optionFor(look.bottom), Legs: optionFor(look.legs), Dress: optionFor(look.dress), Shoes: optionFor(look.shoes), Hat: optionFor(look.hat), Outer: optionFor(look.outer) }));
   await kvPut('colours', { ...colours, ...Object.fromEntries(used.map((i) => [i.garment, i.colour])) });
+  // Each garment the outfit uses takes its item's pattern, or none; garments the outfit does not use keep what they had, as with colours.
+  await kvPut(PATTERNS_KEY, used.reduce(withItemPattern, cleanPatterns(await kvGet<unknown>(PATTERNS_KEY, {})) ?? {}));
   if (look.top?.neckline) await kvPut(NECKLINE_KEY, look.top.neckline);
   if (look.legs?.sheer !== undefined) await kvPut(SHEER_KEY, look.legs.sheer);
 }

@@ -4,6 +4,7 @@ import { cleanFavourites, FAVOURITES_KEY } from './favourites';
 import { cleanOutfits, OUTFITS_KEY } from './outfits';
 import { cleanItems, NECKLINE_KEY, SHEER_KEY, WARDROBE_KEY } from './wardrobe';
 import { cleanTrips, TRIPS_KEY } from './trips';
+import { cleanPatterns, PATTERNS_KEY } from './patterns';
 
 export const BACKUP_FORMAT = 'huedrobe-backup';
 export const BACKUP_VERSION = 1;
@@ -24,6 +25,7 @@ const KEYS: Record<string, (v: unknown) => unknown> = {
   [QUIZ_KEY]: (v) => (v && typeof v === 'object' && !Array.isArray(v) ? v : undefined),
   [OUTFIT_KEY]: cleanStringMap,
   [COLOURS_KEY]: cleanStringMap,
+  [PATTERNS_KEY]: cleanPatterns, // V9-01
   [NECKLINE_KEY]: (v) => (typeof v === 'string' ? v : undefined),
   [SHEER_KEY]: (v) => (typeof v === 'boolean' ? v : undefined),
   [TRIPS_KEY]: cleanTrips,

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { chooseButton, chooserBack, closeSlot, expectColour, favourite, openFineTune, openSlot } from './helpers';
+import { chooseButton, chooserBack, closeSlot, expectColour, favourite, favouriteTiles, openFineTune, openSlot, setColour } from './helpers';
 
 const chooser = (page: import('@playwright/test').Page) => page.locator('.chooser');
 const slider = (page: import('@playwright/test').Page, name: string) => chooser(page).getByRole('slider', { name });
@@ -108,4 +108,29 @@ test.describe('phone width', () => {
       expect(box.height).toBeGreaterThanOrEqual(44);
     }
   });
+});
+
+// V9-01: the pattern colour uses the same chooser, through the one instance.
+
+test('the pattern colour opens the one chooser; its Back button and heart act on the pattern colour, and the base colour is untouched', async ({ page }) => {
+  await page.goto('/#/try-on');
+  await openSlot(page, 'Top');
+  await setColour(page, '#1f2a5a');
+  await page.getByRole('radiogroup', { name: 'Pattern', exact: true }).getByRole('radio', { name: 'Vertical stripes' }).click();
+  await page.getByRole('button', { name: /^Pattern colour, / }).click();
+  await expect(chooser(page)).toHaveCount(1);
+  await expect(chooser(page)).toBeVisible();
+  await expect(chooserBack(page)).toHaveText('Top pattern colour');
+  await expect(chooser(page).locator('.cur-hex')).toHaveText('#FFFFFF');
+  await openFineTune(page);
+  await page.getByLabel('Colour code').fill('#aa3366');
+  await expect(chooser(page).locator('.cur-hex')).toHaveText('#AA3366');
+  await favourite(page).click();
+  await expect(favouriteTiles(page).getByRole('button', { name: '#aa3366' })).toBeVisible(); // the heart saved the pattern colour
+  await chooserBack(page).click();
+  await expect(page.getByRole('button', { name: 'Pattern colour, Pink, #aa3366' })).toBeVisible();
+  await expectColour(page, '#1f2a5a'); // the garment's own colour did not change
+  await page.getByRole('button', { name: 'Pattern colour, Pink, #aa3366' }).click();
+  await chooserBack(page).click();
+  await closeSlot(page);
 });

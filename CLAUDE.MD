@@ -71,7 +71,7 @@ Added 22 Nov 2026, after the V5-00 pull request carried 33 commits instead of 2:
 - **No scripted reshaping of garments:** no inflating vertices, hull or band maths, or per-body warping to force looseness or clearance. If a template doesn't look right with MHCLO plus cloth, report it and stop.
 - **Layers:** where an outer garment covers an inner one, hide the covered inner faces, as the body is hidden under a dress, rather than pushing the outer garment off the inner one.
 - No custom physics or material code: Blender's own cloth and modifiers only.
-- Plain colour for every garment except hair and shoes, which keep textures shrunk to 1024 px.
+- Garments are plain colour in 3D, with one optional pattern and second colour drawn in 2D (V9, Joe's decision of 27 Nov 2026: plain, horizontal stripes, vertical stripes, spots or flowers; not on shoes). Only hair and shoes keep textures, shrunk to 1024 px.
 
 ## Testing
 

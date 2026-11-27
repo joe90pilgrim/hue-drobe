@@ -178,6 +178,13 @@ Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.
 | --- | --- | --- | --- |
 | V8-01 | [Try On: 2D paper-doll as the default view, 3D one toggle away](v8-try-on-views/V8-01-try-on-2d-default-view.md) (done 27 Nov 2026) | V3-15 | Sonnet, high |
 
+### Version 9: Patterns
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V9-01 | [Patterns: data model, pattern picker and second colour picker](v9-patterns/V9-01-pattern-data-and-pickers.md) (built 27 Nov 2026, not deployed) | None | Sonnet, high |
+| V9-02 | [Patterns: draw them on the 2D paper-doll and garment tiles](v9-patterns/V9-02-2d-patterns.md) (built 27 Nov 2026, not deployed; awaiting Joe's look) | V9-01 | Sonnet, high |
+
 ### Later: needs an architecture change first
 
 | # | Ticket | Depends on | Worker |
