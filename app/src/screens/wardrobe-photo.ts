@@ -33,9 +33,12 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
   const buttons = document.createElement('div');
   buttons.className = 'w-photo-row';
   buttons.innerHTML = `
-    <button type="button" class="secondary" data-photo="camera" aria-label="Take photo" title="Clothes only, never people. The photo is not kept.">Take photo</button>
-    <button type="button" class="secondary" data-photo="upload" aria-label="Upload photo" title="Clothes only, never people. The photo is not kept."><span class="w-wide">Upload photo</span><span class="w-narrow">Upload</span></button>
-    <button type="button" class="secondary" data-photo="screenshot" aria-label="Add from screenshot" title="Crop a screenshot to one garment. Only the crop is sent, and it is not kept."><span class="w-wide">Add from screenshot</span><span class="w-narrow">Screenshot</span></button>
+    <button type="button" class="secondary w-add-trigger" aria-haspopup="menu" aria-expanded="false" data-menu-trigger>Add +</button>
+    <div class="w-add-menu" role="menu" aria-label="Add a garment" hidden>
+      <button type="button" role="menuitem" data-photo="camera" title="Clothes only, never people. The photo is not kept.">Take photo</button>
+      <button type="button" role="menuitem" data-photo="upload" title="Clothes only, never people. The photo is not kept.">Upload photo</button>
+      <button type="button" role="menuitem" data-photo="screenshot" title="Crop a screenshot to one garment. Only the crop is sent, and it is not kept.">Add from screenshot</button>
+    </div>
     <input type="file" accept="image/*" capture="environment" hidden data-input="camera" aria-label="Take a photo of a garment">
     <input type="file" accept="image/*" hidden data-input="upload" aria-label="Upload a photo of a garment">
     <input type="file" accept="image/*" hidden data-input="screenshot" aria-label="Choose a screenshot of a garment">`;
@@ -379,9 +382,34 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
     await read(blob, mine, 'Reading the part you chose… Only that part is sent, and it is not kept.', 'crop');
   }
 
+  const trigger = buttons.querySelector<HTMLButtonElement>('[data-menu-trigger]')!;
+  const menu = buttons.querySelector<HTMLElement>('.w-add-menu')!;
+  const setMenu = (open: boolean) => {
+    menu.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+  };
+  const onDocClick = (e: MouseEvent) => {
+    if (!buttons.contains(e.target as Node)) setMenu(false);
+  };
+  const onDocKey = (e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !menu.hidden) {
+      setMenu(false);
+      trigger.focus();
+    }
+  };
+  document.addEventListener('click', onDocClick);
+  document.addEventListener('keydown', onDocKey);
   buttons.addEventListener('click', (e) => {
-    const kind = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]')?.dataset.photo;
-    if (kind) buttons.querySelector<HTMLInputElement>(`[data-input="${kind}"]`)!.click();
+    const t = e.target as HTMLElement;
+    if (t.closest('[data-menu-trigger]')) {
+      setMenu(menu.hidden);
+      return;
+    }
+    const kind = t.closest<HTMLElement>('[data-photo]')?.dataset.photo;
+    if (kind) {
+      setMenu(false);
+      buttons.querySelector<HTMLInputElement>(`[data-input="${kind}"]`)!.click();
+    }
   });
   buttons.addEventListener('change', (e) => {
     const input = e.target as HTMLInputElement;
@@ -421,8 +449,11 @@ export function createPhotoAdd(onAdded: (list: SavedItem[], item: SavedItem) => 
     sheet,
     setVisible: (v) => {
       buttons.hidden = !v;
+      if (!v) setMenu(false);
     },
     dispose: () => {
+      document.removeEventListener('click', onDocClick);
+      document.removeEventListener('keydown', onDocKey);
       document.removeEventListener('paste', onPaste);
       document.removeEventListener('dragover', onDragOver);
       document.removeEventListener('drop', onDrop);

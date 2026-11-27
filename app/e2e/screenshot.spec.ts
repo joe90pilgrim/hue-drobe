@@ -158,19 +158,19 @@ test('the box can be moved and resized before it is used', async ({ page }) => {
   await expect(wardrobeTab(page, 'Clothes')).toHaveText('Clothes · 0');
 });
 
-test('on a phone the three buttons share one row and the screenshot picker is a plain file picker', async ({ page }) => {
+test('on a phone "Add +" sits on the tabs row, opens a menu of three, and the screenshot picker is a plain file picker', async ({ page }) => {
   await page.goto('/#/wardrobe');
-  const row = page.locator('.w-photo-row');
-  const names = ['Take photo', 'Upload photo', 'Add from screenshot'];
-  const boxes = [];
-  for (const n of names) boxes.push((await row.getByRole('button', { name: n }).boundingBox())!);
-  expect(new Set(boxes.map((b) => Math.round(b.y))).size).toBe(1); // one line
-  // Short words on a phone, so the row sits beside the page title and the 4th row of cards stays on screen; the full names stay as the accessible names.
-  expect(await row.getByRole('button', { name: 'Add from screenshot' }).evaluate((e) => (e as HTMLElement).innerText)).toBe('Screenshot');
-  expect(await row.getByRole('button', { name: 'Upload photo' }).evaluate((e) => (e as HTMLElement).innerText)).toBe('Upload');
-  const title = (await page.getByRole('heading', { name: 'Wardrobe' }).boundingBox())!;
-  expect(boxes[0].y).toBeLessThan(title.y + title.height); // not wrapped below the title
-  expect(boxes[2].x + boxes[2].width).toBeLessThanOrEqual(412 - 8);
+  const add = page.getByRole('button', { name: 'Add +' });
+  const tabs = (await page.getByRole('tab', { name: /^Clothes/ }).boundingBox())!;
+  const addBox = (await add.boundingBox())!;
+  expect(Math.abs(addBox.y + addBox.height / 2 - (tabs.y + tabs.height / 2))).toBeLessThan(4); // same line as the tabs
+  expect(addBox.x + addBox.width).toBeLessThanOrEqual(412 - 8);
+  const menu = page.getByRole('menu', { name: 'Add a garment' });
+  await expect(menu).toBeHidden();
+  await add.click();
+  for (const n of ['Take photo', 'Upload photo', 'Add from screenshot']) await expect(menu.getByRole('menuitem', { name: n })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(412);
   await expect(page.locator('input[data-input="screenshot"]')).toHaveAttribute('accept', 'image/*');
 });
@@ -214,10 +214,11 @@ test('on a laptop a pasted or dropped screenshot opens the crop step', async ({ 
   await expect(sheet(page)).toBeHidden();
 });
 
-test('on a laptop the buttons use their full words', async ({ page }) => {
+test('on a laptop the menu uses the full words', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.goto('/#/wardrobe');
-  const row = page.locator('.w-photo-row');
-  expect(await row.getByRole('button', { name: 'Add from screenshot' }).evaluate((e) => (e as HTMLElement).innerText)).toBe('Add from screenshot');
-  expect(await row.getByRole('button', { name: 'Upload photo' }).evaluate((e) => (e as HTMLElement).innerText)).toBe('Upload photo');
+  await page.getByRole('button', { name: 'Add +' }).click();
+  const menu = page.getByRole('menu', { name: 'Add a garment' });
+  await expect(menu.getByRole('menuitem', { name: 'Add from screenshot' })).toHaveText('Add from screenshot');
+  await expect(menu.getByRole('menuitem', { name: 'Upload photo' })).toHaveText('Upload photo');
 });
