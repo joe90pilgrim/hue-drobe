@@ -139,3 +139,36 @@ test('on a laptop the grid uses the width and a card opens a panel beside it', a
   await panel.getByRole('button', { name: 'Try it on' }).click();
   await expect(page).toHaveURL(/#\/try-on/);
 });
+
+// V9-01: patterns are part of a saved piece.
+
+test('the same tee in a different pattern is a separate item, and a plain item worn after a patterned one leaves no pattern behind', async ({ page }) => {
+  const pattern = (name: string) => page.getByRole('radiogroup', { name: 'Pattern', exact: true }).getByRole('radio', { name, exact: true });
+  await page.goto('/#/try-on');
+  await openSlot(page, 'Top');
+  await setColour(page, '#1f2a5a');
+  await addToWardrobe(page).click(); // plain
+  await expect(inWardrobe(page)).toBeVisible();
+  await pattern('Horizontal stripes').click();
+  await expect(addToWardrobe(page)).toBeVisible(); // a pattern means this is not the added one
+  await addToWardrobe(page).click();
+  await expect(inWardrobe(page)).toBeVisible();
+  await pattern('Vertical stripes').click();
+  await addToWardrobe(page).click();
+  await expect(inWardrobe(page)).toBeVisible();
+
+  await page.getByRole('link', { name: 'Wardrobe' }).click();
+  await expect(wardrobeTab(page, 'Clothes')).toHaveText('Clothes · 3');
+  await expect(card(page, 'Navy tee')).toBeVisible();
+  await expect(card(page, 'Navy striped tee')).toBeVisible();
+  await expect(card(page, 'Navy pinstriped tee')).toBeVisible();
+
+  await tryItOn(page, 'Navy striped tee');
+  await openSlot(page, 'Top');
+  await expect(pattern('Horizontal stripes')).toBeChecked();
+  await closeSlot(page);
+  await page.getByRole('link', { name: 'Wardrobe' }).click();
+  await tryItOn(page, 'Navy tee');
+  await openSlot(page, 'Top');
+  await expect(pattern('Plain')).toBeChecked();
+});

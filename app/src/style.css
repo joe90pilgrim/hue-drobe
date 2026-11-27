@@ -113,9 +113,9 @@ button { font-family: inherit; }
 .colour-row { display: flex; align-items: center; gap: 8px; }
 .colour-open { flex: 1; min-width: 0; height: 64px; padding: 0 14px 0 8px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); display: flex; align-items: center; gap: 12px; text-align: left; }
 .colour-open:disabled { opacity: .5; }
-.cur-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.cur-name { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cur-hex { font-size: 13px; color: var(--muted); }
+.cur-text, .pat-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cur-name, .pat-name { font-size: 16px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cur-hex, .pat-hex { font-size: 13px; color: var(--muted); }
 .chev { flex: 0 0 auto; }
 .heart-btn { flex: 0 0 64px; width: 64px; height: 64px; padding: 0; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); display: flex; align-items: center; justify-content: center; }
 .heart-btn .heart { width: 24px; height: 24px; fill: none; }
@@ -129,6 +129,7 @@ button { font-family: inherit; }
 .fav-empty { margin: 0; }
 .fav-empty[hidden] { display: none; }
 .cur-swatch { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 12px; box-shadow: var(--swatch-edge); background: var(--line-strong); }
+.pat-swatch { flex: 0 0 48px; width: 48px; height: 48px; border-radius: 12px; box-shadow: var(--swatch-edge); background: var(--line-strong); }
 .cur-swatch.o-empty { background: var(--surface); border: 1px dashed var(--line-strong); box-shadow: none; }
 .secondary.choose-unused { flex: 1; min-width: 0; height: 48px; padding: 0 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 .secondary.choose:disabled { opacity: .5; }
@@ -260,6 +261,11 @@ button { font-family: inherit; }
   /* Snag: a mouse can't scroll a hidden-scrollbar sideways row, so on desktop the garment chips wrap instead. */
   .chips { flex-wrap: wrap; overflow-x: visible; padding-right: 0; }
   .chip-fade::after { display: none; }
+  /* V9-01: the five pattern chips wrap to two rows here, so they are compact (a mouse needs less) to keep the whole panel inside the laptop's height. */
+  .chips[data-patterns] { gap: 6px; padding-top: 0; padding-bottom: 0; }
+  .chips[data-patterns] button { min-height: 32px; padding: 0 12px; font-size: 14px; }
+  .ed-controls { gap: 12px; }
+  .editor { padding-bottom: 8px; }
   .editor-head { margin-top: 0; }
   .seg button { min-height: 40px; }
   .slider input[type="range"] { height: 28px; border-radius: 14px; }

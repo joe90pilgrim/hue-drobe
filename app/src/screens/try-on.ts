@@ -57,6 +57,7 @@ import {
 import { createColourChooser } from '../colour-chooser';
 import { dollFigureOf, paperDollSvg } from '../paper-doll';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
+import { PATTERNS, PATTERNS_KEY, PATTERN_IDS, cleanPatterns, contrastColour, isPatternId, isPatternable, type PatternMap } from '../patterns';
 
 interface Slot {
   name: string;
@@ -214,6 +215,17 @@ export function renderTryOn(el: HTMLElement): () => void {
             <button type="button" class="heart-btn fav-btn" aria-pressed="false" aria-label="Save colour to favourites">${HEART}</button>
           </div>
         </div>
+        <div class="field" data-pattern-field hidden>
+          <span class="field-label" id="lbl-pattern">Pattern</span>
+          <div class="chip-fade"><div class="chips" role="radiogroup" aria-labelledby="lbl-pattern" data-patterns>${PATTERN_IDS.map((p) => `<button type="button" role="radio" aria-checked="false" tabindex="-1" data-pattern="${p}">${PATTERNS[p].label}</button>`).join('')}</div></div>
+        </div>
+        <div class="field" data-pattern-colour-field hidden>
+          <button type="button" class="colour-open pattern-colour-open" aria-haspopup="true">
+            <span class="pat-swatch" role="img" aria-hidden="true"></span>
+            <span class="pat-text"><span class="pat-name"></span><span class="pat-hex"></span></span>
+            <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+          </button>
+        </div>
         <button type="button" class="secondary add-wardrobe"></button>
         </div>
       </div>
@@ -247,11 +259,19 @@ export function renderTryOn(el: HTMLElement): () => void {
   const curName = editor.querySelector<HTMLElement>('.cur-name')!;
   const curHex = editor.querySelector<HTMLElement>('.cur-hex')!;
   const addBtn = editor.querySelector<HTMLButtonElement>('.add-wardrobe')!;
+  const patternField = editor.querySelector<HTMLElement>('[data-pattern-field]')!;
+  const patternGroup = editor.querySelector<HTMLElement>('[data-patterns]')!;
+  const patternColourField = editor.querySelector<HTMLElement>('[data-pattern-colour-field]')!;
+  const patternBtn = patternColourField.querySelector<HTMLButtonElement>('.pattern-colour-open')!;
+  const patSwatch = patternBtn.querySelector<HTMLElement>('.pat-swatch')!;
+  const patName = patternBtn.querySelector<HTMLElement>('.pat-name')!;
+  const patHex = patternBtn.querySelector<HTMLElement>('.pat-hex')!;
   const laptop = matchMedia('(min-width: 900px)');
   // Moving a slider changes the avatar at once; the colour is saved when the slider is released or the chooser closes.
+  // One chooser serves both colours: `chooserTarget` says whether it is editing the garment's own colour or its pattern colour (V9-01).
   const chooser = createColourChooser({
-    input: (hex) => setColour(hex),
-    commit: () => void kvPut('colours', { ...colours }),
+    input: (hex) => (chooserTarget === 'pattern' ? setPatternColour(hex) : setColour(hex)),
+    commit: () => saveColours(),
     toggleFavourite: () => toggleFavourite(),
   });
   editor.append(chooser.el);
@@ -271,6 +291,9 @@ export function renderTryOn(el: HTMLElement): () => void {
 
   const outfit: Record<string, string> = Object.fromEntries(SLOTS.map((s) => [s.name, s.options[0]]));
   const colours: Record<string, string> = {}; // pack garment name -> sRGB hex, only for garments Joe has picked
+  let patterns: PatternMap = {}; // V9-01: pack garment name -> { pattern, colour }; no entry means plain. The Top and Under slots share the tee's, as they share its colour.
+  const lastPatternColour: Record<string, string> = {}; // the colour a garment's pattern last had this session, offered again if a pattern comes back
+  let chooserTarget: 'base' | 'pattern' = 'base'; // which colour the open chooser is editing
   let neckline: Neckline = DEFAULT_NECKLINE; // the tee's neckline (V1.1-04); the colour belongs to the tee, whichever neckline it has
   let sheer = false; // the tights' sheerness (V2-04); like the neckline, the colour belongs to the tights either way
   let favourites: Favourite[] = []; // shared by every slot
@@ -308,8 +331,17 @@ export function renderTryOn(el: HTMLElement): () => void {
   const outerMesh = () => OUTER_MESHES.find((m) => viewer.has(m));
   const garmentOf = (slot: Slot) => (slot.name === OUTER_SLOT ? (outfit[OUTER_SLOT] === OUTER_OPTION ? outerMesh() ?? '' : '') : slot.garments[outfit[slot.name]]);
   const colourOf = (slot: Slot) => ((garmentOf(slot) && colours[garmentOf(slot)]) || (slot.name === SHOES_SLOT ? SHOES_AS_MADE : slot.name === HAIR_SLOT ? DEFAULT_HAIR_COLOUR : DEFAULT_COLOUR)).toLowerCase();
+  /** The pattern on the slot's garment, or undefined when plain (or when the garment cannot have one: shoes, hair). */
+  const patternOf = (slot: Slot) => {
+    const g = garmentOf(slot);
+    return g && isPatternable(g) ? patterns[g] : undefined;
+  };
   const itemKey = (slot: Slot) =>
-    `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}`;
+    `${garmentOf(slot)}|${colourOf(slot)}|${hasNecklines(garmentOf(slot) as GarmentId) ? neckline : ''}|${hasSheer(garmentOf(slot) as GarmentId) ? sheer : ''}|${patternOf(slot)?.pattern ?? ''}|${patternOf(slot)?.colour ?? ''}`;
+  const saveColours = () => {
+    void kvPut('colours', { ...colours });
+    void kvPut(PATTERNS_KEY, { ...patterns });
+  };
   const rowOf = (slot: Slot) => el.querySelector<HTMLButtonElement>(`[data-row="${slot.name}"]`)!;
   /** The row's name: "T-shirt, crew neck", "Trousers" or "Nothing". */
   const nameOf = (slot: Slot) => {
@@ -389,7 +421,21 @@ export function renderTryOn(el: HTMLElement): () => void {
     curHex.textContent = g ? current.toUpperCase() : '';
     chooseBtn.setAttribute('aria-label', g ? `Colour, ${colourName(current)}, ${current}` : 'Colour, nothing is worn');
     chooseBtn.disabled = !g; // "Nothing" and garments not yet in the pack have no colour to pick
-    chooser.sync({ hex: current, favourites });
+    const pat = patternOf(s);
+    patternField.hidden = !g || !isPatternable(g);
+    for (const b of patternGroup.querySelectorAll<HTMLButtonElement>('[data-pattern]')) {
+      const on = b.dataset.pattern === (pat?.pattern ?? 'plain');
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+    patternColourField.hidden = !pat;
+    if (pat) {
+      patSwatch.style.background = pat.colour;
+      patName.textContent = colourName(pat.colour);
+      patHex.textContent = pat.colour.toUpperCase();
+      patternBtn.setAttribute('aria-label', `Pattern colour, ${colourName(pat.colour)}, ${pat.colour}`);
+    }
+    chooser.sync({ hex: chooserTarget === 'pattern' && pat ? pat.colour : current, favourites });
     favBtn.disabled = !g;
     favBtn.setAttribute('aria-pressed', String(hasFavourite(favourites, current)));
     addBtn.hidden = !g || !(g in GARMENTS);
@@ -515,16 +561,17 @@ export function renderTryOn(el: HTMLElement): () => void {
     (first ?? editor).focus();
   };
   /** Swaps between the slot's controls and the colour chooser. */
-  const showChooser = (open: boolean) => {
+  const showChooser = (open: boolean, target: 'base' | 'pattern' = 'base') => {
     if (!editing || chooserOpen === open) return;
-    if (!open) void kvPut('colours', { ...colours });
+    if (!open) saveColours();
+    chooserTarget = open && target === 'pattern' && patternOf(editing) ? 'pattern' : 'base';
     chooserOpen = open;
     controls.hidden = open;
     chooser.el.hidden = !open;
     if (open) chooser.reset();
     editorTitle.hidden = open;
     backBtn.hidden = !open;
-    backText.textContent = `${editing.name} colour`;
+    backText.textContent = `${editing.name}${chooserTarget === 'pattern' ? ' pattern' : ''} colour`;
     backBtn.setAttribute('aria-label', `Back to the ${editing.name.toLowerCase()}`);
     syncEditor();
     (open ? backBtn : chooseBtn).focus();
@@ -532,8 +579,9 @@ export function renderTryOn(el: HTMLElement): () => void {
   const hideEditor = () => {
     if (!editing) return;
     if (chooserOpen) {
-      void kvPut('colours', { ...colours });
+      saveColours();
       chooserOpen = false;
+      chooserTarget = 'base';
       controls.hidden = false;
       chooser.el.hidden = true;
       editorTitle.hidden = false;
@@ -562,6 +610,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   editor.querySelector('.editor-done')!.addEventListener('click', requestClose);
   backBtn.addEventListener('click', () => showChooser(false));
   chooseBtn.addEventListener('click', () => showChooser(true));
+  patternBtn.addEventListener('click', () => showChooser(true, 'pattern'));
   editor.addEventListener('keydown', (e) => {
     if ((e as KeyboardEvent).key !== 'Escape') return;
     if (chooserOpen) showChooser(false);
@@ -581,6 +630,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   bindRadioKeys(neckGroup);
   bindRadioKeys(variantGroup);
   bindRadioKeys(sheerGroup);
+  bindRadioKeys(patternGroup);
   garmentGroup.addEventListener('click', (e) => {
     const type = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-opt]')?.dataset.opt;
     const s = editing;
@@ -628,9 +678,36 @@ export function renderTryOn(el: HTMLElement): () => void {
     syncEditor();
     drawDoll();
   }
+  /** Sets the pattern colour of the garment in the open slot (the chooser's input while it edits the pattern colour). */
+  function setPatternColour(hex: string) {
+    const g = editing && garmentOf(editing);
+    const cur = g ? patterns[g] : undefined;
+    if (!g || !cur) return;
+    patterns[g] = { ...cur, colour: hex };
+    lastPatternColour[g] = hex;
+    renderRows();
+    syncEditor();
+    drawDoll();
+  }
+  patternGroup.addEventListener('click', (e) => {
+    const p = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-pattern]')?.dataset.pattern;
+    const s = editing;
+    const g = s && garmentOf(s);
+    if (!s || !g || !isPatternable(g) || !isPatternId(p)) return;
+    if (p === 'plain') {
+      if (patterns[g]) lastPatternColour[g] = patterns[g].colour;
+      delete patterns[g];
+    } else {
+      // The first time a pattern is chosen its colour contrasts with the base; after that the garment's last pattern colour comes back.
+      patterns[g] = { pattern: p, colour: patterns[g]?.colour ?? lastPatternColour[g] ?? contrastColour(colourOf(s)) };
+    }
+    syncEditor();
+    drawDoll();
+    void kvPut(PATTERNS_KEY, { ...patterns });
+  });
   function toggleFavourite() {
     if (!editing) return;
-    const hex = colourOf(editing);
+    const hex = (chooserTarget === 'pattern' && patternOf(editing)?.colour) || colourOf(editing);
     favourites = hasFavourite(favourites, hex) ? removeFavourite(favourites, hex) : addFavourite(favourites, hex, false);
     void saveFavourites(favourites);
     syncEditor();
@@ -642,7 +719,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     if (!s || !g || !(g in GARMENTS)) return;
     const key = itemKey(s);
     const items = await loadItems();
-    const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer); // one item per garment, colour and (for a tee) neckline or (for tights) sheerness
+    const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer, patternOf(s)); // one item per garment, colour, pattern and (for a tee) neckline or (for tights) sheerness
     if (r.list !== items) await saveItems(r.list);
     savedKey = key;
     syncEditor();
@@ -655,7 +732,8 @@ export function renderTryOn(el: HTMLElement): () => void {
     loadFavourites(),
     kvGet<unknown>(NECKLINE_KEY, DEFAULT_NECKLINE),
     kvGet<unknown>(SHEER_KEY, false),
-  ]).then(([saved, savedColours, favs, savedNeckline, savedSheer]) => {
+    kvGet<unknown>(PATTERNS_KEY, {}),
+  ]).then(([saved, savedColours, favs, savedNeckline, savedSheer, savedPatterns]) => {
     if (gone) return;
     loadedSaved = true;
     if (isNeckline(savedNeckline)) neckline = savedNeckline;
@@ -668,6 +746,7 @@ export function renderTryOn(el: HTMLElement): () => void {
         viewer.setColour(g, hex);
       }
     }
+    patterns = cleanPatterns(savedPatterns) ?? {};
     favourites = favs;
     dropMissingSkirt();
     refresh();
@@ -697,7 +776,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     for (const s of SLOTS) {
       const g = garmentOf(s) as GarmentId | undefined;
       if (!g || s.name === UNDER_SLOT || s.name === HAIR_SLOT) continue; // the tee under a top is not part of a saved outfit yet (a saved outfit has no field for it)
-      const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer);
+      const r = ensureItem(items, g, colourOf(s), Date.now(), neckline, sheer, patternOf(s));
       items = r.list;
       if (s.name === 'Top') look.top = r.item;
       else if (s.name === DRESS_SLOT) look.dress = r.item;
