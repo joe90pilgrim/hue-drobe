@@ -2,7 +2,8 @@
 // (shoulders, chest, waist, hips, knees, wrists), with every garment drawn fitted to that figure, as in Gemini's prototype
 // (docs/designs/2026-11-27-try-on-2d-gemini-prototype). An approximate preview only: the 3D avatar stays the accurate view.
 // Pure drawing, no DOM, no store. The layer rules are wardrobe.ts's own (`isTucked`, `layeredOk`); nothing here decides what is worn.
-import { silhouetteKey } from './silhouettes';
+import { patternDefs, patternPaint, silhouetteKey, type PatternPaint } from './silhouettes';
+import { cleanChoice, type PatternChoice } from './patterns';
 import {
   DRESS_SLOT,
   GARMENTS,
@@ -235,14 +236,19 @@ export function dollShapeOf(garment: string, neckline?: string): string | undefi
   return k in DRAW ? k : undefined;
 }
 
-function partsSvg(parts: Part[], colour: string, sheer: boolean): string {
+/** The doll is drawn about twice as big as the tiles (300 units wide, not 100), so patterns are drawn twice the size. */
+const DOLL_PATTERN_SCALE = 2;
+
+/** `paint` (V9-02) goes over every part drawn in the garment's own colour, in the same coordinates, so a pattern runs on across body and sleeves. */
+function partsSvg(parts: Part[], colour: string, sheer: boolean, paint?: PatternPaint): string {
   const fill = /^#[0-9a-f]{6}$/i.test(colour) ? colour : '#9a9a9a';
   const op = sheer ? ' fill-opacity="0.55"' : '';
   return parts
     .map(([d, f]) =>
       f === 'line'
         ? `<path d="${d}" fill="none" stroke="${INK}" stroke-width="1" stroke-linecap="round" opacity="0.55"/>`
-        : `<path d="${d}" fill="${f === 'self' ? fill : f}"${f === 'self' ? op : ''} stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`,
+        : `<path d="${d}" fill="${f === 'self' ? fill : f}"${f === 'self' ? op : ''} stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>` +
+          (paint && f === 'self' ? `<path d="${d}" fill="url(#${paint.id})"${op} stroke="none"/>` : ''),
     )
     .join('');
 }
@@ -323,6 +329,8 @@ export interface PaperDollOptions extends DollOptions {
   sheer: boolean;
   /** The colour a garment is drawn in (the person's pick, or the default). */
   colour: (garment: GarmentId) => string;
+  /** V9-02: the pattern a garment is drawn with, if any (the Try On pattern state). Shoes ignore it. */
+  pattern?: (garment: GarmentId) => PatternChoice | undefined;
   hair: string;
 }
 
@@ -332,10 +340,16 @@ export function paperDollSvg(o: PaperDollOptions): string {
   const m = landmarks(f);
   const pieces = dollPieces(o);
   const tucked = isTucked(o.outfit);
+  const paints: PatternPaint[] = [];
   const group = (p: DollPiece) => {
     const clip = p.layer === 'top' && tucked ? ' clip-path="url(#doll-tuck)" data-tucked="true"' : '';
     const sheer = o.sheer && p.garment === 'tights';
-    return `<g data-layer="${p.layer}" data-garment="${p.garment}" data-shape="${p.key}"${clip}>${partsSvg(DRAW[p.key](m), o.colour(p.garment), sheer)}</g>`;
+    const colour = o.colour(p.garment);
+    const chosen = o.pattern?.(p.garment);
+    const choice = cleanChoice(p.garment, chosen?.pattern, chosen?.colour);
+    const paint = choice && patternPaint(choice, /^#[0-9a-f]{6}$/i.test(colour) ? colour : '#9a9a9a', DOLL_PATTERN_SCALE);
+    if (paint) paints.push(paint);
+    return `<g data-layer="${p.layer}" data-garment="${p.garment}" data-shape="${p.key}"${clip}>${partsSvg(DRAW[p.key](m), colour, sheer, paint)}</g>`;
   };
   const layers: string[] = [
     `<ellipse cx="${CX}" cy="${GROUND}" rx="48" ry="6" fill="rgba(0,0,0,0.1)"/>`,
@@ -356,5 +370,5 @@ export function paperDollSvg(o: PaperDollOptions): string {
   if (!hairDone) layers.push(hair);
   // A tee tucked into a skirt is cut where the skirt's waistband starts.
   const defs = tucked ? `<defs><clipPath id="doll-tuck"><rect x="0" y="0" width="300" height="${r(m.bTop + 2)}"/></clipPath></defs>` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 34 140 388" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" data-figure="${o.figure}">${defs}${layers.join('')}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 34 140 388" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" data-figure="${o.figure}">${defs}${patternDefs(paints)}${layers.join('')}</svg>`;
 }

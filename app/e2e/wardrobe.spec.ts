@@ -172,3 +172,20 @@ test('the same tee in a different pattern is a separate item, and a plain item w
   await openSlot(page, 'Top');
   await expect(pattern('Plain')).toBeChecked();
 });
+
+// V9-02: a saved patterned piece shows its pattern on the closet tile, the sheet and the outfit flat-lay.
+
+test('a saved patterned piece shows its pattern on its tile, in its sheet and in an outfit', async ({ page }) => {
+  await page.goto('/#/wardrobe');
+  const tee = { v: 2, id: 'stripy', garment: 'tee', colour: '#1f2a5a', pattern: 'hstripes', patternColour: '#ffffff', name: 'Stripy', savedAt: 1 };
+  const plain = { v: 2, id: 'plain', garment: 'trousers', colour: '#c8c8c8', name: 'Plain trousers', savedAt: 2 };
+  await seedWardrobe(page, [tee, plain], [{ v: 1, id: 'o', name: 'Look', top: 'stripy', bottom: 'plain', savedAt: 3 }]);
+  await expect(card(page, 'Stripy').locator('svg pattern')).toHaveCount(1);
+  await expect(card(page, 'Plain trousers').locator('svg pattern')).toHaveCount(0);
+  await openCard(page, 'Stripy');
+  await expect(page.getByRole('heading', { name: 'Stripy' })).toBeVisible();
+  await expect(page.locator('.w-sheet svg pattern, .w-panel svg pattern').first()).toBeAttached();
+  await page.keyboard.press('Escape');
+  await wardrobeTab(page, 'Outfits').click();
+  await expect(page.locator('svg pattern')).toHaveCount(1); // the flat-lay: the tee's pattern, defined once; the trousers stay plain
+});

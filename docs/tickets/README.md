@@ -183,6 +183,7 @@ Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.
 | # | Ticket | Depends on | Worker |
 | --- | --- | --- | --- |
 | V9-01 | [Patterns: data model, pattern picker and second colour picker](v9-patterns/V9-01-pattern-data-and-pickers.md) (built 27 Nov 2026, not deployed) | None | Sonnet, high |
+| V9-02 | [Patterns: draw them on the 2D paper-doll and garment tiles](v9-patterns/V9-02-2d-patterns.md) (built 27 Nov 2026, not deployed; awaiting Joe's look) | V9-01 | Sonnet, high |
 
 ### Later: needs an architecture change first
 

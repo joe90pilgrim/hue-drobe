@@ -248,3 +248,24 @@ test('the Pattern row follows Colour and comes before Add to wardrobe; a pattern
   await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
   await expect(patternColourButton(page)).toBeHidden();
 });
+
+// V9-02: patterns are drawn on the 2D doll.
+
+test('choosing a pattern changes the doll at once, its colour follows, and Plain takes it off', async ({ page }) => {
+  await page.goto('/#/try-on');
+  await openSlot(page, 'Top');
+  await setColour(page, '#1f2a5a');
+  const doll = page.locator('.doll svg');
+  await expect(doll.locator('pattern')).toHaveCount(0);
+  await patternGroup(page).getByRole('radio', { name: 'Horizontal stripes' }).click();
+  await expect(doll.locator('pattern')).toHaveCount(1);
+  await expect(doll.locator('[data-layer="top"] path[fill^="url(#"]')).not.toHaveCount(0);
+  await expect(doll.locator('pattern rect').first()).toHaveAttribute('fill', '#ffffff');
+  await patternColourButton(page).click();
+  await page.getByRole('button', { name: 'Fine-tune colour' }).click();
+  await page.getByLabel('Colour code').fill('#ff0000');
+  await expect(doll.locator('pattern rect').first()).toHaveAttribute('fill', '#ff0000'); // changes while the chooser is open
+  await page.getByRole('button', { name: /^Back to the/ }).click();
+  await patternGroup(page).getByRole('radio', { name: 'Plain' }).click();
+  await expect(doll.locator('pattern')).toHaveCount(0);
+});

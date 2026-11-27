@@ -497,6 +497,7 @@ export function renderTryOn(el: HTMLElement): () => void {
       layers: viewer.layers(),
       outer: outerMesh(),
       colour: (g) => (colours[g] || (isShoe(g) ? SHOES_AS_MADE : DEFAULT_COLOUR)).toLowerCase(),
+      pattern: (g) => patterns[g],
       hair: (colours.hair || DEFAULT_HAIR_COLOUR).toLowerCase(),
     });
   }
