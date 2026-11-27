@@ -1,0 +1,178 @@
+Hue-drobe design audit, 2026-11-27
+App: http://localhost:4199   Viewport: 1280x800 at 1x   Screens measured: 35   Widths for overflow: 1280 px
+Script: app/scripts/design-audit.mjs   Stylesheet: app/src/style.css (629 lines)
+
+1. Headline numbers
+===================
+Smallest rendered text: 12px   Distinct computed font sizes: 12   Text under 12px: 0 kinds of element
+Interactive elements under 44x44px: 0 kinds (0 instances over all screens)
+Style.css distinct values: padding 48 (4 lengths); margin 34 (3 lengths); gap 9 (0 lengths); border-radius 13 (2 lengths); font-size 13 (4 lengths)
+Colour literals in style.css outside tokens: 2 uses of 2 colours
+Focus: outline 2px 157
+Overflow findings (screen x width): 0
+
+2. Per screen at 1280 px
+========================
+screen                           sizes  min px  <12px  targets  <44px  no focus  overflow 1280
+-------------------------------  -----  ------  -----  -------  -----  --------  -------------
+try-on                           6      12      0      11       0      0         ok
+change-a-piece (Top)             7      12      0      25       0      0         ok
+choose-a-colour                  7      12      0      23       0      0         ok
+menu / back-up dialog            2      15      0      3        0      0         ok
+wardrobe-clothes                 6      12      0      19       0      0         ok
+wardrobe-a-piece (sheet)         7      12      0      22       0      0         ok
+wardrobe-outfits                 5      13      0      10       0      0         ok
+my-colours-start                 4      15      0      6        0      0         ok
+my-colours-question              5      12      0      12       0      0         ok
+my-colours-result                7      13      0      16       0      0         ok
+my-colours-result-lower          7      13      0      16       0      0         ok
+packing-empty                    3      15      0      6        0      0         ok
+packing-new-trip-form            4      13      0      6        0      0         ok
+packing-trips                    5      13      0      8        0      0         ok
+packing-trip-tray                8      12      0      32       0      0         ok
+packing-trip-tray-lower          8      12      0      32       0      0         ok
+packing-trip-packed-open         8      12      0      33       0      0         ok
+packing-trip-empty               7      13      0      11       0      0         ok
+packing-edit-trip                4      13      0      7        0      0         ok
+packing-add-sheet                6      12      0      14       0      0         ok
+packing-add-sheet-outfits        6      12      0      8        0      0         ok
+packing-add-sheet-no-match       5      13      0      6        0      0         ok
+packing-match-sheet              5      12      0      11       0      0         ok
+packing-match-sheet-all-clothes  5      12      0      13       0      0         ok
+packing-review-sheet             3      13      0      5        0      0         ok
+packing-suggest-confirm          4      13      0      3        0      0         ok
+packing-suggest-error            2      15      0      2        0      0         ok
+packing-suggest-loading          3      15      0      2        0      0         ok
+packing-suggest-done             2      15      0      3        0      0         ok
+wardrobe-add-from-photo-buttons  6      12      0      19       0      0         ok
+add-from-photo-form              6      12      0      35       0      0         ok
+add-from-screenshot-crop         2      15      0      3        0      0         ok
+back-up-saved                    2      15      0      3        0      0         ok
+restore-confirm                  2      15      0      2        0      0         ok
+restore-not-a-backup             2      15      0      3        0      0         ok
+
+3. Computed font sizes, all screens (elements are summed over screens, so repeated chrome counts once per screen)
+=================================================================================================================
+px  elements  screens  example selectors
+--  --------  -------  -----------------------------------------------------------------------------------------------------------------------
+12  51        15       span.slot-label, span.legend, span.w-sub, span.step-count, span.w-sub.p-pick-mark, span.w-sub.p-match-tag
+13  158       24       span.field-label, span.cur-hex, h2.c-bay-h, span, span.w-name, span.w-sub
+14  136       19       button[role=radio], span.wear-change, button.secondary, span.w-wide, button[role=tab], button.chip-btn
+15  226       35       button.primary.outfit-save, span.nav-label, span, button.editor-done, button[role=radio], button.secondary.add-wardrobe
+16  39        16       span.wear-name, span.cur-name, input.w-name-input, span.p-trip-name, button.p-packed-btn, span
+18  8         2        h3
+20  17        17       span.wordmark
+22  28        26       h2.panel-title, h2, span.editor-back-text
+24  1         1        h2.intro-title
+30  1         1        h2.q-text
+32  13        13       h1.page-title
+40  2         2        h2.season
+
+3a. Text under 12px
+===================
+None.
+
+4. Interactive elements under 44x44px (visible only; a tick box inside a label is measured as the label)
+========================================================================================================
+None.
+
+Count per screen:
+screen                           interactive  under 44
+-------------------------------  -----------  --------
+try-on                           11           0
+change-a-piece (Top)             25           0
+choose-a-colour                  23           0
+menu / back-up dialog            3            0
+wardrobe-clothes                 19           0
+wardrobe-a-piece (sheet)         22           0
+wardrobe-outfits                 10           0
+my-colours-start                 6            0
+my-colours-question              12           0
+my-colours-result                16           0
+my-colours-result-lower          16           0
+packing-empty                    6            0
+packing-new-trip-form            6            0
+packing-trips                    8            0
+packing-trip-tray                32           0
+packing-trip-tray-lower          32           0
+packing-trip-packed-open         33           0
+packing-trip-empty               11           0
+packing-edit-trip                7            0
+packing-add-sheet                14           0
+packing-add-sheet-outfits        8            0
+packing-add-sheet-no-match       6            0
+packing-match-sheet              11           0
+packing-match-sheet-all-clothes  13           0
+packing-review-sheet             5            0
+packing-suggest-confirm          3            0
+packing-suggest-error            2            0
+packing-suggest-loading          2            0
+packing-suggest-done             3            0
+wardrobe-add-from-photo-buttons  19           0
+add-from-photo-form              35           0
+add-from-screenshot-crop         3            0
+back-up-saved                    3            0
+restore-confirm                  2            0
+restore-not-a-backup             3            0
+
+5. style.css: spacing, radius and font-size values (as written; each shorthand value counted once, and again split into single lengths)
+=======================================================================================================================================
+
+padding: 102 declarations, 48 distinct values, 4 distinct single lengths
+  values:  0 x20 | 0 var(--space-16) x7 | 0 var(--space-12) x6 | var(--space-12) var(--space-16) x6 | var(--space-16) x4 | 0 var(--space-4) x3 | 0 var(--space-8) x3 | var(--space-4) x3 | var(--space-6) var(--space-12) x3 | var(--space-8) x3 | var(--space-12) x3 | 0 var(--space-2) var(--space-6) x2 | 0 var(--space-4) 0 var(--space-12) x2 | var(--space-6) x2 | var(--space-24) x2 | 0 0 var(--space-16) x1 | 0 var(--space-2) x1 | 0 var(--space-8) 0 0 x1 | 0 var(--space-8) 0 var(--space-16) x1 | 0 var(--space-8) var(--space-20) x1 | 0 var(--space-16) 0 var(--space-8) x1 | 0 var(--space-16) var(--space-4) x1 | 0 var(--space-20) x1 | 0 var(--space-24) x1 | 4px 8px x1 | 28px x1 | 44px x1 | calc(var(--space-6) - 1px) calc(var(--space-12) - 1px) x1 | calc(var(--space-8) - 1px) calc(var(--space-8) - 1px) calc(var(--space-12) - 1px) x1 | calc(var(--space-12) - 1px) calc(var(--space-8) - 1px) calc(var(--space-8) - 1px) x1 | calc(var(--space-16) - 1px) x1 | env(safe-area-inset-bottom) x1 | env(safe-area-inset-top) x1 | var(--space-2) var(--fade) var(--space-2) 0 x1 | var(--space-2) var(--space-12) x1 | var(--space-4) var(--space-16) var(--space-4) var(--space-4) x1 | var(--space-8) var(--space-8) var(--space-12) x1 | var(--space-8) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom)) x1 | var(--space-12) 0 x1 | var(--space-12) var(--space-8) var(--space-8) x1 | var(--space-12) var(--space-12) x1 | var(--space-12) var(--space-12) var(--space-8) x1 | var(--space-12) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom)) x1 | var(--space-20) x1 | var(--space-20) var(--space-12) var(--space-16) x1 | var(--space-24) 0 x1 | var(--space-24) var(--space-16) calc(var(--space-16) + env(safe-area-inset-bottom)) x1 | var(--space-24) var(--space-32) x1
+  lengths: 4px x1 | 8px x1 | 28px x1 | 44px x1
+
+margin: 87 declarations, 34 distinct values, 3 distinct single lengths
+  values:  0 x35 | auto x8 | 0 0 var(--space-8) x4 | 0 auto x3 | var(--space-4) x3 | var(--space-12) 0 0 x3 | var(--space-16) x3 | var(--space-6) x2 | -6px x1 | -6px calc(-1 * var(--space-8)) -6px 0 x1 | 0 0 var(--space-2) x1 | 0 0 var(--space-4) var(--space-4) x1 | 0 0 var(--space-12) x1 | 0 0 var(--space-16) x1 | 0 calc(-1 * var(--space-16)) x1 | 0 calc(-1 * var(--space-16)) calc(-1 * var(--space-16) - env(safe-area-inset-bottom)) x1 | 2px x1 | 2px 5px 0 5px x1 | auto 0 0 x1 | calc(-1 * var(--space-8)) x1 | var(--space-4) 0 0 x1 | var(--space-4) 0 var(--space-4) x1 | var(--space-4) 0 var(--space-12) x1 | var(--space-6) 0 0 x1 | var(--space-6) 0 calc(-1 * var(--space-4)) x1 | var(--space-8) x1 | var(--space-8) 0 0 x1 | var(--space-8) 0 var(--space-4) x1 | var(--space-12) x1 | var(--space-12) 0 x1 | var(--space-12) 0 var(--space-4) x1 | var(--space-12) 0 var(--space-16) x1 | var(--space-16) 0 var(--space-6) x1 | var(--space-24) x1
+  lengths: -6px x3 | 2px x2 | 5px x2
+
+gap: 103 declarations, 9 distinct values, 0 distinct single lengths
+  values:  var(--space-12) x41 | var(--space-8) x29 | var(--space-4) x10 | var(--space-6) x9 | var(--space-2) x7 | var(--space-24) x3 | var(--space-16) x2 | 0 x1 | 0 var(--space-8) x1
+  lengths: 
+
+border-radius: 79 declarations, 13 distinct values, 2 distinct single lengths
+  values:  var(--radius-button) x17 | 50% x13 | var(--radius-control) x13 | var(--radius-card) x8 | var(--radius-pill) x7 | var(--radius-tile) x7 | var(--radius-panel) x4 | 0 x3 | var(--radius-sheet) x2 | var(--radius-sheet) var(--radius-sheet) 0 0 x2 | 8px x1 | var(--radius-sm) x1 | var(--radius-xs) x1
+  lengths: 50% x13 | 8px x1
+
+font-size: 81 declarations, 13 distinct values, 4 distinct single lengths
+  values:  var(--text-15) x19 | var(--text-14) x17 | var(--text-13) x14 | var(--text-12) x8 | var(--text-22) x7 | var(--text-16) x6 | var(--display-24) x3 | var(--text-18) x2 | 20px x1 | 30px x1 | 34px x1 | 40px x1 | var(--display-32) x1
+  lengths: 20px x1 | 30px x1 | 34px x1 | 40px x1
+
+6. style.css: colours that are not var(--token) uses
+====================================================
+Tokens defined in :root: 56. var(--) uses in colour properties: 268.
+literal         uses  example selectors
+--------------  ----  -----------------
+rgba(0,0,0,.6)  1     .hud
+#fff            1     .hud
+
+7. Contrast of text tokens on backgrounds (WCAG 2.x; AA needs 4.5, large text 3)
+================================================================================
+text               on         text hex  bg hex   ratio  AA 4.5  large 3
+-----------------  ---------  --------  -------  -----  ------  -------
+--ink              --ground   #161616   #f5f5f5  16.60  pass    pass
+--ink              --surface  #161616   #ffffff  18.10  pass    pass
+--ink              --sunken   #161616   #ebebeb  15.18  pass    pass
+--ink              --stage    #161616   #e3e3e3  14.10  pass    pass
+--text-2           --ground   #3d3d3d   #f5f5f5  9.96   pass    pass
+--text-2           --surface  #3d3d3d   #ffffff  10.86  pass    pass
+--text-2           --sunken   #3d3d3d   #ebebeb  9.11   pass    pass
+--text-2           --stage    #3d3d3d   #e3e3e3  8.46   pass    pass
+--muted            --ground   #5c5c5c   #f5f5f5  6.13   pass    pass
+--muted            --surface  #5c5c5c   #ffffff  6.69   pass    pass
+--muted            --sunken   #5c5c5c   #ebebeb  5.61   pass    pass
+--muted            --stage    #5c5c5c   #e3e3e3  5.21   pass    pass
+--danger           --ground   #b42318   #f5f5f5  6.03   pass    pass
+--danger           --surface  #b42318   #ffffff  6.57   pass    pass
+--danger           --sunken   #b42318   #ebebeb  5.51   pass    pass
+--danger           --stage    #b42318   #e3e3e3  5.12   pass    pass
+white (--surface)  --ink      #ffffff   #161616  18.10  pass    pass
+
+8. Visible focus style (Tab through each screen; one control of each class per screen; "browser default ring" means the control has no focus rule of its own)
+=============================================================================================================================================================
+Results over all controls tested: outline 2px 157
+Every control tested shows an author-styled outline or box-shadow on focus.
+
+9. Horizontal overflow and clipped content (p = elements past the screen edge, c = text clipped by overflow:hidden)
+===================================================================================================================
+None at 1280 px.

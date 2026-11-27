@@ -1,0 +1,227 @@
+Hue-drobe design audit, 2026-11-27
+App: http://localhost:4199   Viewport: 412x915 at 2x   Screens measured: 35   Widths for overflow: 360, 412, 560 px
+Script: app/scripts/design-audit.mjs   Stylesheet: app/src/style.css (597 lines)
+
+1. Headline numbers
+===================
+Smallest rendered text: 12px   Distinct computed font sizes: 11   Text under 12px: 0 kinds of element
+Interactive elements under 44x44px: 6 kinds (49 instances over all screens)
+Style.css distinct values: padding 52 (18 lengths); margin 35 (13 lengths); gap 12 (10 lengths); border-radius 17 (15 lengths); font-size 15 (15 lengths)
+Colour literals in style.css outside tokens: 61 uses of 24 colours
+Focus: browser default ring 60; outline 2px 74
+Overflow findings (screen x width): 0
+
+2. Per screen at 412 px
+=======================
+screen                           sizes  min px  <12px  targets  <44px  no focus  overflow 360/412/560
+-------------------------------  -----  ------  -----  -------  -----  --------  --------------------
+try-on                           5      12      0      11       0      0         ok / ok / ok
+change-a-piece (Top)             7      12      0      22       0      0         ok / ok / ok
+choose-a-colour                  7      12      0      20       0      0         ok / ok / ok
+menu / back-up dialog            2      14      0      3        0      0         ok / ok / ok
+wardrobe-clothes                 5      12      0      24       0      0         ok / ok / ok
+wardrobe-a-piece (sheet)         3      14      0      3        0      0         ok / ok / ok
+wardrobe-outfits                 6      12      0      10       0      0         ok / ok / ok
+my-colours-start                 6      12      0      6        0      0         ok / ok / ok
+my-colours-question              6      12      0      12       0      0         ok / ok / ok
+my-colours-result                8      12      0      16       0      0         ok / ok / ok
+my-colours-result-lower          8      12      0      16       0      0         ok / ok / ok
+packing-empty                    5      12      0      6        0      0         ok / ok / ok
+packing-new-trip-form            4      13      0      5        0      0         ok / ok / ok
+packing-trips                    6      12      0      8        0      0         ok / ok / ok
+packing-trip-tray                8      12      0      33       16     0         ok / ok / ok
+packing-trip-tray-lower          8      12      0      33       16     0         ok / ok / ok
+packing-trip-packed-open         8      12      0      34       16     0         ok / ok / ok
+packing-trip-empty               8      12      0      11       1      0         ok / ok / ok
+packing-edit-trip                4      13      0      6        0      0         ok / ok / ok
+packing-add-sheet                5      12      0      14       0      0         ok / ok / ok
+packing-add-sheet-outfits        5      12      0      8        0      0         ok / ok / ok
+packing-add-sheet-no-match       4      13      0      5        0      0         ok / ok / ok
+packing-match-sheet              5      12      0      11       0      0         ok / ok / ok
+packing-match-sheet-all-clothes  5      12      0      13       0      0         ok / ok / ok
+packing-review-sheet             4      13      0      5        0      0         ok / ok / ok
+packing-suggest-confirm          5      13      0      4        0      0         ok / ok / ok
+packing-suggest-error            2      14      0      3        0      0         ok / ok / ok
+packing-suggest-loading          3      14      0      2        0      0         ok / ok / ok
+packing-suggest-done             2      14      0      3        0      0         ok / ok / ok
+wardrobe-add-from-photo-buttons  5      12      0      24       0      0         ok / ok / ok
+add-from-photo-form              6      12      0      35       0      0         ok / ok / ok
+add-from-screenshot-crop         2      14      0      2        0      0         ok / ok / ok
+back-up-saved                    2      14      0      3        0      0         ok / ok / ok
+restore-confirm                  2      14      0      2        0      0         ok / ok / ok
+restore-not-a-backup             2      14      0      3        0      0         ok / ok / ok
+
+3. Computed font sizes, all screens (elements are summed over screens, so repeated chrome counts once per screen)
+=================================================================================================================
+px  elements  screens  example selectors
+--  --------  -------  -------------------------------------------------------------------------------------------------------------------------------------------
+12  106       21       h2.panel-title, span.slot-label, span.nav-label, span.legend, span.w-sub, span.step-count
+13  154       23       span.field-label, span.cur-hex, button.secondary, span.w-narrow, h2.c-bay-h, span
+14  206       35       button[role=radio], span.wear-change, p.help, button.primary, button.secondary, button.sheet-close
+15  62        19       button.primary.outfit-save, button.editor-done, button[role=radio], button.secondary.add-wardrobe, button.fine-toggle, button.primary.d-try
+16  37        16       span.wear-name, span.cur-name, input.w-name-input, span.p-trip-name, button.p-packed-btn, span
+17  8         2        h3
+20  16        16       span.wordmark
+22  26        26       h2, span.editor-back-text, h2.intro-title
+24  10        10       h1.page-title, h2.q-text
+28  3         3        h1.page-title
+34  2         2        h2.season
+
+3a. Text under 12px
+===================
+None.
+
+4. Interactive elements under 44x44px (visible only; a tick box inside a label is measured as the label)
+========================================================================================================
+selector                 size px  example text             via  screens
+-----------------------  -------  -----------------------  ---  ----------------------------------------------------------------------------------------
+button.secondary.p-edit  80.6x40  "Edit trip"                   packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open; packing-trip-empty
+button.secondary         74.6x40  "Review"                      packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open
+button.secondary         65.9x40  "Match White T-shirt"         packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open
+button.secondary         50.4x40  "Edit White T-shirt"          packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open
+button.secondary         77x40    "Remove White T-shirt"        packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open
+button.secondary         81.8x40  "Sweatshirt is matched"       packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open
+
+Count per screen:
+screen                           interactive  under 44
+-------------------------------  -----------  --------
+try-on                           11           0
+change-a-piece (Top)             22           0
+choose-a-colour                  20           0
+menu / back-up dialog            3            0
+wardrobe-clothes                 24           0
+wardrobe-a-piece (sheet)         3            0
+wardrobe-outfits                 10           0
+my-colours-start                 6            0
+my-colours-question              12           0
+my-colours-result                16           0
+my-colours-result-lower          16           0
+packing-empty                    6            0
+packing-new-trip-form            5            0
+packing-trips                    8            0
+packing-trip-tray                33           16
+packing-trip-tray-lower          33           16
+packing-trip-packed-open         34           16
+packing-trip-empty               11           1
+packing-edit-trip                6            0
+packing-add-sheet                14           0
+packing-add-sheet-outfits        8            0
+packing-add-sheet-no-match       5            0
+packing-match-sheet              11           0
+packing-match-sheet-all-clothes  13           0
+packing-review-sheet             5            0
+packing-suggest-confirm          4            0
+packing-suggest-error            3            0
+packing-suggest-loading          2            0
+packing-suggest-done             3            0
+wardrobe-add-from-photo-buttons  24           0
+add-from-photo-form              35           0
+add-from-screenshot-crop         2            0
+back-up-saved                    3            0
+restore-confirm                  2            0
+restore-not-a-backup             3            0
+
+5. style.css: spacing, radius and font-size values (as written; each shorthand value counted once, and again split into single lengths)
+=======================================================================================================================================
+
+padding: 99 declarations, 52 distinct values, 18 distinct single lengths
+  values:  0 x18 | 0 12px x8 | 0 4px x3 | 0 8px x3 | 0 14px x3 | 0 16px x3 | 4px x3 | 8px x3 | 12px 16px x3 | 16px x3 | 0 2px 6px x2 | 0 4px 0 12px x2 | 6px x2 | 6px 12px x2 | 12px x2 | 12px 14px x2 | 24px x2 | 0 0 14px x1 | 0 2px x1 | 0 8px 0 0 x1 | 0 8px 0 16px x1 | 0 8px 20px x1 | 0 14px 0 8px x1 | 0 16px 4px x1 | 0 18px x1 | 0 20px x1 | 0 24px x1 | 2px 10px x1 | 2px 28px 2px 0 x1 | 4px 8px x1 | 4px 14px 4px 4px x1 | 6px 10px x1 | 7px 7px 9px x1 | 8px 8px 10px x1 | 8px 20px calc(16px + env(safe-area-inset-bottom)) x1 | 9px 7px 7px x1 | 10px x1 | 10px 8px 8px x1 | 10px 10px 8px x1 | 10px 12px x1 | 10px 14px x1 | 12px 0 x1 | 12px 16px calc(16px + env(safe-area-inset-bottom)) x1 | 13px 39px 13px 13px x1 | 14px 40px 14px 14px x1 | 20px x1 | 20px 12px 16px x1 | 24px 0 x1 | 24px 16px calc(16px + env(safe-area-inset-bottom)) x1 | 24px 32px x1 | env(safe-area-inset-bottom) x1 | env(safe-area-inset-top) x1
+  lengths: 12px x23 | 8px x17 | 16px x14 | 4px x13 | 14px x12 | 10px x9 | 6px x7 | 2px x6 | 24px x6 | 20px x5 | 7px x4 | 13px x3 | 9px x2 | 18px x1 | 28px x1 | 32px x1 | 39px x1 | 40px x1
+
+margin: 83 declarations, 35 distinct values, 13 distinct single lengths
+  values:  0 x31 | auto x8 | 0 0 8px x4 | 0 auto x3 | 4px x3 | 6px x2 | 8px x2 | 12px 0 0 x2 | 16px x2 | -6px x1 | -6px -8px -6px 0 x1 | -8px x1 | 0 -16px x1 | 0 -16px calc(-16px - env(safe-area-inset-bottom)) x1 | 0 0 2px x1 | 0 0 4px 4px x1 | 0 0 12px x1 | 0 0 16px x1 | 4px 0 0 x1 | 4px 0 4px x1 | 4px 0 12px x1 | 6px 0 -4px x1 | 6px 0 0 x1 | 8px 0 x1 | 8px 0 0 x1 | 8px 0 4px x1 | 10px x1 | 10px 0 0 x1 | 12px 0 x1 | 12px 0 4px x1 | 12px 0 14px x1 | 14px x1 | 16px 0 6px x1 | 24px x1 | auto 0 0 x1
+  lengths: 4px x11 | 8px x9 | 12px x7 | 6px x5 | 16px x4 | -6px x3 | -8px x2 | -16px x2 | 10px x2 | 14px x2 | -4px x1 | 2px x1 | 24px x1
+
+gap: 101 declarations, 12 distinct values, 10 distinct single lengths
+  values:  8px x31 | 12px x18 | 14px x11 | 4px x10 | 10px x10 | 6px x8 | 2px x5 | 24px x3 | 1px x2 | 0 x1 | 0 8px x1 | 16px x1
+  lengths: 8px x32 | 12px x18 | 14px x11 | 4px x10 | 10px x10 | 6px x8 | 2px x5 | 24px x3 | 1px x2 | 16px x1
+
+border-radius: 80 declarations, 17 distinct values, 15 distinct single lengths
+  values:  14px x18 | 12px x16 | 50% x12 | 10px x7 | 16px x4 | 0 x3 | 3px x3 | 20px x3 | 22px x3 | 8px x2 | 24px x2 | 24px 24px 0 0 x2 | 2px x1 | 4px x1 | 17px x1 | 18px x1 | 999px x1
+  lengths: 14px x18 | 12px x16 | 50% x12 | 10px x7 | 24px x6 | 16px x4 | 3px x3 | 20px x3 | 22px x3 | 8px x2 | 2px x1 | 4px x1 | 17px x1 | 18px x1 | 999px x1
+
+font-size: 84 declarations, 15 distinct values, 15 distinct single lengths
+  values:  14px x22 | 13px x16 | 15px x15 | 12px x8 | 22px x7 | 16px x5 | 24px x3 | 17px x1 | 18px x1 | 20px x1 | 28px x1 | 30px x1 | 32px x1 | 34px x1 | 40px x1
+  lengths: 14px x22 | 13px x16 | 15px x15 | 12px x8 | 22px x7 | 16px x5 | 24px x3 | 17px x1 | 18px x1 | 20px x1 | 28px x1 | 30px x1 | 32px x1 | 34px x1 | 40px x1
+
+6. style.css: colours that are not var(--token) uses
+====================================================
+Tokens defined in :root: 14. var(--) uses in colour properties: 221.
+literal                   uses  example selectors
+------------------------  ----  ------------------------------------------------------------------------------------------------------------------------
+#fff                      18    .slider input[type="range"]::-webkit-slider-thumb, .slider input[type="range"]::-moz-range-thumb, .legend-dot, .primary
+#b4b4b4                   9     .p-sug, .p-sug-done, .p-sug-skel span, .p-match-line
+#1f5a33                   4     .p-sug-match, .p-sug-banner, .p-match-tag, .p-review-row.on
+rgba(0, 0, 0, .12)        3     .seg button[aria-checked="true"], .slider input[type="range"], .w-tabs button[aria-selected="true"]
+rgba(0, 0, 0, .3)         3     .slider input[type="range"]::-webkit-slider-thumb, .slider input[type="range"]::-moz-range-thumb, .fav-tile .palette-dot
+#fafafa                   3     .p-sug, .p-sug-skel span, .p-match-line
+rgba(0, 0, 0, .6)         2     .w-crop-box, .w-crop-box i
+#ebebeb                   2     .closet .c-bay, .d-swatch.d-sil
+#e8f1ea                   2     .p-sug-banner, .p-review-row.on
+rgba(0, 0, 0, .08)        1     .editor
+#cfcfcf                   1     .grab
+rgba(0, 0, 0, .45)        1     .legend-dot
+rgba(0,0,0,.6)            1     .hud
+rgba(0, 0, 0, .5)         1     .w-crop-box
+#efefef                   1     .o-flat
+rgba(255, 255, 255, .65)  1     .closet .w-card.on
+#9a9a9a                   1     .closet .c-rail .w-card::before
+#cdcdcd                   1     .closet .c-shelf .w-card::after
+#f2f2f2                   1     .p-sug-done
+#b9d2bf                   1     .p-sug-banner
+#1a1a1a                   1     .p-toast
+#7a7a7a                   1     .p-review-arrow
+#e3e3e3                   1     .p-trip
+#111                      1     .p-trip.on
+
+7. Contrast of text tokens on backgrounds (WCAG 2.x; AA needs 4.5, large text 3)
+================================================================================
+text               on         text hex  bg hex   ratio  AA 4.5  large 3
+-----------------  ---------  --------  -------  -----  ------  -------
+--ink              --ground   #161616   #f5f5f5  16.60  pass    pass
+--ink              --surface  #161616   #ffffff  18.10  pass    pass
+--ink              --sunken   #161616   #ebebeb  15.18  pass    pass
+--ink              --stage    #161616   #e3e3e3  14.10  pass    pass
+--text-2           --ground   #3d3d3d   #f5f5f5  9.96   pass    pass
+--text-2           --surface  #3d3d3d   #ffffff  10.86  pass    pass
+--text-2           --sunken   #3d3d3d   #ebebeb  9.11   pass    pass
+--text-2           --stage    #3d3d3d   #e3e3e3  8.46   pass    pass
+--muted            --ground   #5c5c5c   #f5f5f5  6.13   pass    pass
+--muted            --surface  #5c5c5c   #ffffff  6.69   pass    pass
+--muted            --sunken   #5c5c5c   #ebebeb  5.61   pass    pass
+--muted            --stage    #5c5c5c   #e3e3e3  5.21   pass    pass
+--danger           --ground   #b42318   #f5f5f5  6.03   pass    pass
+--danger           --surface  #b42318   #ffffff  6.57   pass    pass
+--danger           --sunken   #b42318   #ebebeb  5.51   pass    pass
+--danger           --stage    #b42318   #e3e3e3  5.12   pass    pass
+white (--surface)  --ink      #ffffff   #161616  18.10  pass    pass
+
+8. Visible focus style (Tab through each screen; one control of each class per screen; "browser default ring" means the control has no focus rule of its own)
+=============================================================================================================================================================
+Results over all controls tested: browser default ring 60; outline 2px 74
+control class               result                screens
+--------------------------  --------------------  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+button.menu-btn             browser default ring  try-on; wardrobe-clothes; my-colours-start; my-colours-result-lower; packing-empty; packing-trips; packing-trip-tray-lower; wardrobe-add-from-photo-buttons
+button[role=radio]          browser default ring  try-on
+button.primary.outfit-save  browser default ring  try-on
+button.wear-row             browser default ring  try-on
+a.nav-item.active           browser default ring  try-on; change-a-piece (Top); choose-a-colour; wardrobe-clothes; wardrobe-outfits; my-colours-start; my-colours-question; my-colours-result; my-colours-result-lower; packing-empty; packing-trips; packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open; packing-trip-empty; wardrobe-add-from-photo-buttons
+a.nav-item                  browser default ring  try-on; change-a-piece (Top); choose-a-colour; wardrobe-clothes; wardrobe-outfits; my-colours-start; my-colours-question; my-colours-result; my-colours-result-lower; packing-empty; packing-trips; packing-trip-tray; packing-trip-tray-lower; packing-trip-packed-open; packing-trip-empty; wardrobe-add-from-photo-buttons
+button.secondary            browser default ring  menu / back-up dialog; my-colours-question; my-colours-result; my-colours-result-lower; back-up-saved; restore-confirm; restore-not-a-backup
+button.sheet-close          browser default ring  menu / back-up dialog; back-up-saved; restore-not-a-backup
+button.primary              browser default ring  my-colours-start; my-colours-question; restore-not-a-backup
+button.answer[role=radio]   browser default ring  my-colours-question
+button.primary.p-new        browser default ring  packing-empty; packing-trips; packing-trip-tray-lower
+
+9. Horizontal overflow and clipped content (p = elements past the screen edge, c = text clipped by overflow:hidden)
+===================================================================================================================
+None at 360, 412 or 560 px.
+
+Rows that scroll sideways by design (information only):
+    change-a-piece (Top) @360: div.chips[role=radiogroup] (573 in 320)
+    change-a-piece (Top) @412: div.chips[role=radiogroup] (573 in 372)
+    change-a-piece (Top) @560: div.chips[role=radiogroup] (573 in 520)
+    wardrobe-clothes @360: div.c-row.slide (416 in 308)
+    wardrobe-clothes @412: div.c-row.slide (416 in 360)
+    wardrobe-add-from-photo-buttons @360: div.c-row.slide (416 in 308)
+    wardrobe-add-from-photo-buttons @412: div.c-row.slide (416 in 360)

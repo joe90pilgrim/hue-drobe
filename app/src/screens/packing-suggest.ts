@@ -47,7 +47,7 @@ export function suggestedRow(e: PackEntry, items: SavedItem[]): string {
         <span class="p-text"><span class="w-name">${esc(name)}</span><span class="w-sub">${pieces.length ? `Matched to ${esc(pieces.join(', '))}` : 'Matched'}</span></span>
       </div>
       <span class="p-sug-btns">
-        <button type="button" class="secondary" disabled aria-label="${esc(name)} is matched">Matched</button>
+        <span class="p-sug-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 12.5l3.7 3.7 7.3-7.6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Matched</span>
         <button type="button" class="secondary" data-act="remove-line" data-ref="${e.ref}" aria-label="Remove ${esc(name)}">Remove</button>
       </span>
     </li>`;
@@ -98,14 +98,13 @@ export function sentText(hasSeason: boolean, hasClothes: boolean): string {
 /** The "Suggest a packing list" sheet, in its four steps (confirm, loading, error, done). */
 export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s: SuggestStep, notes = ''): string {
   const head = (title: string) => `
-      <div class="grab" aria-hidden="true"></div>
       <div class="p-sheet-head">
         <h2 id="p-sheet-title">${title}</h2>
         <button type="button" class="p-close" data-act="close" aria-label="Close">${CLOSE_X}</button>
       </div>`;
   if (s.step === 'loading') {
-    return `${head('Asking Gemini…')}
-      <div class="p-sug-wait" role="status"><span class="p-sug-spin" aria-hidden="true"></span><span>Asking Gemini…</span></div>
+    return `${head('Suggest a packing list')}
+      <div class="p-sug-wait" role="status"><span class="spinner" aria-hidden="true"></span><span>Asking Gemini…</span></div>
       <div class="p-sug-skel" aria-hidden="true"><span></span><span></span><span></span></div>
       <div class="sheet-actions"><button type="button" class="secondary" data-act="suggest-cancel">Cancel</button></div>`;
   }
@@ -113,20 +112,19 @@ export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s
     return `${head(`${s.added} ${s.added === 1 ? 'suggestion' : 'suggestions'} added`)}
       ${s.matched ? `<p class="help">Gemini matched ${s.matched} of them to clothes you own. Want to swap those in?</p>` : ''}
       <div class="sheet-actions">
-        ${s.matched ? '<button type="button" class="secondary" data-act="review-matches">Review matches</button>' : ''}
         <button type="button" class="primary" data-act="suggest-done">See the list</button>
+        ${s.matched ? '<button type="button" class="secondary" data-act="review-matches">Review matches</button>' : ''}
       </div>`;
   }
   if (s.step === 'error') {
     return `${head('Suggest a packing list')}
-      <p class="help" role="alert" id="p-sug-error">${esc(s.message)}</p>
+      <p class="msg" data-tone="error" role="alert" id="p-sug-error">${esc(s.message)}</p>
       <div class="sheet-actions">
         <button type="button" class="primary" data-act="suggest-ask">Try again</button>
-        <button type="button" class="secondary" data-act="suggest-cancel">Cancel</button>
       </div>`;
   }
   return `${head('Suggest a packing list')}
-      <p>Gemini suggests pieces for ${esc(t.name)}, ${esc(formatDates(t.starts, t.ends))}${hasSeason ? ', in colours from your palette' : ''}.</p>
+      <p class="help">Gemini suggests pieces for ${esc(t.name)}, ${esc(formatDates(t.starts, t.ends))}${hasSeason ? ', in colours from your palette' : ''}.</p>
       <div class="p-sug-info">
         <h3>Sent to Gemini</h3>
         <p id="p-sug-sent">${sentText(hasSeason, hasClothes)}</p>
@@ -139,6 +137,5 @@ export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s
       <p class="help">New suggestions replace the ones already on this trip. Clothes and outfits you added are never touched.</p>
       <div class="sheet-actions">
         <button type="button" class="primary" data-act="suggest-ask">Ask Gemini</button>
-        <button type="button" class="secondary" data-act="suggest-cancel">Cancel</button>
       </div>`;
 }

@@ -88,7 +88,7 @@ for (const [size, opts] of Object.entries(sizes)) {
     });
   }, SEED);
   await go('try-on');
-  await page.locator('.wear-row').first().waitFor();
+  await page.locator('.wear-row[data-row="Top"]').waitFor();
 
   // Phone: the Try on screen, then one piece open, its colour chooser, then the menu.
   if (size === 'phone') {
@@ -149,6 +149,177 @@ for (const [size, opts] of Object.entries(sizes)) {
   await shot('my-colours-result');
   await page.evaluate(() => document.querySelector('.main')?.scrollTo(0, 100000));
   await shot('my-colours-result-lower');
+
+  // --- V10-01 additions: Packing, the packing sheets, Add from photo and the back-up and restore states. ---
+  // Same sample wardrobe as above. Server calls (/api/packing-template, /api/identify) are answered by routes in this script,
+  // so the sheets show their loading, done and error states without a server or any real answer.
+  const seedKv = (data) =>
+    page.evaluate(async (d) => {
+      await new Promise((resolve, reject) => {
+        const req = indexedDB.open('huedrobe-joe', 1);
+        req.onupgradeneeded = () => req.result.createObjectStore('kv');
+        req.onsuccess = () => {
+          const tx = req.result.transaction('kv', 'readwrite');
+          for (const [key, value] of Object.entries(d)) tx.objectStore('kv').put(value, key);
+          tx.oncomplete = () => { req.result.close(); resolve(); };
+          tx.onerror = () => reject(tx.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }, data);
+  const line = (ref, label, extra = {}) => ({ kind: 'template', ref, packed: false, text: extra.quantity > 1 ? `${extra.quantity} × ${label}` : label, label, ...extra });
+  const TRIPS = [
+    {
+      v: 1, id: 't1', name: 'Lisbon weekend', starts: '2026-12-14', ends: '2026-12-16', savedAt: 1,
+      entries: [
+        { kind: 'item', ref: 'i1', packed: false, via: ['o1'], own: true },
+        { kind: 'item', ref: 'i3', packed: true, via: ['o1'] },
+        { kind: 'item', ref: 'i4', packed: false, own: true },
+        { kind: 'outfit', ref: 'o1', packed: false },
+        line('l1', 'White T-shirt', { group: 'Tops', type: 'tee', colour: '#f4f4f2', matches: ['i2'] }),
+        line('l2', 'Shorts', { group: 'Bottoms', type: 'shorts', colour: '#b8ad98', matches: ['i5'], quantity: 2 }),
+        line('l3', 'Walking shoes', { group: 'Shoes', type: 'trainers', colour: '#f4f4f2' }),
+        line('l4', 'Passport', { group: 'Documents' }),
+        line('l5', 'Sweatshirt', { group: 'Layers', type: 'sweatshirt', colour: '#8c8c8c', matchedTo: ['i4'], packed: false }),
+      ],
+    },
+    { v: 1, id: 't2', name: 'Cardiff day trip', starts: '2026-12-20', ends: '2026-12-20', savedAt: 2, entries: [] },
+  ];
+  const pressEsc = async () => {
+    for (let i = 0; i < 3; i += 1) {
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(150);
+      if (!(await page.locator('dialog[open]').count())) break;
+    }
+  };
+
+  // Packing: no trips, the new-trip form, then two trips.
+  await go('packing');
+  await shot('packing-empty');
+  await page.getByRole('button', { name: 'New trip' }).click();
+  await shot('packing-new-trip-form');
+  await pressEsc();
+  await seedKv({ trips: TRIPS });
+  await go('packing');
+  await shot('packing-trips');
+  await page.locator('.p-trip').first().click();
+  await shot('packing-trip-tray');
+  await page.evaluate(() => document.querySelector('.main')?.scrollTo(0, 100000));
+  await shot('packing-trip-tray-lower');
+  await page.locator('.p-packed-btn').click();
+  await shot('packing-trip-packed-open');
+  await page.locator('.p-trip[data-id="t2"]').click();
+  await shot('packing-trip-empty');
+  await page.locator('.p-trip[data-id="t1"]').click();
+  await page.locator('[data-act="edit"]').click();
+  await shot('packing-edit-trip');
+  await pressEsc();
+
+  // The Add sheet: clothes, outfits and an empty search.
+  await page.locator('[data-act="add"]').click();
+  await shot('packing-add-sheet');
+  await page.getByRole('tab', { name: /^Outfits/ }).click();
+  await shot('packing-add-sheet-outfits');
+  await page.getByLabel('Search').fill('zzz');
+  await shot('packing-add-sheet-no-match');
+  await pressEsc();
+
+  // The Match sheet and the Review sheet, from the suggested lines in the trip.
+  await page.locator('[data-act="match-line"]:not([disabled])').first().click();
+  await shot('packing-match-sheet');
+  await page.locator('[data-match-scope="all"]').click();
+  await shot('packing-match-sheet-all-clothes');
+  await pressEsc();
+  await page.locator('[data-act="review-matches"]').first().click();
+  await shot('packing-review-sheet');
+  await pressEsc();
+
+  // The Suggest sheet: ask, error, then loading and done. The server's answer is made up here.
+  await page.route('**/api/packing-template', (r) => r.fulfill({ status: 500, contentType: 'application/json', body: '{}' }));
+  await page.locator('[data-act="make-template"]').click();
+  await shot('packing-suggest-confirm');
+  await page.locator('[data-act="suggest-ask"]').click();
+  await shot('packing-suggest-error');
+  await pressEsc();
+  await page.unroute('**/api/packing-template');
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  await page.route('**/api/packing-template', async (r) => {
+    await held;
+    await r.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ items: [{ label: 'Light jacket', group: 'Layers', type: 'sweatshirt', colour: '#8c8c8c', matches: ['i4'] }, { label: 'Socks', quantity: 3, group: 'Tops' }, { label: 'Charger', group: 'Tech' }] }),
+    });
+  });
+  await page.locator('[data-act="make-template"]').click();
+  await page.locator('[data-act="suggest-ask"]').click();
+  await shot('packing-suggest-loading');
+  release();
+  await page.locator('[data-act="suggest-done"]').waitFor();
+  await shot('packing-suggest-done');
+  await page.locator('[data-act="suggest-done"]').click();
+  await page.waitForTimeout(200);
+  await page.unroute('**/api/packing-template');
+
+  // Add from photo: the Wardrobe buttons, the sheet while it reads, the form after a failed read, and the screenshot crop.
+  await go('wardrobe');
+  await shot('wardrobe-add-from-photo-buttons');
+  const png = await page.evaluate(() => {
+    const c = document.createElement('canvas');
+    c.width = 600;
+    c.height = 900;
+    const g = c.getContext('2d');
+    g.fillStyle = '#eeeeee';
+    g.fillRect(0, 0, 600, 900);
+    g.fillStyle = '#1f2a5a';
+    g.fillRect(150, 250, 300, 380);
+    return c.toDataURL('image/png').split(',')[1];
+  });
+  const file = { name: 'sample.png', mimeType: 'image/png', buffer: Buffer.from(png, 'base64') };
+  let releasePhoto;
+  const heldPhoto = new Promise((resolve) => { releasePhoto = resolve; });
+  await page.route('**/api/identify', async (r) => {
+    await heldPhoto;
+    await r.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+  });
+  await page.locator('input[data-input="upload"]').setInputFiles(file);
+  await page.locator('.w-addsheet[open]').waitFor();
+  await shot('add-from-photo-reading');
+  releasePhoto();
+  await page.locator('.w-add-form:not([hidden])').waitFor();
+  await shot('add-from-photo-form');
+  await pressEsc();
+  await page.unroute('**/api/identify');
+  await page.locator('input[data-input="screenshot"]').setInputFiles(file);
+  await page.locator('.w-crop:not([hidden])').waitFor();
+  await shot('add-from-screenshot-crop');
+  const stageBox = await page.locator('.w-crop-stage').boundingBox();
+  if (stageBox) {
+    await page.mouse.move(stageBox.x + stageBox.width * 0.25, stageBox.y + stageBox.height * 0.28);
+    await page.mouse.down();
+    await page.mouse.move(stageBox.x + stageBox.width * 0.75, stageBox.y + stageBox.height * 0.7, { steps: 5 });
+    await page.mouse.up();
+    await shot('add-from-screenshot-crop-box');
+  }
+  await pressEsc();
+
+  // Back up and restore: saved, the replace question, and a file that is not a backup. Phone opens it from the menu, laptop from the sidebar.
+  const openBackup = () => page.locator(size === 'phone' ? '#menu-btn' : '#backup-btn').click();
+  await go('try-on');
+  await openBackup();
+  const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#b-export').click()]);
+  await shot('back-up-saved');
+  const saved = await download.path();
+  await page.locator('#b-file').setInputFiles(saved);
+  await page.locator('#b-replace').waitFor({ state: 'visible' });
+  await shot('restore-confirm');
+  await page.locator('#b-cancel').click();
+  await shot('restore-cancelled');
+  await page.locator('#b-file').setInputFiles({ name: 'notes.json', mimeType: 'application/json', buffer: Buffer.from('not a backup') });
+  await page.waitForTimeout(300);
+  await shot('restore-not-a-backup');
+  await pressEsc();
 
   await ctx.close();
 }

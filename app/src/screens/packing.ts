@@ -46,7 +46,8 @@ export function renderPacking(el: HTMLElement): () => void {
     <div class="p-page">
     <div class="w-head"><h1 class="page-title">Packing</h1></div>
     <button type="button" class="primary p-new" id="p-new">New trip</button>
-    <p class="help w-empty" id="p-empty" hidden>No trips yet. Tap New trip to start a packing list.</p>
+    <p class="help w-empty" id="p-empty" hidden>No trips yet. <span class="when-tap">Tap</span><span class="when-select">Select</span> New trip to start a packing list.</p>
+    <p class="help w-empty p-prompt" id="p-prompt" hidden>Select a trip to see its list.</p>
     <div class="p-trips" id="p-trips"></div>
     <section class="p-detail" id="p-detail" hidden></section>
     <dialog class="sheet p-sheet" id="p-sheet" aria-labelledby="p-sheet-title"></dialog>
@@ -56,6 +57,7 @@ export function renderPacking(el: HTMLElement): () => void {
 
   const $ = <T extends HTMLElement>(id: string) => el.querySelector<T>('#' + id)!;
   const empty = $('p-empty');
+  const prompt = $('p-prompt');
   const tripsEl = $('p-trips');
   const detail = $('p-detail');
   const sheet = $<HTMLDialogElement>('p-sheet');
@@ -72,9 +74,8 @@ export function renderPacking(el: HTMLElement): () => void {
   let editing: string | null = null;
   /** The template line the edit form is changing. */
   let editingLine: string | null = null;
-  /** The trip a template is being made for, and the last failure (with its trip), shown in place of the lines. */
+  /** The trip a template is being made for. */
   let making: string | null = null;
-  let templateError: { trip: string; message: string } | null = null;
   let gone = false;
   /** The Match sheet's state: the suggestion, how the pieces are filtered and which are chosen. Null when it is not open. */
   let matching: { ref: string; scope: 'slot' | 'all'; picked: string[] } | null = null;
@@ -176,7 +177,7 @@ export function renderPacking(el: HTMLElement): () => void {
         ${looks.length ? `<h3 class="p-group">Outfits</h3><ul class="p-looks" aria-label="Outfits">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
         ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${lines.length ? `${matchBanner(lines, items)}${suggestedSection(lines, items)}` : ''}`
-      : '<p class="help">Tap Add items and outfits, or Suggest a list, to build the list.</p>';
+      : '<p class="help w-empty"><span class="when-tap">Tap</span><span class="when-select">Select</span> Add items and outfits, or Suggest a list, to build the list.</p>';
     return `
       <div class="p-summary">
         <div class="p-head">
@@ -186,14 +187,13 @@ export function renderPacking(el: HTMLElement): () => void {
           </div>
           <span class="d-sub">${esc(formatDates(t.starts, t.ends))}</span>
           <p class="p-count" id="p-count">${count}</p>
-          <span class="p-bar" aria-hidden="true"><span class="p-bar-fill" style="width:${pct}%"></span></span>
+          ${c.total ? `<span class="p-bar" aria-hidden="true"><span class="p-bar-fill" style="width:${pct}%"></span></span>` : ''}
         </div>
         <div class="p-actions">
           <button type="button" class="primary" data-act="add">Add items and outfits</button>
-          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>${making === t.id ? 'Asking Gemini…' : 'Suggest a list <span aria-hidden="true">✦</span>'}</button>
+          <button type="button" class="secondary" data-act="make-template"${making ? ' disabled' : ''}>Suggest a list <span aria-hidden="true">✦</span></button>
         </div>
       </div>
-      <p class="help" id="p-tpl-status" role="status">${templateError?.trip === t.id ? esc(templateError.message) : ''}</p>
       ${list}`;
   };
 
@@ -201,6 +201,7 @@ export function renderPacking(el: HTMLElement): () => void {
     if (loaded && selected && !selectedTrip()) selected = null;
     if (loaded) lastSelected = selected;
     empty.hidden = trips.length > 0;
+    prompt.hidden = trips.length === 0 || !!selectedTrip();
     tripsEl.innerHTML = trips
       .map((t) => {
         const c = packedCount(t);
@@ -212,7 +213,6 @@ export function renderPacking(el: HTMLElement): () => void {
           : '';
         const bar = c.total ? `<span class="p-bar" aria-hidden="true"><span class="p-bar-fill" style="width:${pct}%"></span></span>` : '';
         return `<button type="button" class="p-trip${on ? ' on' : ''}" data-id="${t.id}" aria-pressed="${on}">
-          <span class="p-trip-ring" aria-hidden="true"></span>
           <span class="p-trip-name">${esc(t.name)}</span>
           <span class="p-trip-sub">${esc(formatDates(t.starts, t.ends))}</span>
           ${circles}${bar}
@@ -291,6 +291,8 @@ export function renderPacking(el: HTMLElement): () => void {
         ? shown.map((o) => pickTile('outfit', o.id, flatLayOf(o, resolveOutfit(o, items)), o.name, hasEntry(t, 'outfit', o.id) ? 'on' : 'off', 'o-flat p-pick-flat')).join('')
         : `<p class="help p-grid-empty">${outfits.length === 0 ? 'No saved outfits yet.' : 'Nothing matches'}</p>`;
     }
+    const clear = sheet.querySelector<HTMLElement>('.p-search-clear');
+    if (clear) clear.hidden = pickQuery === '';
     const done = sheet.querySelector<HTMLElement>('#p-pick-done');
     if (done) done.textContent = `Done · ${t.entries.length} on the list`;
   };
@@ -302,7 +304,6 @@ export function renderPacking(el: HTMLElement): () => void {
     pickTab = 'clothes';
     pickFilter = 'all';
     sheet.innerHTML = `
-      <div class="grab" aria-hidden="true"></div>
       <div class="p-sheet-head">
         <h2 id="p-sheet-title">Add to ${esc(t.name)}</h2>
         <button type="button" class="p-close" data-act="close" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
@@ -312,7 +313,10 @@ export function renderPacking(el: HTMLElement): () => void {
         <button type="button" role="tab" id="p-tab-outfits" data-tab="outfits" aria-selected="false"></button>
       </div>
       <label class="field-label" for="p-pick-search">Search</label>
-      <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
+      <div class="p-search">
+        <input id="p-pick-search" class="w-name-input" type="search" autocomplete="off" placeholder="Search clothes and outfits">
+        <button type="button" class="p-search-clear" data-act="clear-search" aria-label="Clear text" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      </div>
       <div class="w-chips" id="p-pick-chips" role="group" aria-label="Show"></div>
       <div id="p-pick-grid" role="tabpanel"></div>
       <div class="p-pick-foot"><button type="button" class="primary" id="p-pick-done" data-act="done">Done</button></div>`;
@@ -324,19 +328,28 @@ export function renderPacking(el: HTMLElement): () => void {
     editing = t?.id ?? null;
     sheet.innerHTML = `
       <form class="p-form" id="p-form" novalidate>
-        <h2 id="p-sheet-title">${t ? 'Edit trip' : 'New trip'}</h2>
-        <label class="field-label" for="p-f-name">Name</label>
-        <input id="p-f-name" class="w-name-input" maxlength="40" autocomplete="off" placeholder="Lisbon weekend" value="${esc(t?.name ?? '')}">
-        <label class="field-label" for="p-f-start">Starts</label>
-        <input id="p-f-start" class="w-name-input" type="date" required value="${t?.starts ?? todayIso()}">
-        <label class="field-label" for="p-f-end">Ends</label>
-        <input id="p-f-end" class="w-name-input" type="date" required value="${t?.ends ?? todayIso()}">
-        <p class="help" id="p-f-error" role="status"></p>
+        <div class="p-sheet-head">
+          <h2 id="p-sheet-title">${t ? 'Edit trip' : 'New trip'}</h2>
+          <button type="button" class="p-close" data-act="cancel-form" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="field">
+          <label class="field-label" for="p-f-name">Name</label>
+          <input id="p-f-name" class="w-name-input" maxlength="40" autocomplete="off" placeholder="Lisbon weekend" value="${esc(t?.name ?? '')}">
+        </div>
+        <div class="field">
+          <label class="field-label" for="p-f-start">Starts</label>
+          <input id="p-f-start" class="w-name-input" type="date" required value="${t?.starts ?? todayIso()}">
+        </div>
+        <div class="field">
+          <label class="field-label" for="p-f-end">Ends</label>
+          <input id="p-f-end" class="w-name-input" type="date" required value="${t?.ends ?? todayIso()}">
+        </div>
+        <p class="msg" data-tone="error" id="p-f-error" role="status"></p>
         <div class="sheet-actions">
           <button type="submit" class="primary">Save trip</button>
           <button type="button" class="secondary" data-act="cancel-form">Cancel</button>
         </div>
-        ${t ? '<button type="button" class="p-delete" data-act="delete-trip">Delete trip</button>' : ''}
+        ${t ? '<button type="button" class="secondary danger p-delete" data-act="delete-trip">Delete trip</button>' : ''}
       </form>`;
     if (!sheet.open) sheet.showModal();
     sheet.querySelector<HTMLInputElement>('#p-f-name')?.focus();
@@ -348,10 +361,15 @@ export function renderPacking(el: HTMLElement): () => void {
     editingLine = ref;
     sheet.innerHTML = `
       <form class="p-form" id="p-line-form" novalidate>
-        <h2 id="p-sheet-title">Edit line</h2>
-        <label class="field-label" for="p-l-text">Text</label>
-        <input id="p-l-text" class="w-name-input" maxlength="${TEMPLATE_TEXT_MAX}" autocomplete="off" value="${esc(line.text ?? '')}">
-        <p class="help" id="p-l-error" role="status"></p>
+        <div class="p-sheet-head">
+          <h2 id="p-sheet-title">Edit line</h2>
+          <button type="button" class="p-close" data-act="cancel-form" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+        </div>
+        <div class="field">
+          <label class="field-label" for="p-l-text">Text</label>
+          <input id="p-l-text" class="w-name-input" maxlength="${TEMPLATE_TEXT_MAX}" autocomplete="off" value="${esc(line.text ?? '')}">
+        </div>
+        <p class="msg" data-tone="error" id="p-l-error" role="status"></p>
         <div class="sheet-actions">
           <button type="submit" class="primary">Save line</button>
           <button type="button" class="secondary" data-act="cancel-form">Cancel</button>
@@ -376,7 +394,6 @@ export function renderPacking(el: HTMLElement): () => void {
     if (making) return;
     const run = ++suggestRun;
     making = t.id;
-    templateError = null;
     draw();
     showSuggest(t, { step: 'loading' });
     try {
@@ -390,8 +407,8 @@ export function renderPacking(el: HTMLElement): () => void {
       }
     } catch (e) {
       if (gone) return;
-      templateError = { trip: t.id, message: e instanceof TemplateError ? e.message : 'Could not make a template. Try again in a moment.' };
-      if (run === suggestRun && sheet.open) showSuggest(t, { step: 'error', message: templateError.message });
+      const message = e instanceof TemplateError ? e.message : 'Could not make a template. Try again in a moment.';
+      if (run === suggestRun && sheet.open) showSuggest(t, { step: 'error', message });
     } finally {
       making = null;
       if (!gone) draw();
@@ -613,6 +630,15 @@ export function renderPacking(el: HTMLElement): () => void {
     if (e.target === sheet) return sheet.close(); // a tap on the scrim
     const target = e.target as HTMLElement;
     const t = selectedTrip();
+    if (target.closest('[data-act="clear-search"]')) {
+      pickQuery = '';
+      const box = sheet.querySelector<HTMLInputElement>('#p-pick-search');
+      if (box) {
+        box.value = '';
+        box.focus();
+      }
+      return drawPicks();
+    }
     const reviewRow = target.closest<HTMLElement>('[data-review-line]');
     if (reviewRow && reviewing && t) return toggleReview(t, reviewRow.dataset.reviewLine!);
     const matchTile = target.closest<HTMLElement>('[data-match-item]');

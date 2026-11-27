@@ -178,7 +178,6 @@ export function renderTryOn(el: HTMLElement): () => void {
         ).join('')}
       </section>
       <div class="editor" id="editor" role="dialog" aria-modal="false" aria-labelledby="editor-title" tabindex="-1" hidden>
-        <div class="grab" aria-hidden="true"></div>
         <div class="editor-head">
           <h2 id="editor-title"></h2>
           <button type="button" class="editor-back" hidden>${CHEVRON}<span class="editor-back-text"></span></button>
