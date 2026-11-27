@@ -172,7 +172,7 @@ export function renderPacking(el: HTMLElement): () => void {
     const lines = t.entries.filter((e) => e.kind === 'template');
     const list = t.entries.length
       ? `${packed.length ? `<button type="button" class="p-packed-btn" data-act="toggle-packed" aria-expanded="${packedOpen}">Packed ${packed.length}<span class="p-chev" aria-hidden="true"></span></button>${packedOpen ? `<ul class="p-tray p-tray-packed" aria-label="Packed">${packed.map(tileHtml).join('')}</ul>` : ''}` : ''}
-        ${looks.length ? `<h3 class="p-group">Planned looks</h3><ul class="p-looks" aria-label="Planned looks">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
+        ${looks.length ? `<h3 class="p-group">Outfits</h3><ul class="p-looks" aria-label="Outfits">${looks.map((e) => lookCard(e, t)).join('')}</ul>` : ''}
         ${toPack.length ? `<h3 class="p-group">To pack</h3><ul class="p-tray" aria-label="To pack">${toPack.map(tileHtml).join('')}</ul>` : ''}
         ${lines.length ? `${matchBanner(lines, items)}${suggestedSection(lines, items)}` : ''}`
       : '<p class="help">Tap Add items and outfits, or Suggest a list, to build the list.</p>';
