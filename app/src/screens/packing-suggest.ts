@@ -96,7 +96,7 @@ export function sentText(hasSeason: boolean, hasClothes: boolean): string {
 }
 
 /** The "Suggest a packing list" sheet, in its four steps (confirm, loading, error, done). */
-export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s: SuggestStep): string {
+export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s: SuggestStep, notes = ''): string {
   const head = (title: string) => `
       <div class="grab" aria-hidden="true"></div>
       <div class="p-sheet-head">
@@ -133,6 +133,9 @@ export function suggestSheet(t: Trip, hasSeason: boolean, hasClothes: boolean, s
         <h3>Stays on your phone</h3>
         <p id="p-sug-stays">Your photos and measurements. Gemini sees your clothes as names, types and colours, never as pictures.</p>
       </div>
+      <label class="field-label" for="p-sug-notes">Anything else Gemini should know? (optional)</label>
+      <textarea id="p-sug-notes" class="p-sug-notes" rows="3" maxlength="300" placeholder="For example: carry-on only, lots of walking, one smart dinner" autocomplete="off">${esc(notes)}</textarea>
+      <p class="help">If you write something, it is sent to Gemini with the rest.</p>
       <p class="help">New suggestions replace the ones already on this trip. Clothes and outfits you added are never touched.</p>
       <div class="sheet-actions">
         <button type="button" class="primary" data-act="suggest-ask">Ask Gemini</button>

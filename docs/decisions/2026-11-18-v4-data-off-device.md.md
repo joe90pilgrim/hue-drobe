@@ -18,6 +18,7 @@ We will use the **Gemini API** for image-to-garment matching and style assistant
 
    - *Amended 23 Nov 2026 (V6-01, Joe's decision):* for packing templates the trip name, the trip's start and end dates, and the season name with its palette (only if the colour quiz is complete) may be sent. The app says on the screen that the trip name is sent to Gemini. No destination field is added; wardrobe contents are still not sent.
    - *Amended 23 Nov 2026 (V7-05, Joe's decision):* the wardrobe list (each saved piece's id, garment type, name and colour) goes to Gemini for packing suggestions, so it can answer with colours, garment types and matches to clothes already owned. Photos and measurements never do. The server accepts at most 150 pieces (32 KB body), checks every field, quotes the list as JSON data in the prompt so a name cannot act as an instruction, drops any id, colour or type in the answer that was not sent or is not valid, and never logs the list or the answer. The screen text that says the wardrobe is not sent is changed in V7-06; this change is not released before then.
+   - *Amended 27 Nov 2026 (Joe's request):* an optional note of up to 300 characters, typed by the user on the Suggest sheet, goes to Gemini with the packing request. It is sent only when written, quoted in the prompt as data, and never stored or logged by the server.
 
 ## Consequences
 - `V4-01` can proceed using a server-side/API call to Gemini Flash for fast, accurate garment category, neckline, and colour extraction.
