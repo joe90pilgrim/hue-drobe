@@ -429,7 +429,7 @@ async function run() {
     await page.locator('.editor-done').click();
   });
   await tryScene('menu-back-up', async () => {
-    await page.locator('#menu-btn').click();
+    await page.locator(LAPTOP ? '#backup-btn' : '#menu-btn').click();
     await scene('menu / back-up dialog');
     await pressEsc();
   });
@@ -567,7 +567,7 @@ async function run() {
   // Back up and restore
   await go('try-on');
   await tryScene('back-up-saved / restore', async () => {
-    await page.locator('#menu-btn').click();
+    await page.locator(LAPTOP ? '#backup-btn' : '#menu-btn').click();
     const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#b-export').click()]);
     await scene('back-up-saved');
     await page.locator('#b-file').setInputFiles(await download.path());

@@ -332,7 +332,7 @@ test('snag list: the last trip is reopened, New trip sits above the trips, the p
   await expect(page.locator('#p-detail')).toHaveCount(0);
   await page.evaluate(() => { location.hash = '#/packing'; });
   await expect(page.locator('#p-title')).toHaveText('Lisbon weekend');
-  await expect(page.getByRole('button', { name: /Lisbon weekend/ })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.p-trip[aria-pressed="true"]')).toHaveCount(1); // on a phone its card is hidden while the summary is open (V10-02, L11)
 
   // The add sheet has a close button.
   await page.getByRole('button', { name: 'Add items and outfits' }).click();
