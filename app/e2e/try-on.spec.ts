@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { closeSlot, garment, openSlot } from './helpers';
 
 // V1.2-03: Try on layout.
 
@@ -17,6 +18,8 @@ test('on a phone the stage uses the full width and each row is at least 64 px hi
 
 test('no developer instruction shows without ?debug, and the hint goes after the first drag', async ({ page }) => {
   await page.goto('/#/try-on');
+  await page.getByRole('radio', { name: '3D' }).click(); // V8-01: the hint belongs to the 3D view
+  await expect(page.locator('.stage-status')).not.toHaveText('Getting your avatar ready…');
   await expect(page.locator('.stage-status')).not.toContainText('build_pack');
   await expect(page.locator('.stage-status')).not.toContainText('Run:');
   const hint = page.locator('.stage-hint');
@@ -48,7 +51,7 @@ test('on a laptop the stage and the panel fill the screen at 1280 x 800', async 
 
 test('on a phone a row opens a sheet under a smaller stage, in order garment, neckline, colour, add; Done returns the focus', async ({ page }) => {
   await page.goto('/#/try-on');
-  await expect(page.locator('.stage-status')).toBeHidden(); // layout settles once the pack has loaded
+  await expect(page.locator('.stage-status')).toHaveAttribute('hidden', ''); // layout settles once the pack has loaded (in 2D the status is never shown, so read its own flag)
   const before = (await page.locator('#stage').boundingBox())!;
   await page.locator('.wear-row[data-row="Top"]').click();
   const dialog = page.getByRole('dialog', { name: 'Top' });
@@ -136,4 +139,71 @@ test('on a laptop the controls open in the panel in place of the row', async ({ 
   await dialog.getByRole('button', { name: 'Done' }).click();
   await expect(dialog).toBeHidden();
   await expect(page.locator('.wear-row[data-row="Top"]')).toBeFocused();
+});
+
+// V8-01: the 2D paper-doll is the default view; 3D is one tap away.
+
+test('Try on opens on the 2D doll with the 3D render loop paused, and the switch changes views by touch and keyboard', async ({ page }) => {
+  // Counts the animation frames that run, to show the 3D loop draws none while the doll is showing.
+  await page.addInitScript(() => {
+    const w = window as unknown as { frames: number };
+    const raf = window.requestAnimationFrame.bind(window);
+    w.frames = 0;
+    window.requestAnimationFrame = (cb) => raf((t) => { w.frames++; cb(t); });
+  });
+  const frames = () => page.evaluate(() => (window as unknown as { frames: number }).frames);
+  const framesOver = async (ms: number) => { const a = await frames(); await page.waitForTimeout(ms); return (await frames()) - a; };
+  await page.goto('/#/try-on');
+  const doll = page.locator('.doll svg');
+  const canvas = page.locator('#stage canvas');
+  const view = page.getByRole('radiogroup', { name: 'View' });
+  await expect(doll).toBeVisible();
+  await expect(doll).toHaveAttribute('data-figure', 'joe');
+  await expect(view.getByRole('radio', { name: '2D' })).toHaveAttribute('aria-checked', 'true');
+  await expect(canvas).toBeHidden();
+  await expect(page.locator('.stage-status')).toHaveAttribute('hidden', ''); // the pack has loaded behind the doll
+  const in2d = await framesOver(600);
+  console.log(`animation frames in 600 ms: 2D ${in2d}`);
+  expect(in2d).toBe(0);
+
+  // The switch sits top-right of the stage, and each side is a 44 px touch target.
+  const stage = (await page.locator('#stage').boundingBox())!;
+  const seg = (await view.boundingBox())!;
+  expect(seg.x + seg.width).toBeGreaterThan(stage.x + stage.width - 20);
+  expect(seg.y).toBeLessThan(stage.y + 20);
+  for (const r of await view.getByRole('radio').all()) expect((await r.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+
+  await view.getByRole('radio', { name: '3D' }).click();
+  await expect(canvas).toBeVisible();
+  await expect(doll).toBeHidden();
+  await expect(page.locator('.stage-hint')).toBeVisible();
+  const in3d = await framesOver(600);
+  console.log(`animation frames in 600 ms: 3D ${in3d}`);
+  expect(in3d).toBeGreaterThan(5);
+
+  await view.getByRole('radio', { name: '3D' }).focus();
+  await page.keyboard.press('ArrowLeft');
+  await expect(view.getByRole('radio', { name: '2D' })).toHaveAttribute('aria-checked', 'true');
+  await expect(view.getByRole('radio', { name: '2D' })).toBeFocused();
+  await expect(doll).toBeVisible();
+  await expect(canvas).toBeHidden();
+});
+
+test('a change in either view shows on the doll', async ({ page }) => {
+  await page.goto('/#/try-on');
+  const view = page.getByRole('radiogroup', { name: 'View' });
+  await expect(page.locator('.doll [data-layer="top"]')).toHaveAttribute('data-garment', 'tee');
+  await openSlot(page, 'Bottom'); // in 2D: the doll changes at once
+  await garment(page, 'Shorts').click();
+  await expect(page.locator('.doll [data-layer="bottom"]')).toHaveAttribute('data-garment', 'shorts');
+  await closeSlot(page);
+
+  await view.getByRole('radio', { name: '3D' }).click(); // in 3D: the doll is right when 2D is shown again
+  await openSlot(page, 'Top');
+  await garment(page, 'Sweatshirt').click();
+  await closeSlot(page);
+  await view.getByRole('radio', { name: '2D' }).click();
+  await expect(page.locator('.doll [data-layer="top"]')).toHaveAttribute('data-garment', 'sweatshirt');
+  await expect(page.locator('.doll [data-layer="bottom"]')).toHaveAttribute('data-garment', 'shorts');
+  expect(await page.locator('.try-on').evaluate((e) => (e.textContent!.match(/\bSave\b/g) ?? []).length)).toBe(1);
 });

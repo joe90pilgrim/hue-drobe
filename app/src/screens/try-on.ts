@@ -52,8 +52,10 @@ import {
   type GarmentId,
   type Neckline,
   colourName,
+  isShoe,
 } from '../wardrobe';
 import { createColourChooser } from '../colour-chooser';
+import { dollFigureOf, paperDollSvg } from '../paper-doll';
 import { loadOutfits, newOutfit, saveOutfits, type OutfitLook } from '../outfits';
 
 interface Slot {
@@ -146,7 +148,12 @@ function bindRadioKeys(group: HTMLElement) {
 export function renderTryOn(el: HTMLElement): () => void {
   el.innerHTML = `
     <div class="try-on">
-      <div class="stage" id="stage">
+      <div class="stage" id="stage" data-view="2d">
+        <div class="doll" role="img" aria-label="A drawing of your outfit"></div>
+        <div class="seg view-seg" role="radiogroup" aria-label="View">
+          <button type="button" role="radio" aria-checked="true" tabindex="0" data-view="2d">2D</button>
+          <button type="button" role="radio" aria-checked="false" tabindex="-1" data-view="3d">3D</button>
+        </div>
         <p class="stage-status" role="status"></p>
         ${PILL_SLOTS.map(
           (n) => `<button type="button" class="wear-row stage-pill hair-pill" data-box="${n}" data-row="${n}" aria-haspopup="dialog" hidden>
@@ -216,6 +223,8 @@ export function renderTryOn(el: HTMLElement): () => void {
   const stage = el.querySelector<HTMLElement>('#stage')!;
   const hint = stage.querySelector<HTMLElement>('.stage-hint')!;
   const status = stage.querySelector<HTMLElement>('.stage-status')!;
+  const doll = stage.querySelector<HTMLElement>('.doll')!;
+  const viewGroup = stage.querySelector<HTMLElement>('.view-seg')!;
   const outfitBtn = el.querySelector<HTMLButtonElement>('#save-outfit')!;
   const editor = el.querySelector<HTMLElement>('#editor')!;
   const editorTitle = editor.querySelector<HTMLElement>('#editor-title')!;
@@ -254,7 +263,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     hint.hidden = msg !== null || dragged;
   });
   stage.addEventListener('pointermove', (e) => {
-    if (e.buttons > 0 && !dragged) {
+    if (e.buttons > 0 && !dragged && stage.dataset.view === '3d') {
       dragged = true;
       hint.hidden = true;
     }
@@ -426,7 +435,41 @@ export function renderTryOn(el: HTMLElement): () => void {
     viewer.setSheer('tights', sheer);
     renderRows();
     syncEditor();
+    drawDoll();
   };
+
+  // V8-01: Try On opens on a 2D paper-doll (Joe's decision of 27 Nov 2026: always 2D, nothing remembered); the 3D avatar is one tap away.
+  // The viewer keeps loading in 2D (the rows need to know what the pack has) but draws no frames until 3D is shown.
+  const figure = dollFigureOf(person());
+  function drawDoll() {
+    if (stage.dataset.view !== '2d') return; // drawn again when 2D is shown
+    doll.innerHTML = paperDollSvg({
+      figure,
+      outfit,
+      neckline,
+      sheer,
+      layers: viewer.layers(),
+      outer: outerMesh(),
+      colour: (g) => (colours[g] || (isShoe(g) ? SHOES_AS_MADE : DEFAULT_COLOUR)).toLowerCase(),
+      hair: (colours.hair || DEFAULT_HAIR_COLOUR).toLowerCase(),
+    });
+  }
+  const setView = (view: '2d' | '3d') => {
+    stage.dataset.view = view;
+    for (const b of viewGroup.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+      const on = b.dataset.view === view;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
+    }
+    viewer.setActive(view === '3d');
+    drawDoll();
+  };
+  viewGroup.addEventListener('click', (e) => {
+    const v = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-view]')?.dataset.view;
+    if ((v === '2d' || v === '3d') && v !== stage.dataset.view) setView(v);
+  });
+  bindRadioKeys(viewGroup);
+  setView('2d');
   refresh();
 
   // --- The panel for one slot: a bottom sheet under the stage on a phone, in place of the row on a laptop. ---
@@ -528,7 +571,7 @@ export function renderTryOn(el: HTMLElement): () => void {
   let down: { x: number; y: number } | null = null;
   stage.addEventListener('pointerdown', (e) => (down = { x: e.clientX, y: e.clientY }));
   stage.addEventListener('click', (e) => {
-    if ((e.target as HTMLElement).closest('.stage-pill')) return; // a pill is inside the stage: it opens its own panel, it does not close one
+    if ((e.target as HTMLElement).closest('.stage-pill, .view-seg')) return; // a pill or the view switch is inside the stage: it does not close the panel
     if (!tryOn.classList.contains('sheet-open')) return;
     if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 8) return;
     requestClose();
@@ -583,6 +626,7 @@ export function renderTryOn(el: HTMLElement): () => void {
     viewer.setColour(g, hex); // applies straight away
     renderRows();
     syncEditor();
+    drawDoll();
   }
   function toggleFavourite() {
     if (!editing) return;

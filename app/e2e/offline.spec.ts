@@ -12,17 +12,21 @@ test.skip(!!process.env.E2E_PRIVATE_PACK && !existsSync(new URL('../../private/p
 const OFFLINE_START_MS = 6000;
 
 const avatarShown = (page: Page) => page.getByText('Drag to turn', { exact: false });
+/** V8-01: Try On opens on the 2D doll; the turn hint, the sign that the avatar has loaded, shows only in 3D. */
+const show3D = (page: Page) => page.getByRole('radio', { name: '3D' }).click();
 
 async function loadOnlineOnce(page: Page) {
   await page.goto('/#/try-on');
   await page.evaluate(() => navigator.serviceWorker.ready);
   if (!(await page.evaluate(() => !!navigator.serviceWorker.controller))) await page.reload();
+  await show3D(page);
   await expect(avatarShown(page)).toBeVisible({ timeout: 20_000 });
 }
 
 async function timeOfflineStart(page: Page) {
   const t0 = Date.now();
   await page.reload({ waitUntil: 'commit', timeout: 30_000 });
+  await show3D(page);
   await expect(avatarShown(page)).toBeVisible({ timeout: 30_000 });
   await expect(page.locator('html')).toHaveAttribute('data-person', 'joe');
   return Date.now() - t0;

@@ -38,6 +38,8 @@ export interface Viewer {
   layers: () => LayerCombos;
   /** Settles when every file has loaded or failed; never rejects. Use `has` after it. */
   ready: Promise<void>;
+  /** V8-01: runs or pauses the render loop, so a hidden avatar draws no frames. Loading and every setter carry on while paused. */
+  setActive: (active: boolean) => void;
   dispose: () => void;
 }
 
@@ -228,7 +230,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
 
   let frames = 0;
   let last = performance.now();
-  renderer.setAnimationLoop(() => {
+  const loop = () => {
     controls.update();
     renderer.render(scene, camera);
     frames++;
@@ -238,7 +240,9 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       frames = 0;
       last = now;
     }
-  });
+  };
+  let active = true;
+  renderer.setAnimationLoop(loop);
 
   return {
     setGarment(name, visible) {
@@ -259,6 +263,16 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     has: (name) => garments.has(name),
     layers: () => layerCombos,
     ready,
+    setActive(on) {
+      if (disposed || on === active) return;
+      active = on;
+      if (on) {
+        resize(); // the stage may have changed size while the avatar was hidden
+        frames = 0;
+        last = performance.now();
+      }
+      renderer.setAnimationLoop(on ? loop : null);
+    },
     dispose() {
       disposed = true;
       renderer.setAnimationLoop(null);

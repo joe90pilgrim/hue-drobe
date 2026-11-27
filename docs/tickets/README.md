@@ -172,6 +172,12 @@ Designed 23 Nov 2026. Spec: `docs/decisions/2026-11-23-v7-packing-and-icon-spec.
 | V7-08 | [Review Gemini's matches in bulk, with Undo](v7-packing-and-icon/V7-08-review-matches-and-undo.md) (built 23 Nov 2026, awaiting Joe's sign-off) | V7-07 | Sonnet, medium |
 | V7-09 | [Bug: deployed app shows only Top, Bottom and Legs](v7-packing-and-icon/V7-09-deploy-pack-missing-slots-bug.md) (built 24 Nov 2026, not deployed) | None | Sonnet, medium |
 
+### Version 8: Try On views
+
+| # | Ticket | Depends on | Worker |
+| --- | --- | --- | --- |
+| V8-01 | [Try On: 2D paper-doll as the default view, 3D one toggle away](v8-try-on-views/V8-01-try-on-2d-default-view.md) (done 27 Nov 2026) | V3-15 | Sonnet, high |
+
 ### Later: needs an architecture change first
 
 | # | Ticket | Depends on | Worker |
