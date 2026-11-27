@@ -45,6 +45,7 @@ Versions 1.1 and 2 are full tickets. Later versions are outlines, marked as such
 | V1.1-05 | [Shorts](v1.1-make-it-mine/V1.1-05-shorts.md) | MVP avatar pack build | Sonnet, medium |
 | V1.1-06 | [Back up and restore your data (recommended addition)](v1.1-make-it-mine/V1.1-06-backup.md) | V1.1-02, V1.1-03 | Sonnet, low |
 | V1.1-07 | [Show a close second season](v1.1-make-it-mine/V1.1-07-borderline-quiz-result.md) | MVP quiz | Haiku, high |
+| V1.1-08 | [Smoother V and scoop necklines](v1.1-make-it-mine/V1.1-08-smoother-necklines.md) | V1.1-04 | Sonnet, high (closed, defect accepted) |
 
 ### Version 1.2: Redesign
 
