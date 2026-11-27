@@ -14,6 +14,7 @@ async function openTryOn(page: Page, combinations: Record<string, string[]>) {
   );
   await signInAs(page, 'joe');
   await page.goto('/#/try-on');
+  await page.getByRole('radio', { name: '3D' }).click(); // V8-01: the avatar's status and layers are the 3D view's
   await expect(page.locator('.stage-status')).not.toHaveText('Getting your avatar ready…'); // the pack has loaded or failed
 }
 
@@ -84,6 +85,7 @@ test('the pack\'s _under_ file is drawn while the outer garment is worn, and the
   );
   await signInAs(page, 'joe');
   await page.goto('/#/try-on');
+  await page.getByRole('radio', { name: '3D' }).click();
   await expect(page.locator('.stage-status')).not.toHaveText('Getting your avatar ready…');
   const stage = page.locator('.stage');
   await expect(stage).not.toHaveAttribute('data-under', /tee_under_sweatshirt_over_tee/);
