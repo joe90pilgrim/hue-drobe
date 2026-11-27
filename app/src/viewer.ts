@@ -15,6 +15,9 @@ const OPTIONAL = new Set(['shirt_short', 'shirt_mid', 'shirt_long', 'skirt', 'te
 // V5-01: the shoes, and the body with the feet hidden under each (and, for the dress, under both), are optional too: a person's pack has only the shoes built for them.
 /** V5-04: hair is drawn on every avatar that has it, in this dark brown until the person picks another (Joe, 23 Nov 2026: dark brown). */
 export const DEFAULT_HAIR_COLOUR = '#3b2a1f';
+/** The body's skin colour until a picker exists: the 2D doll's (`SKIN` in `paper-doll.ts`), so the 3D body and the doll match. */
+export const DEFAULT_SKIN_COLOUR = '#e3b892';
+const defaultColour = (name: string) => (name === 'hair' ? DEFAULT_HAIR_COLOUR : name.startsWith('body') ? DEFAULT_SKIN_COLOUR : undefined);
 /** How much of the light sheer tights stop (V2-04): 1 is opaque. Roughly a 20-denier look; tune by eye with Beth. */
 export const SHEER_OPACITY = 0.45;
 
@@ -47,7 +50,12 @@ export interface Viewer {
 function paint(root: THREE.Object3D, hex: string) {
   root.traverse((o) => {
     if (o instanceof THREE.Mesh) {
-      for (const m of Array.isArray(o.material) ? o.material : [o.material]) (m as THREE.MeshStandardMaterial).color.set(hex);
+      for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+        const mat = m as THREE.MeshStandardMaterial;
+        mat.color.set(hex);
+        // A body file has no material, so glTF's default (fully metallic, which draws near black without an environment map) would hide the colour.
+        if (mat.metalness === 1 && !mat.metalnessMap) mat.metalness = 0;
+      }
     }
   });
 }
@@ -170,7 +178,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
       if (disposed) return;
       gltf.scene.visible = false;
       garments.set(name, gltf.scene);
-      const colour = colours.get(groupOf(name)) ?? (groupOf(name) === 'hair' ? DEFAULT_HAIR_COLOUR : undefined);
+      const colour = colours.get(groupOf(name)) ?? defaultColour(groupOf(name));
       if (colour) paint(gltf.scene, colour);
       scene.add(gltf.scene);
       syncUnder();
@@ -193,7 +201,7 @@ export function createViewer(stage: HTMLElement, onStatus: (msg: string | null) 
     gltf.scene.visible = wanted.get(name) ?? !name.startsWith('body_'); // a body with parts hidden (under the dress or a shoe) only shows while that is worn
     garments.set(name, gltf.scene);
     syncUnder();
-    const colour = colours.get(groupOf(name)) ?? (name === 'hair' ? DEFAULT_HAIR_COLOUR : undefined);
+    const colour = colours.get(groupOf(name)) ?? defaultColour(name);
     if (colour) paint(gltf.scene, colour);
     if (sheers.get(name)) sheerness(gltf.scene, true);
     scene.add(gltf.scene);
