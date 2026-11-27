@@ -82,5 +82,5 @@ Work stops if any is open. Recommendations are marked.
 - Three strikes: if a fix fails three times, stop and ask Joe.
 
 ## Note
-Built 27 Nov 2026 (Opus 5.5, Joe accepted all five recommendations): `paper-doll.ts` places the `silhouettes.ts` shapes on a generic figure per person, the arms coming out of the outermost sleeve hem. Try On opens in 2D, and the 3D loop is paused there: 0 animation frames in 600 ms in 2D, 37 in 3D (`e2e/try-on.spec.ts`). Unit tests: 13 in `tests/paper-doll.test.ts`. Full `npm run check` passes.
-Left: Joe's visual sign-off on phone and laptop for Joe and B (round 1 of 3). The cap's peak is drawn side-on and the shoes are side views turned out, because those are the only shapes `silhouettes.ts` has.
+Built 27 Nov 2026 (Opus 5.5, Joe accepted all five recommendations). Round 1 laid the `silhouettes.ts` hanger shapes over a figure, and Joe rejected it: it read as a small tee over trousers, with no body. Round 2 follows Gemini's prototype instead: `paper-doll.ts` builds a body from landmarks and draws every garment id fitted to it, outlined, with a ground shadow. Try On opens in 2D, and the 3D loop is paused there: 0 animation frames in 600 ms in 2D, 38 in 3D (`e2e/try-on.spec.ts`). Unit tests: 12 in `tests/paper-doll.test.ts`. Full `npm run check` passes.
+Left: Joe's visual sign-off on phone and laptop for Joe and B (round 2 of 3).

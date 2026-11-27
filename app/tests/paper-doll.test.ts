@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { dollFigureOf, dollPieces, dollShapeOf, mapPath, paperDollSvg, SLEEVE_HEM, type DollFigure } from '../src/paper-doll';
-import { ALL_GARMENT_IDS, ALL_NECKLINES, SHAPES, silhouetteKey } from '../src/silhouettes';
+import { dollFigureOf, dollPieces, dollShapeOf, paperDollSvg, type DollFigure } from '../src/paper-doll';
+import { ALL_GARMENT_IDS, ALL_NECKLINES, silhouetteKey } from '../src/silhouettes';
 import { GARMENTS, type GarmentId, type Neckline } from '../src/wardrobe';
 
 const NONE = { Hat: 'None', Outer: 'None', Dress: 'None', Top: 'None', Bottom: 'None', Legs: 'None', Under: 'None', Shoes: 'None' };
@@ -31,10 +31,12 @@ describe('paper doll (V8-01)', () => {
     }
   });
 
-  it('gives every top a sleeve hem for the arms to come out of', () => {
-    for (const g of ALL_GARMENT_IDS)
-      if (GARMENTS[g].slot === 'Top' || GARMENTS[g].slot === 'Outer')
-        for (const n of ALL_NECKLINES) expect(SLEEVE_HEM[dollShapeOf(g, n)!], `${g} ${n}`).toBeDefined();
+  it('draws each garment fitted to the figure, filled with its own colour', () => {
+    for (const g of ALL_GARMENT_IDS) {
+      const { svg } = doll(wearing(g), { figure: g === 'blazer_female' ? 'b' : 'joe' });
+      const group = new RegExp(`<g data-layer="[a-z]+" data-garment="${g}"[^>]*>(.*?)</g>`).exec(svg)![1];
+      expect(group, g).toContain(`fill="#${(ALL_GARMENT_IDS.indexOf(g) + 16).toString(16).padStart(2, '0')}3344"`);
+    }
   });
 
   it('draws every tee neckline with its own shape', () => {
@@ -79,11 +81,9 @@ describe('paper doll (V8-01)', () => {
     expect(doll(outfit, { layers: { sweatshirt: ['v'] }, neckline: 'v' }).svg).toContain('data-garment="tee" data-shape="tee_v"');
   });
 
-  it('brings the arms out of the outermost sleeves', () => {
-    expect(doll({}).svg).toContain('data-layer="arms"');
-    // The blazer's long sleeves end at the wrist; the tee's short sleeves end at the upper arm, so the arm starts higher.
-    const armTop = (svg: string) => Number(/<g data-layer="arms"><path d="M[\d.]+ ([\d.]+)/.exec(svg)![1]);
-    expect(armTop(doll({ Top: 'T-shirt' }).svg)).toBeLessThan(armTop(doll({ Top: 'T-shirt', Outer: 'Blazer' }).svg));
+  it('draws the arms over the bottoms and under the sleeves, with or without a top', () => {
+    expect(doll({}).order).toEqual(['hair-back', 'body', 'arms', 'hair']);
+    expect(doll({ Bottom: 'Trousers' }).order).toEqual(['hair-back', 'body', 'bottom:trousers', 'arms', 'hair']);
   });
 
   it('draws the blazer the pack has, or the figure\'s own', () => {
@@ -100,10 +100,5 @@ describe('paper doll (V8-01)', () => {
     expect(joe).toContain('data-figure="joe"');
     expect(b).toContain('data-figure="b"');
     expect(joe).not.toEqual(b.replace('data-figure="b"', 'data-figure="joe"'));
-  });
-
-  it('maps every point of a shape path and keeps its commands', () => {
-    expect(mapPath('M10 20 L30 40 Q50 60 70 80 Z', (x, y) => [x + 1, y * 2])).toBe('M11 40 L31 80 Q51 120 71 160 Z');
-    for (const key of Object.keys(SHAPES)) expect(mapPath(SHAPES[key].body, (x, y) => [x, y]).replace(/\s+/g, ' '), key).toBe(SHAPES[key].body.replace(/\s+/g, ' '));
   });
 });

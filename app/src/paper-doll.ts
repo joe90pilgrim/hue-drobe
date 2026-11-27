@@ -1,8 +1,8 @@
-// V8-01: the 2D paper-doll on Try On. A generic figure per person (the app holds no measurements), dressed in the garment shapes of
-// silhouettes.ts. An approximate preview only: the 3D avatar stays the accurate view. Pure drawing, no DOM, no store.
-// Each shape is drawn in its own 100 by 100 grid; a placement maps that grid onto the figure (tops onto the torso and arms, bottoms
-// onto the hips and legs, and so on). The layer rules are wardrobe.ts's own (`isTucked`, `layeredOk`); nothing here decides what is worn.
-import { SHAPES, edgeOf, silhouetteKey } from './silhouettes';
+// V8-01: the 2D paper-doll on Try On. A generic figure per person (the app holds no measurements), drawn from a few landmarks
+// (shoulders, chest, waist, hips, knees, wrists), with every garment drawn fitted to that figure, as in Gemini's prototype
+// (docs/designs/2026-11-27-try-on-2d-gemini-prototype). An approximate preview only: the 3D avatar stays the accurate view.
+// Pure drawing, no DOM, no store. The layer rules are wardrobe.ts's own (`isTucked`, `layeredOk`); nothing here decides what is worn.
+import { silhouetteKey } from './silhouettes';
 import {
   DRESS_SLOT,
   GARMENTS,
@@ -23,203 +23,261 @@ export type DollFigure = 'joe' | 'b';
 /** The figure drawn for a signed-in person: B's for `b`, Joe's for anyone else. */
 export const dollFigureOf = (person: string): DollFigure => (person === 'b' ? 'b' : 'joe');
 
-type Pt = readonly [number, number];
-type MapFn = (x: number, y: number) => Pt;
-
-/** Piecewise-linear through the stops, carried on straight past the ends. */
-function piecewise(stops: readonly Pt[]): (v: number) => number {
-  return (v) => {
-    let i = 0;
-    while (i < stops.length - 2 && v > stops[i + 1][0]) i++;
-    const [a, fa] = stops[i];
-    const [b, fb] = stops[i + 1];
-    return fa + ((v - a) * (fb - fa)) / (b - a);
-  };
-}
-
-/**
- * The figure, in a 100 by 200 drawing (the sole at y 196). `torso` and `hips` are how wide a top's body and a bottom are drawn; `sleeve` pulls
- * a hanging garment's sleeves in towards the arms (the shapes are drawn on a hanger, sleeves spread). Joe: broader shoulders; B: narrower
- * shoulders, a narrower waist and wider hips, and longer hair.
- */
+/** Half-widths and height of each figure, in drawing units (the drawing is 300 wide, the ground at y 414). Generic, not measured. */
 interface Figure {
-  torso: number;
-  sleeve: number;
-  hips: number;
-  dress: number;
-  neck: number;
+  height: number;
+  shoulder: number;
+  chest: number;
+  waist: number;
+  hip: number;
   hair: 'short' | 'long';
 }
 const FIGURES: Record<DollFigure, Figure> = {
-  joe: { torso: 0.86, sleeve: 0.5, hips: 0.86, dress: 0.95, neck: 9, hair: 'short' },
-  b: { torso: 0.78, sleeve: 0.44, hips: 1.0, dress: 0.95, neck: 7.5, hair: 'long' },
+  joe: { height: 1, shoulder: 40, chest: 37, waist: 32, hip: 35, hair: 'short' },
+  b: { height: 0.95, shoulder: 34, chest: 33, waist: 26, hip: 38, hair: 'long' },
 };
-/** Grid height -> figure height: a top's neckline, armpit and hem; a bottom's waistband, crotch and ankle; a dress's shoulder, waist and hem. */
-const TOP_Y = piecewise([[14, 40], [37, 54], [92, 108]]);
-const BOTTOM_Y = piecewise([[16, 86], [46, 106], [98, 192]]);
-const DRESS_Y = piecewise([[10, 40], [40, 80], [94, 150]]);
-const SOLE = 196;
-/** The waist a tucked-in top is cut at (the skirt's waistband). */
-const WAIST_Y = BOTTOM_Y(16);
 
-type Place = 'top' | 'bottom' | 'dress' | 'hat' | 'shoe';
-/** Where each shape goes on the figure. A garment whose shape is not here has no doll shape (the test fails). */
-const PLACE: Record<string, Place> = {
-  tee: 'top', tee_v: 'top', tee_scoop: 'top', sweat: 'top', shirt_short: 'top', shirt_mid: 'top', shirt_long: 'top', blazer: 'top',
-  trousers: 'bottom', shorts: 'bottom', skirt: 'bottom', tights: 'bottom',
-  dress: 'dress',
-  beanie: 'hat', cap: 'hat',
-  sneaker: 'shoe', boot: 'shoe', oxford: 'shoe', sandal: 'shoe',
+const CX = 150;
+const GROUND = 414;
+const INK = '#2f3337';
+const SKIN = '#e3b892';
+
+/** The figure's landmarks. */
+function landmarks(f: Figure) {
+  const h = f.height;
+  const top = GROUND - 365 * h;
+  const headRx = 16.5;
+  const headRy = 20.5;
+  const headCy = top + headRy;
+  const neckTop = headCy + headRy - 3;
+  const sY = neckTop + 13 * h;
+  const chestY = sY + 38 * h;
+  const waistY = sY + 86 * h;
+  const hipY = sY + 124 * h;
+  const crotchY = hipY + 16 * h;
+  const kneeY = crotchY + (GROUND - crotchY) * 0.48;
+  const ankleY = GROUND - 12;
+  const wristY = hipY + 12 * h;
+  return {
+    h, top, headRx, headRy, headCy, neckTop, sY, chestY, waistY, hipY, crotchY, kneeY, ankleY, wristY,
+    neck: 7.5, hs: f.shoulder, hc: f.chest, hw: f.waist, hh: f.hip,
+    armOut: f.shoulder + 8, legGap: 4, thigh: f.hip * 0.88, ankle: 11,
+    /** The top of a skirt, trousers or shorts. */
+    bTop: sY + 90 * h,
+  };
+}
+type Marks = ReturnType<typeof landmarks>;
+
+const r = (n: number) => String(Math.round(n * 10) / 10);
+/** A point `d` out from the centre line: left of it for s = -1, right for s = 1. */
+const P = (s: number, d: number, y: number) => `${r(CX + s * d)} ${r(y)}`;
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+// --- The arm, and a sleeve down it to a given height ------------------------------------------------------------------
+
+/** The arm's outer and inner edges, as distances from the centre line at a height. */
+function armEdges(m: Marks, y: number) {
+  const outer = lerp(m.hs - 2, m.armOut + 5, (y - (m.sY + 3)) / (m.wristY - (m.sY + 3)));
+  const inner = y <= m.chestY + 8 ? m.hc - 1 : lerp(m.hc - 1, m.armOut - 5, (y - (m.chestY + 8)) / (m.wristY - (m.chestY + 8)));
+  return { outer, inner };
+}
+/** One sleeve (side s) from the shoulder to `hemY`, `ease` wider than the arm. */
+function sleeve(m: Marks, s: number, hemY: number, ease: number, flare: number): string {
+  const e = armEdges(m, hemY);
+  const innerTop = Math.min(hemY, m.chestY + 8);
+  return `M${P(s, m.hs + ease - 1, m.sY + 3)} L${P(s, e.outer + ease + flare, hemY)} L${P(s, e.inner - ease, hemY + 2 + flare / 2)} L${P(s, m.hc - 1 + ease, innerTop)} L${P(s, m.hc + ease, m.chestY - 6)} Z`;
+}
+/** Both sleeves. A short sleeve flares out from the arm; a long one follows it. */
+const sleeves = (m: Marks, hemY: number, ease: number) => {
+  const flare = hemY < m.chestY + 20 ? 6 : hemY < m.wristY - 20 ? 3 : 0;
+  return sleeve(m, -1, hemY, ease, flare) + ' ' + sleeve(m, 1, hemY, ease, flare);
 };
+/** Where the short, mid and long sleeves end. */
+const SHORT = (m: Marks) => m.chestY + 6 * m.h;
+const ELBOW = (m: Marks) => lerp(m.sY, m.wristY, 0.55);
+const CUFF = (m: Marks) => m.wristY - 4;
+
+// --- Garments: each a list of [path, fill] (fill 'self' = the garment's colour) ------------------------------------------
+
+type Part = [d: string, fill: 'self' | 'line' | string];
+
+/** A top's body, `ease` out from the skin, down to `hemY`, with the neckline drawn last. */
+function topBody(m: Marks, ease: number, hemY: number, neck: string): string {
+  const { hs, hc, hw, hh, sY } = m;
+  const n = m.neck + 2;
+  return `M${P(-1, n, sY - 1)} L${P(-1, hs + ease, sY + 3)} Q${P(-1, hc + ease, m.chestY)} ${P(-1, hw + ease, m.waistY)} Q${P(-1, Math.max(hh, hw) + ease, m.hipY)} ${P(-1, hh * 0.96 + ease, hemY)}` +
+    ` L${P(1, hh * 0.96 + ease, hemY)} Q${P(1, Math.max(hh, hw) + ease, m.hipY)} ${P(1, hw + ease, m.waistY)} Q${P(1, hc + ease, m.chestY)} ${P(1, hs + ease, sY + 3)} L${P(1, n, sY - 1)} ${neck} Z`;
+}
+const NECKS: Record<string, (m: Marks) => string> = {
+  crew: (m) => `Q${P(0, 0, m.sY + 12)} ${P(-1, m.neck + 2, m.sY - 1)}`,
+  v: (m) => `L${P(0, 0, m.sY + 24 * m.h)}`,
+  scoop: (m) => `Q${P(0, 0, m.sY + 34 * m.h)} ${P(-1, m.neck + 2, m.sY - 1)}`,
+};
+const teeParts = (neck: string) => (m: Marks): Part[] => [
+  [sleeves(m, SHORT(m), 2), 'self'],
+  [topBody(m, 2, m.hipY + 2 * m.h, NECKS[neck](m)), 'self'],
+  [`M${P(-1, m.hh * 0.96 + 2, m.hipY - 3)} L${P(1, m.hh * 0.96 + 2, m.hipY - 3)}`, 'line'],
+];
+/** A shirt: a collar, a button placket and sleeves of a given length. */
+const shirtParts = (hem: (m: Marks) => number) => (m: Marks): Part[] => {
+  const v = m.sY + 16 * m.h;
+  const hemY = m.hipY + 8 * m.h;
+  return [
+    [sleeves(m, hem(m), 3), 'self'],
+    [topBody(m, 3, hemY, `L${P(0, 0, v)}`), 'self'],
+    [`M${P(-1, m.neck + 3, m.sY - 3)} L${P(-1, m.neck + 9, m.sY + 11 * m.h)} L${P(0, 0, v)} L${P(-1, m.neck - 1, m.sY + 1)} Z M${P(1, m.neck + 3, m.sY - 3)} L${P(1, m.neck + 9, m.sY + 11 * m.h)} L${P(0, 0, v)} L${P(1, m.neck - 1, m.sY + 1)} Z`, 'rgba(255,255,255,0.35)'],
+    [`M${P(0, 0, v)} L${P(0, 0, hemY)} M${P(-1, 1.5, v + 14)} L${P(-1, 1.5, v + 14.5)} M${P(-1, 1.5, v + 34)} L${P(-1, 1.5, v + 34.5)} M${P(-1, 1.5, v + 54)} L${P(-1, 1.5, v + 54.5)}`, 'line'],
+  ];
+};
+
+const DRAW: Record<string, (m: Marks) => Part[]> = {
+  tee: teeParts('crew'),
+  tee_v: teeParts('v'),
+  tee_scoop: teeParts('scoop'),
+  sweat: (m) => [
+    [sleeves(m, CUFF(m), 3), 'self'],
+    [topBody(m, 3, m.hipY + 4 * m.h, NECKS.crew(m)), 'self'],
+    [`M${P(-1, m.hh * 0.96 + 3, m.hipY - 3)} L${P(1, m.hh * 0.96 + 3, m.hipY - 3)} M${P(-1, m.neck + 2, m.sY + 3)} Q${P(0, 0, m.sY + 16)} ${P(1, m.neck + 2, m.sY + 3)}` +
+      ` M${P(-1, armEdges(m, CUFF(m) - 6).outer + 3, CUFF(m) - 6)} L${P(-1, armEdges(m, CUFF(m) - 6).inner - 3, CUFF(m) - 4)} M${P(1, armEdges(m, CUFF(m) - 6).outer + 3, CUFF(m) - 6)} L${P(1, armEdges(m, CUFF(m) - 6).inner - 3, CUFF(m) - 4)}`, 'line'],
+  ],
+  shirt_short: shirtParts(SHORT),
+  shirt_mid: shirtParts(ELBOW),
+  shirt_long: shirtParts(CUFF),
+  blazer: (m) => {
+    const hemY = m.crotchY + 4 * m.h;
+    const btn = m.waistY + 2;
+    const n = m.neck + 3;
+    const lapel = (s: number) => `M${P(s, n, m.sY - 2)} L${P(s, m.neck + 12, m.chestY - 4)} L${P(s, m.neck + 6, m.chestY - 1)} L${P(0, 0, btn)} Z`;
+    return [
+      [sleeves(m, CUFF(m) + 1, 4), 'self'],
+      [`M${P(-1, n, m.sY - 2)} L${P(-1, m.hs + 3, m.sY + 2)} Q${P(-1, m.hc + 4, m.chestY)} ${P(-1, m.hw + 3, m.waistY)} L${P(-1, Math.max(m.hh, m.hw) + 4, hemY)} L${P(1, Math.max(m.hh, m.hw) + 4, hemY)} L${P(1, m.hw + 3, m.waistY)} Q${P(1, m.hc + 4, m.chestY)} ${P(1, m.hs + 3, m.sY + 2)} L${P(1, n, m.sY - 2)} L${P(0, 0, btn)} Z`, 'self'],
+      [`${lapel(-1)} ${lapel(1)}`, 'rgba(255,255,255,0.22)'],
+      [`M${P(0, 0, btn)} L${P(0, 0, hemY)} M${P(-1, m.hw + 1, m.hipY - 4)} L${P(-1, m.hw - 11, m.hipY - 4)} M${P(1, m.hw - 11, m.hipY - 4)} L${P(1, m.hw + 1, m.hipY - 4)} M${P(-1, 1, btn + 8)} L${P(-1, 1, btn + 8.5)}`, 'line'],
+    ];
+  },
+  trousers: (m) => legwear(m, m.ankleY - 2, m.ankle + 4),
+  shorts: (m) => legwear(m, m.kneeY - 12 * m.h, m.thigh * 0.86),
+  skirt: (m) => [
+    [`M${P(-1, m.hw + 1, m.bTop)} Q${P(-1, m.hh + 3, m.hipY)} ${P(-1, m.hh + 13, m.kneeY - 4)} Q${P(0, 0, m.kneeY + 2)} ${P(1, m.hh + 13, m.kneeY - 4)} Q${P(1, m.hh + 3, m.hipY)} ${P(1, m.hw + 1, m.bTop)} Z`, 'self'],
+    [`M${P(-1, m.hw + 1.5, m.bTop + 6)} L${P(1, m.hw + 1.5, m.bTop + 6)}`, 'line'],
+  ],
+  tights: (m) => [
+    [`M${P(-1, m.hw, m.bTop)} Q${P(-1, m.hh + 1, m.hipY)} ${P(-1, m.thigh + 1, m.crotchY - 4)} L${P(-1, m.legGap + m.ankle + 1, m.ankleY + 2)} L${P(-1, m.legGap + 1, m.ankleY + 2)} L${P(0, 0, m.crotchY + 1)}` +
+      ` L${P(1, m.legGap + 1, m.ankleY + 2)} L${P(1, m.legGap + m.ankle + 1, m.ankleY + 2)} L${P(1, m.thigh + 1, m.crotchY - 4)} Q${P(1, m.hh + 1, m.hipY)} ${P(1, m.hw, m.bTop)} Z`, 'self'],
+    [`M${P(-1, m.hw + 0.5, m.bTop + 5)} L${P(1, m.hw + 0.5, m.bTop + 5)}`, 'line'],
+  ],
+  dress: (m) => {
+    const n = m.neck + 4;
+    const hemY = m.kneeY + 6;
+    return [
+      [`M${P(-1, n, m.sY - 2)} L${P(-1, m.hs - 7, m.sY + 1)} Q${P(-1, m.hc + 2, m.chestY - 4)} ${P(-1, m.hc + 2, m.chestY + 6)} Q${P(-1, m.hw + 2, m.waistY - 10)} ${P(-1, m.hw + 3, m.waistY)} L${P(-1, m.hh + 9, hemY)}` +
+        ` L${P(1, m.hh + 9, hemY)} L${P(1, m.hw + 3, m.waistY)} Q${P(1, m.hw + 2, m.waistY - 10)} ${P(1, m.hc + 2, m.chestY + 6)} Q${P(1, m.hc + 2, m.chestY - 4)} ${P(1, m.hs - 7, m.sY + 1)} L${P(1, n, m.sY - 2)} Q${P(0, 0, m.sY + 22 * m.h)} ${P(-1, n, m.sY - 2)} Z`, 'self'],
+      [`M${P(-1, m.hw + 3, m.waistY + 4)} L${P(1, m.hw + 3, m.waistY + 4)}`, 'line'],
+    ];
+  },
+  beanie: (m) => {
+    const w = m.headRx + 2.5;
+    const band = m.headCy - 9;
+    return [
+      [`M${P(-1, w - 1, band)} C${P(-1, w, m.top - 9)} ${P(1, w, m.top - 9)} ${P(1, w - 1, band)} Z`, 'self'],
+      [`M${P(-1, w + 1, band - 1)} L${P(1, w + 1, band - 1)} L${P(1, w + 1, band + 7)} Q${P(0, 0, band + 9)} ${P(-1, w + 1, band + 7)} Z`, 'self'],
+      [[-12, -6, 0, 6, 12].map((x) => `M${r(CX + x)} ${r(band + 1)} L${r(CX + x)} ${r(band + 6)}`).join(' '), 'line'],
+    ];
+  },
+  cap: (m) => {
+    const w = m.headRx + 1.5;
+    const y = m.headCy - 7;
+    return [
+      [`M${P(-1, w, y)} C${P(-1, w, m.top - 7)} ${P(1, w, m.top - 7)} ${P(1, w, y)} Z`, 'self'],
+      [`M${P(-1, w + 2, y)} Q${P(0, 0, y + 3)} ${P(1, w + 2, y)} Q${P(1, w + 4, y + 7)} ${P(0, 0, y + 8)} Q${P(-1, w + 4, y + 7)} ${P(-1, w + 2, y)} Z`, 'self'],
+      [`M${P(0, 0, m.top - 1)} L${P(0, 0, y)} M${P(0, 0, m.top - 1.5)} L${P(0, 0, m.top - 1)}`, 'line'],
+    ];
+  },
+  sneaker: (m) => shoe(m, (s, x) => [
+    [`M${P(s, x - 8, GROUND - 3)} Q${P(s, x - 8, m.ankleY - 6)} ${P(s, x, m.ankleY - 6)} Q${P(s, x + 9, m.ankleY - 6)} ${P(s, x + 9, GROUND - 3)} Z`, 'self'],
+    [`M${P(s, x - 9, GROUND - 4)} L${P(s, x + 10, GROUND - 4)} L${P(s, x + 10, GROUND)} L${P(s, x - 9, GROUND)} Z`, '#f4f1ec'],
+    [`M${P(s, x - 3, m.ankleY - 3)} L${P(s, x + 3, m.ankleY - 3)} M${P(s, x - 3, m.ankleY)} L${P(s, x + 3, m.ankleY)}`, 'line'],
+  ]),
+  oxford: (m) => shoe(m, (s, x) => [
+    [`M${P(s, x - 7, GROUND - 1)} Q${P(s, x - 7, m.ankleY + 1)} ${P(s, x, m.ankleY + 1)} Q${P(s, x + 8, m.ankleY + 2)} ${P(s, x + 9, GROUND - 1)} Z`, 'self'],
+    [`M${P(s, x - 8, GROUND - 1.5)} L${P(s, x + 10, GROUND - 1.5)} L${P(s, x + 10, GROUND)} L${P(s, x - 8, GROUND)} Z`, '#2b2b2b'],
+    [`M${P(s, x - 5, m.ankleY + 5)} L${P(s, x + 6, m.ankleY + 5)}`, 'line'],
+  ]),
+  sandal: (m) => shoe(m, (s, x) => [
+    [`M${P(s, x - 8, GROUND - 2.5)} L${P(s, x + 10, GROUND - 2.5)} L${P(s, x + 10, GROUND)} L${P(s, x - 8, GROUND)} Z`, '#2b2b2b'],
+    [`M${P(s, x - 7, GROUND - 2.5)} L${P(s, x - 6, GROUND - 6)} L${P(s, x + 8, GROUND - 6)} L${P(s, x + 9, GROUND - 2.5)} L${P(s, x + 6, GROUND - 2.5)} L${P(s, x + 5, GROUND - 4)} L${P(s, x - 4, GROUND - 4)} L${P(s, x - 5, GROUND - 2.5)} Z`, 'self'],
+    [`M${P(s, x - 5, m.ankleY + 1)} L${P(s, x + 5, m.ankleY + 1)} L${P(s, x + 5, m.ankleY + 3.5)} L${P(s, x - 5, m.ankleY + 3.5)} Z`, 'self'],
+  ]),
+  boot: (m) => shoe(m, (s, x) => [
+    [`M${P(s, x - 7, m.ankleY - 18)} L${P(s, x + 5, m.ankleY - 18)} L${P(s, x + 6, m.ankleY)} Q${P(s, x + 9, m.ankleY + 3)} ${P(s, x + 9, GROUND - 1)} L${P(s, x - 8, GROUND - 1)} Z`, 'self'],
+    [`M${P(s, x - 8.5, GROUND - 2)} L${P(s, x + 10, GROUND - 2)} L${P(s, x + 10, GROUND)} L${P(s, x - 8.5, GROUND)} Z`, '#2b2b2b'],
+    [`M${P(s, x - 7, m.ankleY - 14)} L${P(s, x + 5, m.ankleY - 14)}`, 'line'],
+  ]),
+};
+
+/** Trousers or shorts: from the waist, over the hips, to a hem `hemY` with its outer edge `hemOuter` from the centre. */
+function legwear(m: Marks, hemY: number, hemOuter: number): Part[] {
+  const inseam = m.crotchY + 4;
+  return [
+    [`M${P(-1, m.hw + 1, m.bTop)} Q${P(-1, m.hh + 2, m.hipY)} ${P(-1, hemOuter, hemY)} L${P(-1, m.legGap - 1, hemY)} L${P(0, 0, inseam)} L${P(1, m.legGap - 1, hemY)} L${P(1, hemOuter, hemY)} Q${P(1, m.hh + 2, m.hipY)} ${P(1, m.hw + 1, m.bTop)} Z`, 'self'],
+    [`M${P(-1, m.hw + 1, m.bTop + 6)} L${P(1, m.hw + 1, m.bTop + 6)} M${P(0, 0, m.bTop + 6)} L${P(0, 0, inseam)}`, 'line'],
+  ];
+}
+/** A pair of shoes: the same drawing on each foot, mirrored. */
+function shoe(m: Marks, one: (s: number, x: number) => Part[]): Part[] {
+  const x = m.legGap + m.ankle / 2 + 1; // the foot's centre, out from the centre line
+  return [...one(-1, x), ...one(1, x)];
+}
+
 /** The doll shape of a garment (and, for the tee, a neckline), or undefined when it has none. */
 export function dollShapeOf(garment: string, neckline?: string): string | undefined {
   const k = silhouetteKey(garment, neckline);
-  return k in PLACE ? k : undefined;
+  return k in DRAW ? k : undefined;
 }
 
-/** Each top's left sleeve hem in its grid, outer corner then inner: the bare arm comes out of it. */
-const SHORT_HEM: readonly [Pt, Pt] = [[22, 42], [30, 37]];
-export const SLEEVE_HEM: Record<string, readonly [Pt, Pt]> = {
-  tee: SHORT_HEM, tee_v: SHORT_HEM, tee_scoop: SHORT_HEM, shirt_short: SHORT_HEM,
-  shirt_mid: [[10, 58], [21, 60]],
-  shirt_long: [[8, 84], [20, 86]],
-  sweat: [[8, 80], [20, 83]],
-  blazer: [[8, 82], [20, 84]],
-};
-/** The bare left arm, in the tops' grid: shoulder, armpit and wrist (outer, inner). */
-const SHOULDER: Pt = [21, 24];
-const ARMPIT: Pt = [30.5, 38];
-const WRIST: readonly [Pt, Pt] = [[9, 86], [19, 86]];
-/** A sleeve's arm starts this far back inside the sleeve, so no skin shows at the hem's edge. */
-const toward = (p: Pt, q: Pt, t: number): Pt => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
-
-function mapsOf(f: Figure) {
-  const sx = (d: number) => (Math.abs(d) <= 20 ? d * f.torso : Math.sign(d) * (20 * f.torso + (Math.abs(d) - 20) * f.sleeve));
-  const top: MapFn = (x, y) => [50 + sx(x - 50), TOP_Y(y)];
-  const bottom: MapFn = (x, y) => [50 + (x - 50) * f.hips, BOTTOM_Y(y)];
-  const dress: MapFn = (x, y) => [50 + (x - 50) * f.dress, DRESS_Y(y)];
-  return { top, bottom, dress };
-}
-const mirror = (m: MapFn): MapFn => (x, y) => m(100 - x, y);
-
-const r = (n: number) => String(Math.round(n * 100) / 100);
-const pt = (p: Pt) => `${r(p[0])} ${r(p[1])}`;
-/** A shape's path (absolute M, L, Q and Z only, as in silhouettes.ts) with every point mapped onto the figure. */
-export function mapPath(d: string, m: MapFn): string {
-  return (d.match(/[A-Za-z][^A-Za-z]*/g) ?? [])
-    .map((seg) => {
-      const n = seg.slice(1).trim().split(/[\s,]+/).filter(Boolean).map(Number);
-      const out: string[] = [];
-      for (let i = 0; i + 1 < n.length; i += 2) out.push(pt(m(n[i], n[i + 1])));
-      return seg[0] + out.join(' ');
-    })
-    .join(' ');
-}
-
-/** The placement of a shape on this figure: one map, or two for the shoes (one per foot). */
-function placementOf(key: string, f: Figure): MapFn[] {
-  const m = mapsOf(f);
-  const [bx, by, , bh] = SHAPES[key].box;
-  switch (PLACE[key]) {
-    case 'top': return [m.top];
-    case 'bottom': return [m.bottom];
-    case 'dress': return [m.dress];
-    case 'hat': {
-      // Sized to the head (18 wide, its top at y 6); the cap is centred on its crown, not its peak.
-      const s = key === 'cap' ? 0.3 : 0.27;
-      const cx = key === 'cap' ? 52 : 50;
-      const top = key === 'cap' ? 4 : 2.5;
-      return [(x, y) => [50 + (x - cx) * s, top + (y - by) * s]];
-    }
-    case 'shoe': {
-      // A side view under each leg, heel in, toe out (the left foot mirrored).
-      const s = 0.15;
-      const heel = m.bottom(54, 98)[0];
-      const right: MapFn = (x, y) => [heel + (x - bx) * s, SOLE - (by + bh - y) * s];
-      return [right, (x, y) => { const [X, Y] = right(x, y); return [100 - X, Y]; }];
-    }
-    default: return [];
-  }
-}
-
-const HEX = /^#[0-9a-f]{6}$/i;
-const SKIN = '#d9bca3';
-const SKIN_SHADE = '#c9a88d';
-
-/** The paths of one garment on the figure, filled with its colour, edged as in silhouettes.ts. */
-function garmentPaths(key: string, f: Figure, colour: string, sheer: boolean): string {
-  const sh = SHAPES[key];
-  const fill = HEX.test(colour) ? colour : '#9a9a9a';
-  const edge = edgeOf(fill);
-  const stroke = `stroke="${edge}" stroke-width="0.7" stroke-linejoin="round" stroke-linecap="round"`;
+function partsSvg(parts: Part[], colour: string, sheer: boolean): string {
+  const fill = /^#[0-9a-f]{6}$/i.test(colour) ? colour : '#9a9a9a';
   const op = sheer ? ' fill-opacity="0.55"' : '';
-  return placementOf(key, f)
-    .map((m) => {
-      const p = [`<path d="${mapPath(sh.body, m)}" fill="${fill}"${op} ${stroke}/>`];
-      if (sh.extra) p.push(`<path d="${mapPath(sh.extra, m)}" fill="${sh.xfill ?? edge}" ${stroke}/>`);
-      if (sh.collar) p.push(`<path d="${mapPath(sh.collar, m)}" fill="rgba(255,255,255,0.3)" ${stroke}/>`);
-      if (sh.detail) p.push(`<path d="${mapPath(sh.detail, m)}" fill="none" stroke="${edge}" stroke-width="0.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.8"/>`);
-      return p.join('');
-    })
+  return parts
+    .map(([d, f]) =>
+      f === 'line'
+        ? `<path d="${d}" fill="none" stroke="${INK}" stroke-width="1" stroke-linecap="round" opacity="0.55"/>`
+        : `<path d="${d}" fill="${f === 'self' ? fill : f}"${f === 'self' ? op : ''} stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`,
+    )
     .join('');
 }
 
-/** The torso, neck, head and legs, in skin; the arms are drawn later, between the bottoms and the tops. */
-function bodyPaths(f: Figure): string {
-  const { top: T, bottom: B } = mapsOf(f);
-  const neckX = 50 - f.neck / 2 / f.torso; // the neck's edge, in the tops' grid
-  const half = (side: (m: MapFn) => MapFn) => {
-    const t = side(T);
-    const b = side(B);
-    return [t(neckX, 14), t(31, 15), t(...SHOULDER), t(...ARMPIT), t(32.8, 55), t(32.5, 62), b(34, 16), b(33.5, 40), b(50, 46)];
-  };
-  const l = half((m) => m);
-  const q = half(mirror);
-  const torso =
-    `M${pt(l[0])} Q${pt(l[1])} ${pt(l[2])} L${pt(l[3])} Q${pt(l[4])} ${pt(l[5])} L${pt(l[6])} L${pt(l[7])} L${pt(l[8])}` +
-    ` L${pt(q[7])} L${pt(q[6])} L${pt(q[5])} Q${pt(q[4])} ${pt(q[3])} L${pt(q[2])} Q${pt(q[1])} ${pt(q[0])} Z`;
-  const leg = (m: MapFn) => `M${pt(m(34, 16))} L${pt(m(32, 98))} L${pt(m(46, 98))} L${pt(m(50, 46))} L${pt(m(50, 16))} Z`;
-  const [ax] = B(32, 98);
-  const [ix] = B(46, 98);
-  const foot = (cx: number) => `<ellipse cx="${r(cx)}" cy="${SOLE - 2.6}" rx="6" ry="2.6" fill="${SKIN}"/>`;
-  return [
-    `<rect x="${r(50 - f.neck / 2)}" y="24" width="${r(f.neck)}" height="20" fill="${SKIN_SHADE}"/>`,
-    `<path d="${torso}" fill="${SKIN}"/>`,
-    `<path d="${leg(B)}" fill="${SKIN}"/>`,
-    `<path d="${leg(mirror(B))}" fill="${SKIN}"/>`,
-    foot((ax + ix) / 2 - 1.5),
-    foot(100 - (ax + ix) / 2 + 1.5),
-    `<ellipse cx="50" cy="18" rx="9" ry="12" fill="${SKIN}"/>`,
-  ].join('');
+// --- The body ---------------------------------------------------------------------------------------------------------
+
+const skin = (d: string) => `<path d="${d}" fill="${SKIN}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`;
+
+function bodySvg(m: Marks): string {
+  const { hs, hc, hw, hh, sY } = m;
+  const torso = `M${P(-1, m.neck, m.neckTop)} L${P(-1, m.neck, sY - 3)} L${P(-1, hs, sY + 3)} Q${P(-1, hc, m.chestY)} ${P(-1, hw, m.waistY)} Q${P(-1, hh, m.hipY)} ${P(-1, hh * 0.92, m.crotchY)}` +
+    ` L${P(1, hh * 0.92, m.crotchY)} Q${P(1, hh, m.hipY)} ${P(1, hw, m.waistY)} Q${P(1, hc, m.chestY)} ${P(1, hs, sY + 3)} L${P(1, m.neck, sY - 3)} L${P(1, m.neck, m.neckTop)} Z`;
+  const leg = (s: number) => `M${P(s, m.thigh, m.crotchY - 4)} L${P(s, m.legGap, m.crotchY)} L${P(s, m.legGap + 2, m.ankleY)} L${P(s, m.legGap + m.ankle, m.ankleY)} Z`;
+  const foot = (s: number) => `M${P(s, m.legGap + m.ankle, m.ankleY)} L${P(s, m.legGap + 2, m.ankleY)} L${P(s, m.legGap, GROUND)} L${P(s, m.legGap + m.ankle + 5, GROUND)} Z`;
+  return [leg(-1), leg(1), foot(-1), foot(1), torso].map(skin).join('') + `<ellipse cx="${CX}" cy="${r(m.headCy)}" rx="${m.headRx}" ry="${m.headRy}" fill="${SKIN}" stroke="${INK}" stroke-width="1.5"/>`;
 }
 
-/** Both arms and hands, coming out of the sleeve hem of the outermost top, or from the shoulder when nothing with sleeves is worn. */
-function armPaths(f: Figure, sleeveKey: string | undefined): string {
-  const hem = sleeveKey ? SLEEVE_HEM[sleeveKey] : undefined;
-  const inside: Pt = [25, 26];
-  const outer = hem ? toward(hem[0], inside, 0.3) : SHOULDER;
-  const inner = hem ? toward(hem[1], inside, 0.3) : ARMPIT;
-  const [wo, wi] = WRIST;
-  const arm = (m: MapFn) =>
-    `M${pt(m(...outer))} L${pt(m(...wo))} Q${pt(m(7, 97))} ${pt(m(14, 99))} Q${pt(m(21, 97))} ${pt(m(...wi))} L${pt(m(...inner))} Z`;
-  const { top } = mapsOf(f);
-  return `<path d="${arm(top)}" fill="${SKIN}"/><path d="${arm(mirror(top))}" fill="${SKIN}"/>`;
+function armsSvg(m: Marks): string {
+  const arm = (s: number) =>
+    `M${P(s, m.hs - 2, m.sY + 3)} L${P(s, m.armOut + 5, m.wristY)} Q${P(s, m.armOut + 2, m.wristY + 10)} ${P(s, m.armOut - 5, m.wristY)} L${P(s, m.hc - 1, m.chestY + 8)} Z`;
+  return skin(arm(-1)) + skin(arm(1));
 }
 
-/** The hair: Joe's short, on the head; B's long, behind the head and shoulders with a fringe and side locks in front. */
-function hairPaths(f: Figure, colour: string, part: 'back' | 'front'): string {
-  const fill = HEX.test(colour) ? colour : '#3b2a1f';
-  const edge = edgeOf(fill);
-  const stroke = `stroke="${edge}" stroke-width="0.5" stroke-linejoin="round"`;
+/** The hair: Joe's short; B's long, behind the head and down to the shoulders, with a fringe in front. */
+function hairSvg(m: Marks, f: Figure, colour: string, part: 'back' | 'front'): string {
+  const fill = /^#[0-9a-f]{6}$/i.test(colour) ? colour : '#3b2a1f';
+  const { headRx: rx, headCy: cy, top } = m;
+  const path = (d: string) => `<path d="${d}" fill="${fill}" stroke="${INK}" stroke-width="1.5" stroke-linejoin="round"/>`;
   if (f.hair === 'short')
-    return part === 'front' ? `<path d="M40.8 17 Q40 4 50 4.5 Q60 4 59.2 17 Q57.5 9.5 50 10 Q42.5 9.5 40.8 17 Z" fill="${fill}" ${stroke}/>` : '';
-  if (part === 'back') return `<path d="M40.5 16 Q38 3 50 3.5 Q62 3 59.5 16 L62 54 Q50 58 38 54 Z" fill="${fill}" ${stroke}/>`;
-  return [
-    `<path d="M40.6 21 Q39 3.5 50 4 Q61 3.5 59.4 21 Q57 9 50 9.5 Q43 9 40.6 21 Z" fill="${fill}" ${stroke}/>`,
-    `<path d="M41 15 Q39 32 38.5 48 Q41.5 49 43.5 46 Q42.5 30 43.6 17 Z" fill="${fill}" ${stroke}/>`,
-    `<path d="M59 15 Q61 32 61.5 48 Q58.5 49 56.5 46 Q57.5 30 56.4 17 Z" fill="${fill}" ${stroke}/>`,
-  ].join('');
+    return part === 'front' ? path(`M${P(-1, rx - 1, cy - 5)} C${P(-1, rx, top - 3)} ${P(1, rx, top - 3)} ${P(1, rx - 1, cy - 5)} Q${P(0, 0, cy - 14)} ${P(-1, rx - 1, cy - 5)} Z`) : '';
+  if (part === 'back') return path(`M${P(-1, rx + 3, cy - 4)} Q${P(-1, rx + 8, m.neckTop + 20)} ${P(-1, rx + 4, m.sY + 26)} L${P(1, rx + 4, m.sY + 26)} Q${P(1, rx + 8, m.neckTop + 20)} ${P(1, rx + 3, cy - 4)} Z`);
+  return path(`M${P(-1, rx, cy + 2)} C${P(-1, rx + 1, top - 4)} ${P(1, rx + 1, top - 4)} ${P(1, rx, cy + 2)} Q${P(1, rx - 4, cy - 10)} ${P(0, 0, cy - 12)} Q${P(-1, rx - 4, cy - 10)} ${P(-1, rx, cy + 2)} Z`);
 }
+
+// --- What is worn, and the whole drawing ------------------------------------------------------------------------------
 
 export type DollLayer = 'legs' | 'shoes' | 'bottom' | 'dress' | 'arms' | 'under' | 'top' | 'outer' | 'hat';
 export interface DollPiece {
@@ -271,22 +329,22 @@ export interface PaperDollOptions extends DollOptions {
 /** The doll in the current outfit, as one SVG. Each layer is a `<g data-layer>` with its garment and shape, for the tests. */
 export function paperDollSvg(o: PaperDollOptions): string {
   const f = FIGURES[o.figure];
+  const m = landmarks(f);
   const pieces = dollPieces(o);
   const tucked = isTucked(o.outfit);
-  // The arms come out of the outermost sleeves: the blazer's, else the top's.
-  const sleeved = [...pieces].reverse().find((p) => p.layer === 'outer' || p.layer === 'top');
   const group = (p: DollPiece) => {
     const clip = p.layer === 'top' && tucked ? ' clip-path="url(#doll-tuck)" data-tucked="true"' : '';
     const sheer = o.sheer && p.garment === 'tights';
-    return `<g data-layer="${p.layer}" data-garment="${p.garment}" data-shape="${p.key}"${clip}>${garmentPaths(p.key, f, o.colour(p.garment), sheer)}</g>`;
+    return `<g data-layer="${p.layer}" data-garment="${p.garment}" data-shape="${p.key}"${clip}>${partsSvg(DRAW[p.key](m), o.colour(p.garment), sheer)}</g>`;
   };
   const layers: string[] = [
-    `<g data-layer="hair-back">${hairPaths(f, o.hair, 'back')}</g>`,
-    `<g data-layer="body">${bodyPaths(f)}</g>`,
+    `<ellipse cx="${CX}" cy="${GROUND}" rx="48" ry="6" fill="rgba(0,0,0,0.1)"/>`,
+    `<g data-layer="hair-back">${hairSvg(m, f, o.hair, 'back')}</g>`,
+    `<g data-layer="body">${bodySvg(m)}</g>`,
   ];
   // The arms go over the bottoms and the dress and under the sleeves; the front hair over everything but a hat.
-  const arms = `<g data-layer="arms">${armPaths(f, sleeved?.key)}</g>`;
-  const hair = `<g data-layer="hair">${hairPaths(f, o.hair, 'front')}</g>`;
+  const arms = `<g data-layer="arms">${armsSvg(m)}</g>`;
+  const hair = `<g data-layer="hair">${hairSvg(m, f, o.hair, 'front')}</g>`;
   let armsDone = false;
   let hairDone = false;
   for (const p of pieces) {
@@ -296,6 +354,7 @@ export function paperDollSvg(o: PaperDollOptions): string {
   }
   if (!armsDone) layers.push(arms);
   if (!hairDone) layers.push(hair);
-  const defs = tucked ? `<defs><clipPath id="doll-tuck"><rect x="0" y="0" width="100" height="${r(WAIST_Y + 1)}"/></clipPath></defs>` : '';
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="8 0 84 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" data-figure="${o.figure}">${defs}${layers.join('')}</svg>`;
+  // A tee tucked into a skirt is cut where the skirt's waistband starts.
+  const defs = tucked ? `<defs><clipPath id="doll-tuck"><rect x="0" y="0" width="300" height="${r(m.bTop + 2)}"/></clipPath></defs>` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="80 34 140 388" preserveAspectRatio="xMidYMid meet" aria-hidden="true" focusable="false" data-figure="${o.figure}">${defs}${layers.join('')}</svg>`;
 }
